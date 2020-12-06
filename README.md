@@ -24,6 +24,13 @@ go run session_example.go
 Without go mod
 
 ```sh
+# get thrift 0.13.0
+go get github.com/apache/thrift
+cd $GOPATH/src/github.com/apache/thrift
+git checkout 0.13.0
+
+mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
+cd $GOPATH/src/iotdb-client-go-example/session_example
 
 curl -ss -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/session_example.go
 go run session_example.go
