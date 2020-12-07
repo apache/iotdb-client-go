@@ -57,6 +57,13 @@ type Session struct {
 }
 
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) error {
+	if s.config.FetchSize <= 0 {
+		s.config.FetchSize = DefaultFetchSize
+	}
+	if s.config.ZoneId == "" {
+		s.config.ZoneId = DefaultZoneId
+	}
+
 	var protocolFactory thrift.TProtocolFactory
 	var err error
 	s.trans, err = thrift.NewTSocketTimeout(net.JoinHostPort(s.config.Host, s.config.Port), time.Duration(connectionTimeoutInMs))
@@ -78,36 +85,31 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	iprot := protocolFactory.GetProtocol(s.trans)
 	oprot := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iprot, oprot))
-	s.config.ZoneId = DefaultZoneId
-	tSOpenSessionReq := rpc.TSOpenSessionReq{ClientProtocol: protocolVersion, ZoneId: s.config.ZoneId, Username: &s.config.UserName,
+	req := rpc.TSOpenSessionReq{ClientProtocol: protocolVersion, ZoneId: s.config.ZoneId, Username: &s.config.UserName,
 		Password: &s.config.Password}
-	tSOpenSessionResp, err := s.client.OpenSession(context.Background(), &tSOpenSessionReq)
+	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
 		return err
 	}
-	s.sessionId = tSOpenSessionResp.GetSessionId()
+	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	s.config.FetchSize = DefaultFetchSize
 	if err != nil {
 		return err
 	}
-	if s.config.ZoneId != "" {
-		s.SetTimeZone(s.config.ZoneId)
-	} else {
-		s.config.ZoneId, err = s.GetTimeZone()
-	}
+
+	s.SetTimeZone(s.config.ZoneId)
+	s.config.ZoneId, err = s.GetTimeZone()
 	return err
 }
 
-func (s *Session) Close() error {
-	tSCloseSessionReq := rpc.NewTSCloseSessionReq()
-	tSCloseSessionReq.SessionId = s.sessionId
-	_, err := s.client.CloseSession(context.Background(), tSCloseSessionReq)
+func (s *Session) Close() (r *rpc.TSStatus, err error) {
+	req := rpc.NewTSCloseSessionReq()
+	req.SessionId = s.sessionId
+	r, err = s.client.CloseSession(context.Background(), req)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	s.trans.Close()
-	return nil
+	return nil, s.trans.Close()
 }
 
 /*
@@ -119,9 +121,9 @@ func (s *Session) Close() error {
  *return
  *error: correctness of operation
  */
-func (s *Session) SetStorageGroup(storageGroupId string) error {
-	_, err := s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
-	return err
+func (s *Session) SetStorageGroup(storageGroupId string) (r *rpc.TSStatus, err error) {
+	r, err = s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
+	return r, err
 }
 
 /*
@@ -133,9 +135,9 @@ func (s *Session) SetStorageGroup(storageGroupId string) error {
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteStorageGroup(storageGroupId string) error {
-	_, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
-	return err
+func (s *Session) DeleteStorageGroup(storageGroupId string) (r *rpc.TSStatus, err error) {
+	r, err = s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
+	return r, err
 }
 
 /*
@@ -147,9 +149,9 @@ func (s *Session) DeleteStorageGroup(storageGroupId string) error {
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteStorageGroups(storageGroupIds []string) error {
-	_, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
-	return err
+func (s *Session) DeleteStorageGroups(storageGroupIds []string) (r *rpc.TSStatus, err error) {
+	r, err = s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
+	return r, err
 }
 
 /*
@@ -183,12 +185,12 @@ func (s *Session) CreateTimeseries(path string, dataType int32, encoding int32, 
  *return
  *error: correctness of operation
  */
-func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encodings []int32, compressors []int32) error {
+func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encodings []int32, compressors []int32) (r *rpc.TSStatus, err error) {
 	request := rpc.TSCreateMultiTimeseriesReq{SessionId: s.sessionId, Paths: paths, DataTypes: dataTypes,
 		Encodings: encodings, Compressors: compressors}
-	_, err := s.client.CreateMultiTimeseries(context.Background(), &request)
+	r, err = s.client.CreateMultiTimeseries(context.Background(), &request)
 
-	return err
+	return r, err
 }
 
 /*
@@ -200,9 +202,9 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encod
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteTimeseries(paths []string) error {
-	_, err := s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
-	return err
+func (s *Session) DeleteTimeseries(paths []string) (r *rpc.TSStatus, err error) {
+	r, err = s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
+	return r, err
 }
 
 /*
@@ -216,11 +218,10 @@ func (s *Session) DeleteTimeseries(paths []string) error {
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) error {
+func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) (r *rpc.TSStatus, err error) {
 	request := rpc.TSDeleteDataReq{SessionId: s.sessionId, Paths: paths, StartTime: startTime, EndTime: endTime}
-	_, err := s.client.DeleteData(context.Background(), &request)
-
-	return err
+	r, err = s.client.DeleteData(context.Background(), &request)
+	return r, err
 }
 
 /*
@@ -235,11 +236,11 @@ func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) err
  *return
  *error: correctness of operation
  */
-func (s *Session) InsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) error {
+func (s *Session) InsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) (r *rpc.TSStatus, err error) {
 	request := rpc.TSInsertStringRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
 		Values: values, Timestamp: timestamp}
-	_, err := s.client.InsertStringRecord(context.Background(), &request)
-	return err
+	r, err = s.client.InsertStringRecord(context.Background(), &request)
+	return r, err
 }
 
 func (s *Session) GetTimeZone() (string, error) {
@@ -254,11 +255,11 @@ func (s *Session) GetTimeZone() (string, error) {
 	}
 }
 
-func (s *Session) SetTimeZone(timeZone string) error {
+func (s *Session) SetTimeZone(timeZone string) (r *rpc.TSStatus, err error) {
 	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
-	_, err := s.client.SetTimeZone(context.Background(), &request)
+	r, err = s.client.SetTimeZone(context.Background(), &request)
 	s.config.ZoneId = timeZone
-	return err
+	return r, err
 }
 
 func (s *Session) ExecuteStatement(sql string) (*rpc.TSExecuteStatementResp, error) {
@@ -301,10 +302,10 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	return request
 }
 
-func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{}, timestamp int64) error {
+func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{}, timestamp int64) (r *rpc.TSStatus, err error) {
 	request := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values)
-	_, err := s.client.InsertRecord(context.Background(), request)
-	return err
+	r, err = s.client.InsertRecord(context.Background(), request)
+	return r, err
 }
 
 func NewSession(config *Config) *Session {

@@ -32,8 +32,9 @@ var session *client.Session
 
 func main() {
 	config := &client.Config{
-		UserName: "root",
-		Password: "root",
+		UserName: client.DefaultUser,
+		Password: client.DefaultPassword,
+		ZoneId:   client.DefaultZoneId,
 		Port:     "6667",
 	}
 	session = client.NewSession(config)
