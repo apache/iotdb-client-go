@@ -321,19 +321,19 @@ func newFuncOption(f func(*Session)) *FuncOption {
 	}
 }
 
-func withUser(user string) DialOption {
+func WithUser(user string) DialOption {
 	return newFuncOption(func(session *Session) {
 		session.User = user
 	})
 }
 
-func withPasswd(passwd string) DialOption {
+func WithPasswd(passwd string) DialOption {
 	return newFuncOption(func(session *Session) {
 		session.Passwd = passwd
 	})
 }
 
-func withFetchSize(fetchSize int32) DialOption {
+func WithFetchSize(fetchSize int32) DialOption {
 	return newFuncOption(func(session *Session) {
 		session.FetchSize = fetchSize
 	})
