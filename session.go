@@ -27,12 +27,13 @@ import (
 	"github.com/apache/iotdb-client-go/rpc"
 	"github.com/apache/thrift/lib/go/thrift"
 	"net"
+	"strconv"
 	"time"
 )
 
 const protocolVersion = rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3
 
-var lengthError = errors.New("this is a new error")
+var lengthError = errors.New("deviceIds, times, measurementsList and valuesList's size should be equal")
 
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) error {
 	var protocolFactory thrift.TProtocolFactory
@@ -56,24 +57,22 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	iProtocol := protocolFactory.GetProtocol(s.trans)
 	oProtocol := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iProtocol, oProtocol))
-	s.config.ZoneId = DefaultZoneId
-	tSOpenSessionReq := rpc.TSOpenSessionReq{ClientProtocol: protocolVersion, ZoneId: s.config.ZoneId,
-		Username: &s.config.User, Password: &s.config.Passwd}
+	tSOpenSessionReq := rpc.TSOpenSessionReq{
+		ClientProtocol: protocolVersion,
+		ZoneId: s.config.ZoneId,
+		Username: &s.config.User,
+		Password: &s.config.Passwd,
+	}
 	tSOpenSessionResp, err := s.client.OpenSession(context.Background(), &tSOpenSessionReq)
 	if err != nil {
 		return err
 	}
 	s.sessionId = tSOpenSessionResp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	s.config.FetchSize = DefaultFetchSize
 	if err != nil {
 		return err
 	}
-	if s.config.ZoneId != "" {
-		s.SetTimeZone(s.config.ZoneId)
-	} else {
-		s.config.ZoneId, err = s.GetTimeZone()
-	}
+	s.SetTimeZone(s.config.ZoneId)
 	return err
 }
 
@@ -87,9 +86,16 @@ func (s *Session) CheckTimeseriesExists(path string) bool {
 func (s *Session) Close() error {
 	tSCloseSessionReq := rpc.NewTSCloseSessionReq()
 	tSCloseSessionReq.SessionId = s.sessionId
-	_, err := s.client.CloseSession(context.Background(), tSCloseSessionReq)
+	status, err := s.client.CloseSession(context.Background(), tSCloseSessionReq)
 	s.trans.Close()
-	return err
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -100,8 +106,15 @@ func (s *Session) Close() error {
  *
  */
 func (s *Session) SetStorageGroup(storageGroupId string) error {
-	_, err := s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
-	return err
+	status, err := s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -112,8 +125,15 @@ func (s *Session) SetStorageGroup(storageGroupId string) error {
  *
  */
 func (s *Session) DeleteStorageGroup(storageGroupId string) error {
-	_, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
-	return err
+	status, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -124,8 +144,15 @@ func (s *Session) DeleteStorageGroup(storageGroupId string) error {
  *
  */
 func (s *Session) DeleteStorageGroups(storageGroupIds []string) error {
-	_, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
-	return err
+	status, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -139,10 +166,21 @@ func (s *Session) DeleteStorageGroups(storageGroupIds []string) error {
  *
  */
 func (s *Session) CreateTimeseries(path string, dataType int32, encoding int32, compressor int32) error {
-	request := rpc.TSCreateTimeseriesReq{SessionId: s.sessionId, Path: path, DataType: dataType, Encoding: encoding,
-		Compressor: compressor}
-	_, err := s.client.CreateTimeseries(context.Background(), &request)
-	return err
+	request := rpc.TSCreateTimeseriesReq{
+		SessionId: s.sessionId,
+		Path: path, DataType: dataType,
+		Encoding: encoding,
+		Compressor: compressor,
+	}
+	status, err := s.client.CreateTimeseries(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -156,10 +194,22 @@ func (s *Session) CreateTimeseries(path string, dataType int32, encoding int32, 
  *
  */
 func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encodings []int32, compressors []int32) error {
-	request := rpc.TSCreateMultiTimeseriesReq{SessionId: s.sessionId, Paths: paths, DataTypes: dataTypes,
-		Encodings: encodings, Compressors: compressors}
-	_, err := s.client.CreateMultiTimeseries(context.Background(), &request)
-	return err
+	request := rpc.TSCreateMultiTimeseriesReq{
+		SessionId: s.sessionId,
+		Paths: paths,
+		DataTypes: dataTypes,
+		Encodings: encodings,
+		Compressors: compressors,
+	}
+	status, err := s.client.CreateMultiTimeseries(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -170,8 +220,15 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encod
  *
  */
 func (s *Session) DeleteTimeseries(paths []string) error {
-	_, err := s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
-	return err
+	status, err := s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -184,9 +241,20 @@ func (s *Session) DeleteTimeseries(paths []string) error {
  *
  */
 func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) error {
-	request := rpc.TSDeleteDataReq{SessionId: s.sessionId, Paths: paths, StartTime: startTime, EndTime: endTime}
-	_, err := s.client.DeleteData(context.Background(), &request)
-	return err
+	request := rpc.TSDeleteDataReq{SessionId: s.sessionId,
+		Paths: paths,
+		StartTime: startTime,
+		EndTime: endTime,
+	}
+	status, err := s.client.DeleteData(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -200,10 +268,22 @@ func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) err
  *
  */
 func (s *Session) InsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) error {
-	request := rpc.TSInsertStringRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
-		Values: values, Timestamp: timestamp}
-	_, err := s.client.InsertStringRecord(context.Background(), &request)
-	return err
+	request := rpc.TSInsertStringRecordReq{
+		SessionId: s.sessionId,
+		DeviceId: deviceId,
+		Measurements: measurements,
+		Values: values,
+		Timestamp: timestamp,
+	}
+	status, err := s.client.InsertStringRecord(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /**
@@ -211,10 +291,22 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
  * this method should be used to test other time cost in iotdb
  */
 func (s *Session) TestInsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) error {
-	request := rpc.TSInsertStringRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
-		Values: values, Timestamp: timestamp}
-	_, err := s.client.TestInsertStringRecord(context.Background(), &request)
-	return err
+	request := rpc.TSInsertStringRecordReq{
+		SessionId: s.sessionId,
+		DeviceId: deviceId,
+		Measurements: measurements,
+		Values: values,
+		Timestamp: timestamp,
+	}
+	status, err := s.client.TestInsertStringRecord(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -229,10 +321,22 @@ func (s *Session) TestInsertStringRecord(deviceId string, measurements []string,
  */
 func (s *Session) InsertStringRecords(deviceIds []string, measurements [][]string, values [][]string,
 	timestamps []int64) error {
-	request := rpc.TSInsertStringRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
-		ValuesList: values, Timestamps: timestamps}
-	_, err := s.client.InsertStringRecords(context.Background(), &request)
-	return err
+	request := rpc.TSInsertStringRecordsReq{
+		SessionId: s.sessionId,
+		DeviceIds: deviceIds,
+		MeasurementsList: measurements,
+		ValuesList: values,
+		Timestamps: timestamps,
+	}
+	status, err := s.client.InsertStringRecords(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /**
@@ -241,10 +345,22 @@ func (s *Session) InsertStringRecords(deviceIds []string, measurements [][]strin
  */
 func (s *Session) TestInsertStringRecords(deviceIds []string, measurements [][]string, values [][]string,
 	timestamps []int64) error {
-	request := rpc.TSInsertStringRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
-		ValuesList: values, Timestamps: timestamps}
-	_, err := s.client.TestInsertStringRecords(context.Background(), &request)
-	return err
+	request := rpc.TSInsertStringRecordsReq{
+		SessionId: s.sessionId,
+		DeviceIds: deviceIds,
+		MeasurementsList: measurements,
+		ValuesList: values,
+		Timestamps: timestamps,
+	}
+	status, err := s.client.TestInsertStringRecords(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /*
@@ -261,8 +377,15 @@ func (s *Session) TestInsertStringRecords(deviceIds []string, measurements [][]s
 func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{},
 	timestamp int64) error {
 	request := s.genInsertRecordReq(deviceId, measurements, dataTypes, values, timestamp)
-	_, err := s.client.InsertRecord(context.Background(), request)
-	return err
+	status, err := s.client.InsertRecord(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /**
@@ -272,14 +395,25 @@ func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes
 func (s *Session) TestInsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{},
 	timestamp int64) error {
 	request := s.genInsertRecordReq(deviceId, measurements, dataTypes, values, timestamp)
-	_, err := s.client.TestInsertRecord(context.Background(), request)
-	return err
+	status, err := s.client.TestInsertRecord(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Session) genInsertRecordReq(deviceId string, measurements []string, dataTypes []int32, values []interface{},
 	timestamp int64) *rpc.TSInsertRecordReq {
-	request := rpc.TSInsertRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
-		Timestamp: timestamp}
+	request := rpc.TSInsertRecordReq{
+		SessionId: s.sessionId,
+		DeviceId: deviceId,
+		Measurements: measurements,
+		Timestamp: timestamp,
+	}
 	request.Values = valuesToBytes(dataTypes, values)
 	return &request
 }
@@ -302,8 +436,15 @@ func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dat
 	if err != nil {
 		return err
 	} else {
-		_, err := s.client.InsertRecords(context.Background(), request)
-		return err
+		status, err := s.client.InsertRecords(context.Background(), request)
+		if err != nil {
+			return err
+		}
+		err = verifySuccess(status)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 }
@@ -318,8 +459,15 @@ func (s *Session) TestInsertRecords(deviceIds []string, measurements [][]string,
 	if err != nil {
 		return err
 	} else {
-		_, err := s.client.TestInsertRecords(context.Background(), request)
-		return err
+		status, err := s.client.TestInsertRecords(context.Background(), request)
+		if err != nil {
+			return err
+		}
+		err = verifySuccess(status)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 }
 
@@ -329,8 +477,12 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 	if length != len(timestamps) || length != len(measurements) || length != len(values) {
 		return nil, lengthError
 	}
-	request := rpc.TSInsertRecordsReq{SessionId: s.sessionId, DeviceIds: deviceIds, MeasurementsList: measurements,
-		Timestamps: timestamps}
+	request := rpc.TSInsertRecordsReq{
+		SessionId: s.sessionId,
+		DeviceIds: deviceIds,
+		MeasurementsList: measurements,
+		Timestamps: timestamps,
+	}
 	v := make([][]byte, length)
 	for i := 0; i < len(measurements); i++ {
 		v[i] = valuesToBytes(dataTypes[i], values[i])
@@ -349,8 +501,15 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 func (s *Session) InsertTablet(tablet Tablet) error {
 	tablet.SortTablet()
 	request := s.genInsertTabletReq(tablet)
-	_, err := s.client.InsertTablet(context.Background(), request)
-	return err
+	status, err := s.client.InsertTablet(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /**
@@ -360,14 +519,27 @@ func (s *Session) InsertTablet(tablet Tablet) error {
 func (s *Session) TestInsertTablet(tablet Tablet) error {
 	tablet.SortTablet()
 	request := s.genInsertTabletReq(tablet)
-	_, err := s.client.TestInsertTablet(context.Background(), request)
-	return err
+	status, err := s.client.TestInsertTablet(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Session) genInsertTabletReq(tablet Tablet) *rpc.TSInsertTabletReq {
-	request := rpc.TSInsertTabletReq{SessionId: s.sessionId, DeviceId: tablet.GetDeviceId(), Types: tablet.GetTypes(),
-		Measurements: tablet.Measurements, Values: tablet.GetBinaryValues(), Timestamps: tablet.GetBinaryTimestamps(),
-		Size: tablet.GetRowNumber()}
+	request := rpc.TSInsertTabletReq{
+		SessionId: s.sessionId,
+		DeviceId: tablet.GetDeviceId(),
+		Types: tablet.GetTypes(),
+		Measurements: tablet.Measurements,
+		Values: tablet.GetBinaryValues(),
+		Timestamps: tablet.GetBinaryTimestamps(),
+		Size: tablet.GetRowNumber(),
+	}
 	return &request
 }
 
@@ -383,8 +555,15 @@ func (s *Session) InsertTablets(tablets []Tablet) error {
 		tablets[index].SortTablet()
 	}
 	request := s.genInsertTabletsReq(tablets)
-	_, err := s.client.InsertTablets(context.Background(), request)
-	return err
+	status, err := s.client.InsertTablets(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 /**
@@ -396,8 +575,15 @@ func (s *Session) TestInsertTablets(tablets []Tablet) error {
 		tablets[index].SortTablet()
 	}
 	request := s.genInsertTabletsReq(tablets)
-	_, err := s.client.TestInsertTablets(context.Background(), request)
-	return err
+	status, err := s.client.TestInsertTablets(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Session) genInsertTabletsReq(tablets []Tablet) *rpc.TSInsertTabletsReq {
@@ -418,9 +604,15 @@ func (s *Session) genInsertTabletsReq(tablets []Tablet) *rpc.TSInsertTabletsReq 
 		typesList[index] = tablet.GetTypes()
 		sizeList[index] = tablet.GetRowNumber()
 	}
-	request := rpc.TSInsertTabletsReq{SessionId: s.sessionId, DeviceIds: deviceIds, TypesList: typesList,
-		MeasurementsList: measurementsList, ValuesList: valuesList, TimestampsList: timestampsList,
-		SizeList: sizeList}
+	request := rpc.TSInsertTabletsReq{
+		SessionId: s.sessionId,
+		DeviceIds: deviceIds,
+		TypesList: typesList,
+		MeasurementsList: measurementsList,
+		ValuesList: valuesList,
+		TimestampsList: timestampsList,
+		SizeList: sizeList,
+	}
 	return &request
 }
 
@@ -444,8 +636,12 @@ func valuesToBytes(dataTypes []int32, values []interface{}) []byte {
 }
 
 func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
-	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
-		FetchSize: &s.config.FetchSize}
+	request := rpc.TSExecuteStatementReq{
+		SessionId: s.sessionId,
+		Statement: sql,
+		StatementId: s.requestStatementId,
+		FetchSize: &s.config.FetchSize,
+	}
 	resp, err := s.client.ExecuteStatement(context.Background(), &request)
 	dataSet := s.genDataSet(sql, resp)
 	sessionDataSet := NewSessionDataSet(dataSet)
@@ -468,8 +664,12 @@ func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) *Sess
 }
 
 func (s *Session) ExecuteQueryStatement(sql string) (*SessionDataSet, error) {
-	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
-		FetchSize: &s.config.FetchSize}
+	request := rpc.TSExecuteStatementReq{
+		SessionId: s.sessionId,
+		Statement: sql,
+		StatementId: s.requestStatementId,
+		FetchSize: &s.config.FetchSize,
+	}
 	resp, err := s.client.ExecuteQueryStatement(context.Background(), &request)
 	dataSet := s.genDataSet(sql, resp)
 	sessionDataSet := NewSessionDataSet(dataSet)
@@ -477,8 +677,12 @@ func (s *Session) ExecuteQueryStatement(sql string) (*SessionDataSet, error) {
 }
 
 func (s *Session) ExecuteUpdateStatement(sql string) (*SessionDataSet, error) {
-	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
-		FetchSize: &s.config.FetchSize}
+	request := rpc.TSExecuteStatementReq{
+		SessionId: s.sessionId,
+		Statement: sql,
+		StatementId: s.requestStatementId,
+		FetchSize: &s.config.FetchSize,
+	}
 	resp, err := s.client.ExecuteUpdateStatement(context.Background(), &request)
 	dataSet := s.genDataSet(sql, resp)
 	sessionDataSet := NewSessionDataSet(dataSet)
@@ -490,8 +694,15 @@ func (s *Session) ExecuteBatchStatement(inserts []string) error {
 		SessionId:  s.sessionId,
 		Statements: inserts,
 	}
-	_, err := s.client.ExecuteBatchStatement(context.Background(), &request)
-	return err
+	status, err := s.client.ExecuteBatchStatement(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Session) ExecuteRawDataQuery(paths []string, startTime int64, endTime int64) (*SessionDataSet, error) {
@@ -520,7 +731,33 @@ func (s *Session) GetTimeZone() (string, error) {
 
 func (s *Session) SetTimeZone(timeZone string) error {
 	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
-	_, err := s.client.SetTimeZone(context.Background(), &request)
+	status, err := s.client.SetTimeZone(context.Background(), &request)
+	if err != nil {
+		return err
+	}
+	err = verifySuccess(status)
+	if err != nil {
+		return err
+	}
 	s.config.ZoneId = timeZone
-	return err
+	return nil
+}
+
+func verifySuccess(status *rpc.TSStatus) error {
+	if status.GetCode() == MULTIPLE_ERROR {
+		return VerifySuccess(status.GetSubStatus())
+	}
+	if status.GetCode() != SUCCESS_STATUS {
+		return errors.New(strconv.Itoa(int(status.GetCode())) + ": " + status.GetMessage())
+	}
+	return nil
+}
+
+func VerifySuccess(statuses []*rpc.TSStatus) error {
+	for _, status := range statuses {
+		if status.GetCode() != SUCCESS_STATUS {
+			return errors.New(strconv.Itoa(int(status.GetCode())) + ": " + status.GetMessage())
+		}
+	}
+	return nil
 }

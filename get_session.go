@@ -31,7 +31,15 @@ const (
 	DefaultFetchSize int32 = 10000
 )
 
-//session config
+/*
+ *session config
+ *Host:      server ip
+ *Port:      server port
+ *User       user name
+ *Passwd     user passwd
+ *FetchSize  int32
+ *ZoneId     string
+ */
 type Config struct {
 	Host      string
 	Port      string
@@ -50,11 +58,14 @@ type Session struct {
 }
 
 func NewConfig() *Config {
-	conf := Config{User: DefaultUser, Passwd: DefaultPasswd, ZoneId: DefaultZoneId, FetchSize: DefaultFetchSize}
-	return &conf
+	return &Config{
+		User:      DefaultUser,
+		Passwd:    DefaultPasswd,
+		FetchSize: DefaultFetchSize,
+		ZoneId:    DefaultZoneId,
+	}
 }
 
 func NewSession(config *Config) *Session {
-	session := Session{config: config}
-	return &session
+	return &Session{config: config}
 }
