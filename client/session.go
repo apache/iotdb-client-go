@@ -32,19 +32,23 @@ import (
 
 const (
 	DefaultUser      = "root"
-	DefaultPasswd    = "root"
+	DefaultPassword  = "root"
 	DefaultZoneId    = "Asia/Shanghai"
 	protocolVersion  = rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3
 	DefaultFetchSize = 1024
 )
 
+type Config struct {
+	Host      string
+	Port      string
+	UserName  string
+	Password  string
+	FetchSize int32
+	ZoneId    string
+}
+
 type Session struct {
-	Host               string
-	Port               string
-	User               string
-	Passwd             string
-	FetchSize          int32
-	ZoneId             string
+	config             *Config
 	client             *rpc.TSIServiceClient
 	sessionId          int64
 	isClose            bool
@@ -55,7 +59,7 @@ type Session struct {
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) error {
 	var protocolFactory thrift.TProtocolFactory
 	var err error
-	s.trans, err = thrift.NewTSocketTimeout(net.JoinHostPort(s.Host, s.Port), time.Duration(connectionTimeoutInMs))
+	s.trans, err = thrift.NewTSocketTimeout(net.JoinHostPort(s.config.Host, s.config.Port), time.Duration(connectionTimeoutInMs))
 	if err != nil {
 		return err
 	}
@@ -74,23 +78,23 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	iprot := protocolFactory.GetProtocol(s.trans)
 	oprot := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iprot, oprot))
-	s.ZoneId = DefaultZoneId
-	tSOpenSessionReq := rpc.TSOpenSessionReq{ClientProtocol: protocolVersion, ZoneId: s.ZoneId, Username: &s.User,
-		Password: &s.Passwd}
+	s.config.ZoneId = DefaultZoneId
+	tSOpenSessionReq := rpc.TSOpenSessionReq{ClientProtocol: protocolVersion, ZoneId: s.config.ZoneId, Username: &s.config.UserName,
+		Password: &s.config.Password}
 	tSOpenSessionResp, err := s.client.OpenSession(context.Background(), &tSOpenSessionReq)
 	if err != nil {
 		return err
 	}
 	s.sessionId = tSOpenSessionResp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	s.FetchSize = DefaultFetchSize
+	s.config.FetchSize = DefaultFetchSize
 	if err != nil {
 		return err
 	}
-	if s.ZoneId != "" {
-		s.SetTimeZone(s.ZoneId)
+	if s.config.ZoneId != "" {
+		s.SetTimeZone(s.config.ZoneId)
 	} else {
-		s.ZoneId, err = s.GetTimeZone()
+		s.config.ZoneId, err = s.GetTimeZone()
 	}
 	return err
 }
@@ -239,8 +243,8 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
 }
 
 func (s *Session) GetTimeZone() (string, error) {
-	if s.ZoneId != "" {
-		return s.ZoneId, nil
+	if s.config.ZoneId != "" {
+		return s.config.ZoneId, nil
 	} else {
 		resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
 		if err != nil {
@@ -253,20 +257,20 @@ func (s *Session) GetTimeZone() (string, error) {
 func (s *Session) SetTimeZone(timeZone string) error {
 	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
 	_, err := s.client.SetTimeZone(context.Background(), &request)
-	s.ZoneId = timeZone
+	s.config.ZoneId = timeZone
 	return err
 }
 
 func (s *Session) ExecuteStatement(sql string) (*rpc.TSExecuteStatementResp, error) {
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
-		FetchSize: &s.FetchSize}
+		FetchSize: &s.config.FetchSize}
 	resp, err := s.client.ExecuteStatement(context.Background(), &request)
 	return resp, err
 }
 
 func (s *Session) ExecuteQueryStatement(sql string) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
-		FetchSize: &s.FetchSize}
+		FetchSize: &s.config.FetchSize}
 	resp, err := s.client.ExecuteQueryStatement(context.Background(), &request)
 	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp), err
 }
@@ -303,63 +307,6 @@ func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes
 	return err
 }
 
-type DialOption interface {
-	apply(*Session)
-}
-
-type FuncOption struct {
-	f func(*Session)
-}
-
-func (O *FuncOption) apply(s *Session) {
-	O.f(s)
-}
-
-func newFuncOption(f func(*Session)) *FuncOption {
-	return &FuncOption{
-		f: f,
-	}
-}
-
-func WithUser(user string) DialOption {
-	return newFuncOption(func(session *Session) {
-		session.User = user
-	})
-}
-
-func WithPasswd(passwd string) DialOption {
-	return newFuncOption(func(session *Session) {
-		session.Passwd = passwd
-	})
-}
-
-func WithFetchSize(fetchSize int32) DialOption {
-	return newFuncOption(func(session *Session) {
-		session.FetchSize = fetchSize
-	})
-}
-
-func defaultOptions() Session {
-	return Session{
-		User:      DefaultUser,
-		Passwd:    DefaultPasswd,
-		FetchSize: DefaultFetchSize,
-		ZoneId:    DefaultZoneId,
-	}
-}
-
-type SessionConn struct {
-	session Session
-}
-
-func NewSession(host string, port string, opts ...DialOption) Session {
-	sessionConn := &SessionConn{
-		session: defaultOptions(),
-	}
-	for _, opt := range opts {
-		opt.apply(&sessionConn.session)
-	}
-	sessionConn.session.Host = host
-	sessionConn.session.Port = port
-	return sessionConn.session
+func NewSession(config *Config) *Session {
+	return &Session{config: config}
 }

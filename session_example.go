@@ -28,10 +28,15 @@ import (
 	"github.com/apache/iotdb-client-go/client"
 )
 
-var session client.Session
+var session *client.Session
 
 func main() {
-	session = client.NewSession("127.0.0.1", "6667")
+	config := &client.Config{
+		UserName: "root",
+		Password: "root",
+		Port:     "6667",
+	}
+	session = client.NewSession(config)
 	err := session.Open(false, 0)
 	if err != nil {
 		log.Fatal(err)
