@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package client
+package iotdb
 
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"github.com/apache/iotdb-client-go/rpc"
-	log "github.com/sirupsen/logrus"
 )
 
 type SessionDataSet struct {
@@ -76,16 +76,17 @@ func (s *SessionDataSet) HasNext() bool {
 	return s.ioTDBRpcDataSet.next()
 }
 
-func (s *SessionDataSet) Next() *RowRecord {
+func (s *SessionDataSet) Next() (*RowRecord, error) {
 	if !s.ioTDBRpcDataSet.HasCachedRecord && !s.HasNext() {
-		return nil
+		return nil, nil
 	}
 	s.ioTDBRpcDataSet.HasCachedRecord = false
 	return s.constructRowRecordFromValueArray()
 }
 
-func (s *SessionDataSet) constructRowRecordFromValueArray() *RowRecord {
+func (s *SessionDataSet) constructRowRecordFromValueArray() (*RowRecord, error) {
 	var outFields []Field
+	var err error
 	for i := 0; i < s.ioTDBRpcDataSet.getColumnSize(); i++ {
 		var field Field
 		var index = i + 1
@@ -95,7 +96,11 @@ func (s *SessionDataSet) constructRowRecordFromValueArray() *RowRecord {
 			datasetColumnIndex--
 		}
 		var loc = s.ioTDBRpcDataSet.ColumnOrdinalMap[s.ioTDBRpcDataSet.ColumnNameList[index]] - StarIndex
-		if !s.ioTDBRpcDataSet.isNil(datasetColumnIndex) {
+		dataSetIsNil, err := s.ioTDBRpcDataSet.isNil(datasetColumnIndex)
+		if err != nil {
+			return nil, err
+		}
+		if !dataSetIsNil {
 			valueBytes := s.ioTDBRpcDataSet.Values[loc]
 			dataType := s.ioTDBRpcDataSet.ColumnTypeDeduplicatedList[loc]
 			bytesBuffer := bytes.NewBuffer(valueBytes)
@@ -130,7 +135,7 @@ func (s *SessionDataSet) constructRowRecordFromValueArray() *RowRecord {
 				field.SetBinaryV(valueBytes)
 				break
 			default:
-				log.Error("Data type is not supported")
+				return nil, errors.New("unsupported data type " + dataType)
 			}
 		} else {
 			field = NewField("")
@@ -143,7 +148,7 @@ func (s *SessionDataSet) constructRowRecordFromValueArray() *RowRecord {
 	return &RowRecord{
 		Timestamp: timeStamp,
 		Fields:    outFields,
-	}
+	}, err
 }
 
 func (s *SessionDataSet) CloseOperationHandle() {

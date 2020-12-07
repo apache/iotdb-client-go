@@ -20,13 +20,17 @@
 package main
 
 import (
-	"github.com/apache/iotdb-client-go/client"
+	"fmt"
+	"github.com/apache/iotdb-client-go"
 )
 
-var session client.Session
+var session *iotdb.Session
 
 func main() {
-	session = client.NewSession("127.0.0.1", "6667")
+	config := iotdb.NewConfig()
+	config.Host = "127.0.0.1"
+	config.Port = "6667"
+	session = iotdb.NewSession(config)
 	session.Open(false, 0)
 	setStorageGroup()
 	deleteStorageGroup()
@@ -41,7 +45,7 @@ func main() {
 	insertTablets()
 	deleteData()
 	setTimeZone()
-	println(getTimeZone())
+	fmt.Println(getTimeZone())
 	executeStatement()
 	executeQueryStatement()
 	executeRawDataQuery()
@@ -67,9 +71,9 @@ func deleteStorageGroups() {
 func createTimeseries() {
 	var (
 		path       = "root.sg1.dev1.status"
-		dataType   = client.FLOAT
-		encoding   = client.PLAIN
-		compressor = client.SNAPPY
+		dataType   = iotdb.FLOAT
+		encoding   = iotdb.PLAIN
+		compressor = iotdb.SNAPPY
 	)
 	session.CreateTimeseries(path, dataType, encoding, compressor)
 }
@@ -77,9 +81,9 @@ func createTimeseries() {
 func createMultiTimeseries() {
 	var (
 		paths       = []string{"root.sg1.dev1.temperature"}
-		dataTypes   = []int32{client.TEXT}
-		encodings   = []int32{client.PLAIN}
-		compressors = []int32{client.SNAPPY}
+		dataTypes   = []int32{iotdb.TEXT}
+		encodings   = []int32{iotdb.PLAIN}
+		compressors = []int32{iotdb.SNAPPY}
 	)
 	session.CreateMultiTimeseries(paths, dataTypes, encodings, compressors)
 }
@@ -104,7 +108,7 @@ func insertRecord() {
 		deviceId           = "root.sg1.dev1"
 		measurements       = []string{"status"}
 		values             = []interface{}{"123"}
-		dataTypes          = []int32{client.TEXT}
+		dataTypes          = []int32{iotdb.TEXT}
 		timestamp    int64 = 12
 	)
 	session.InsertRecord(deviceId, measurements, dataTypes, values, timestamp)
@@ -114,7 +118,7 @@ func insertRecords() {
 	var (
 		deviceId     = []string{"root.sg1.dev1"}
 		measurements = [][]string{{"status"}}
-		dataTypes    = [][]int32{{client.TEXT}}
+		dataTypes    = [][]int32{{iotdb.TEXT}}
 		values       = [][]interface{}{{"123"}}
 		timestamp    = []int64{12}
 	)
@@ -134,13 +138,13 @@ func insertTablet() {
 	var (
 		deviceId     = "root.sg1.dev1"
 		measurements = []string{"status", "tem"}
-		dataTypes    = []int32{client.INT32, client.INT32}
+		dataTypes    = []int32{iotdb.INT32, iotdb.INT32}
 		values       = make([]interface{}, 2)
 		timestamp    = []int64{154, 123}
 	)
 	values[0] = []int32{777, 6666}
 	values[1] = []int32{888, 999}
-	var tablet = client.Tablet{
+	var tablet = iotdb.Tablet{
 		DeviceId:     deviceId,
 		Measurements: measurements,
 		Values:       values,
@@ -154,13 +158,13 @@ func insertTablets() {
 	var (
 		deviceId1     = "root.sg1.dev1"
 		measurements1 = []string{"status", "tem"}
-		dataTypes1    = []int32{client.INT32, client.INT32}
+		dataTypes1    = []int32{iotdb.INT32, iotdb.INT32}
 		values1       = make([]interface{}, 2)
 		timestamp1    = []int64{154, 123}
 	)
 	values1[0] = []int32{777, 6666}
 	values1[1] = []int32{888, 999}
-	var tablet1 = client.Tablet{
+	var tablet1 = iotdb.Tablet{
 		DeviceId:     deviceId1,
 		Measurements: measurements1,
 		Values:       values1,
@@ -170,20 +174,20 @@ func insertTablets() {
 	var (
 		deviceId2     = "root.sg1.dev2"
 		measurements2 = []string{"status", "tem"}
-		dataTypes2    = []int32{client.INT32, client.INT32}
+		dataTypes2    = []int32{iotdb.INT32, iotdb.INT32}
 		values2       = make([]interface{}, 2)
 		timestamp2    = []int64{154, 123}
 	)
 	values2[0] = []int32{777, 6666}
 	values2[1] = []int32{888, 999}
-	var tablet2 = client.Tablet{
+	var tablet2 = iotdb.Tablet{
 		DeviceId:     deviceId2,
 		Measurements: measurements2,
 		Values:       values2,
 		Timestamps:   timestamp2,
 		Types:        dataTypes2,
 	}
-	tablets := []client.Tablet{tablet1, tablet2}
+	tablets := []iotdb.Tablet{tablet1, tablet2}
 	session.InsertTablets(tablets)
 }
 
@@ -192,19 +196,25 @@ func setTimeZone() {
 	session.SetTimeZone(timeZone)
 }
 
-func getTimeZone() string {
+func getTimeZone() (string, error) {
 	return session.GetTimeZone()
 }
 
 func executeStatement() {
 	var sql = "show storage group"
-	sessionDataSet := session.ExecuteStatement(sql)
+	sessionDataSet, err := session.ExecuteStatement(sql)
+	if err != nil {
+		fmt.Println(err)
+	}
 	for i := 0; i < len(sessionDataSet.GetColumnNames()); i++ {
 		println(sessionDataSet.GetColumnNames()[i])
 	}
 	for {
 		if sessionDataSet.HasNext() {
-			record := sessionDataSet.Next()
+			record, err := sessionDataSet.Next()
+			if err != nil {
+				fmt.Println(err)
+			}
 			for i := 0; i < len(record.Fields); i++ {
 				println(record.Fields[i].GetStringValue())
 			}
@@ -216,13 +226,19 @@ func executeStatement() {
 
 func executeQueryStatement() {
 	var sql = "select count(s3) from root.sg1.dev1"
-	sessionDataSet := session.ExecuteQueryStatement(sql)
+	sessionDataSet, err := session.ExecuteQueryStatement(sql)
+	if err != nil {
+		fmt.Println(err)
+	}
 	for i := 0; i < len(sessionDataSet.GetColumnNames()); i++ {
 		println(sessionDataSet.GetColumnNames()[i])
 	}
 	for {
 		if sessionDataSet.HasNext() {
-			record := sessionDataSet.Next()
+			record, err := sessionDataSet.Next()
+			if err != nil {
+				fmt.Println(err)
+			}
 			for i := 0; i < len(record.Fields); i++ {
 				println(record.Fields[i].GetLongV())
 			}
@@ -239,13 +255,19 @@ func executeRawDataQuery() {
 		startTime int64    = 1
 		endTime   int64    = 200
 	)
-	sessionDataSet := session.ExecuteRawDataQuery(paths, startTime, endTime)
+	sessionDataSet, err := session.ExecuteRawDataQuery(paths, startTime, endTime)
+	if err != nil {
+		fmt.Println(err)
+	}
 	for i := 0; i < len(sessionDataSet.GetColumnNames()); i++ {
 		println(sessionDataSet.GetColumnNames()[i])
 	}
 	for {
 		if sessionDataSet.HasNext() {
-			record := sessionDataSet.Next()
+			record, err := sessionDataSet.Next()
+			if err != nil {
+				fmt.Println(err)
+			}
 			println(record.Timestamp)
 			for i := 0; i < len(record.Fields); i++ {
 				switch record.Fields[i].DataType {

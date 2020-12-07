@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package client
+package iotdb
 
 import (
 	"bytes"
 	"encoding/binary"
-	log "github.com/sirupsen/logrus"
+	"errors"
 	"sort"
+	"strconv"
 )
 
 type Tablet struct {
@@ -89,7 +90,7 @@ func (t *Tablet) GetTypes() []int32 {
 	return t.Types
 }
 
-func (t *Tablet) SortTablet() {
+func (t *Tablet) SortTablet() error {
 	var timeIndexs = make(map[int64]int, t.GetRowNumber())
 	for index := range t.Timestamps {
 		timeIndexs[t.Timestamps[index]] = index
@@ -105,9 +106,10 @@ func (t *Tablet) SortTablet() {
 		if sortValue != nil {
 			t.Values[index] = sortValue
 		} else {
-			log.Error("unsupported data type ", t.Types[index])
+			return errors.New("unsupported data type " + strconv.Itoa(int(t.Types[index])))
 		}
 	}
+	return nil
 }
 
 func sortList(valueList interface{}, dataType int32, timeIndexs map[int64]int, timeStamps []int64) interface{} {

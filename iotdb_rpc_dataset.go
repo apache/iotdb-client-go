@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package client
+package iotdb
 
 import (
 	"bytes"
-	"github.com/apache/iotdb-client-go/rpc"
 	"context"
 	"encoding/binary"
-	log "github.com/sirupsen/logrus"
+	"errors"
+	"github.com/apache/iotdb-client-go/rpc"
 )
 
 type IoTDBRpcDataSet struct {
@@ -139,7 +139,7 @@ func (r *IoTDBRpcDataSet) getColumnSize() int {
 	return r.columnSize
 }
 
-func (r *IoTDBRpcDataSet) constructOneRow() {
+func (r *IoTDBRpcDataSet) constructOneRow() error {
 	r.time = r.QueryDataSet.Time[:8]
 	r.QueryDataSet.Time = r.QueryDataSet.Time[8:]
 	for i := 0; i < len(r.QueryDataSet.BitmapList); i++ {
@@ -169,12 +169,13 @@ func (r *IoTDBRpcDataSet) constructOneRow() {
 				r.Values[i] = valueBuffer[4 : 4+length]
 				r.QueryDataSet.ValueList[i] = valueBuffer[4+length:]
 			default:
-				log.Error("not support dataType")
+				return errors.New("unsupported data type " + dataType)
 			}
 		}
 	}
 	r.rowsIndex++
 	r.HasCachedRecord = true
+	return nil
 }
 
 func (r *IoTDBRpcDataSet) isNull(index int32, rowNum int) bool {
@@ -183,22 +184,26 @@ func (r *IoTDBRpcDataSet) isNull(index int32, rowNum int) bool {
 	return ((Flag >> shift) & (bitmap & 0xff)) == 0
 }
 
-func (r *IoTDBRpcDataSet) isNil(columnIndex int) bool {
-	index := r.ColumnOrdinalMap[r.findColumnNameByIndex(columnIndex)] - StarIndex
-	if index < 0 {
-		return true
+func (r *IoTDBRpcDataSet) isNil(columnIndex int) (bool, error) {
+	columnName, err := r.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return false, err
 	}
-	return r.isNull(index, r.rowsIndex-1)
+	index := r.ColumnOrdinalMap[columnName] - StarIndex
+	if index < 0 {
+		return true, nil
+	}
+	return r.isNull(index, r.rowsIndex-1), nil
 }
 
-func (r *IoTDBRpcDataSet) findColumnNameByIndex(columnIndex int) string {
+func (r *IoTDBRpcDataSet) findColumnNameByIndex(columnIndex int) (string, error) {
 	if columnIndex <= 0 {
-		log.Error("column index should start from 1")
+		return "", errors.New("column index should start from 1")
 	}
 	if columnIndex > len(r.ColumnNameList) {
-		log.Error("column index out of range")
+		return "", errors.New("column index out of range")
 	}
-	return r.ColumnNameList[columnIndex-1]
+	return r.ColumnNameList[columnIndex-1], nil
 }
 
 func (r *IoTDBRpcDataSet) fetchResults() bool {

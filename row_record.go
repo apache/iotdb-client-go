@@ -17,37 +17,13 @@
  * under the License.
  */
 
-package client
+package iotdb
 
-const (
-	BOOLEAN int32 = 0
-	INT32   int32 = 1
-	INT64   int32 = 2
-	FLOAT   int32 = 3
-	DOUBLE  int32 = 4
-	TEXT    int32 = 5
-	INT     int32 = 6
-)
+type RowRecord struct {
+	Timestamp int64
+	Fields    []Field
+}
 
-const (
-	PLAIN            int32 = 0
-	PLAIN_DICTIONARY int32 = 1
-	RLE              int32 = 2
-	DIFF             int32 = 3
-	TS_2DIFF         int32 = 4
-	BITMAP           int32 = 5
-	GORILLA_V1       int32 = 6
-	REGULAR          int32 = 7
-	GORILLA          int32 = 8
-)
-
-const (
-	UNCOMPRESSED int32 = 0
-	SNAPPY       int32 = 1
-	GZIP         int32 = 2
-	LZO          int32 = 3
-	SDT          int32 = 4
-	PAA          int32 = 5
-	PLA          int32 = 6
-	LZ4          int32 = 7
-)
+func (r *RowRecord) AddField(field Field) {
+	r.Fields[len(r.Fields)] = field
+}

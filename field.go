@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package client
+package iotdb
 
 import (
 	"bytes"
 	"encoding/binary"
-	log "github.com/sirupsen/logrus"
+	"errors"
 )
 
 type Field struct {
@@ -35,7 +35,7 @@ type Field struct {
 	binaryV  []byte
 }
 
-func Copy(field Field) Field {
+func Copy(field Field) (Field, error) {
 	outField := NewField(field.DataType)
 	if outField.DataType != "" {
 		dateType := outField.DataType
@@ -59,10 +59,10 @@ func Copy(field Field) Field {
 			outField.SetBinaryV(field.GetBinaryV())
 			break
 		default:
-			log.Error("not support dataType")
+			return outField, errors.New("unsupported data type " + dateType)
 		}
 	}
-	return outField
+	return outField, nil
 }
 
 func NewField(DataType string) Field {
@@ -117,13 +117,13 @@ func (f *Field) SetLongV(longVal int64) {
 	f.longV = longVal
 }
 
-func (f *Field) ToString() string {
+func (f *Field) ToString() (string, error) {
 	return f.GetStringValue()
 }
 
-func (f *Field) GetStringValue() string {
+func (f *Field) GetStringValue() (string, error) {
 	if f.DataType == "" {
-		return ""
+		return "", nil
 	}
 	dateType := f.DataType
 	buf := bytes.NewBuffer([]byte{})
@@ -147,14 +147,14 @@ func (f *Field) GetStringValue() string {
 		buf.Write(f.binaryV)
 		break
 	default:
-		log.Error("not support dataType")
+		return "", errors.New("unsupported data type " + dateType)
 	}
-	return buf.String()
+	return buf.String(), nil
 }
 
-func (f *Field) GetField(value interface{}, dateType string) *Field {
+func (f *Field) GetField(value interface{}, dateType string) (*Field, error) {
 	if value == nil {
-		return nil
+		return nil, nil
 	}
 	field := NewField(dateType)
 	switch dateType {
@@ -177,39 +177,38 @@ func (f *Field) GetField(value interface{}, dateType string) *Field {
 		field.SetBinaryV([]byte(value.(string)))
 		break
 	default:
-		log.Error("not support dataType")
+		return &field, errors.New("unsupported data type " + dateType)
 	}
-	return &field
+	return &field, nil
 }
 
-func (f *Field) GetObjectValue(dateType string) interface{} {
+func (f *Field) GetObjectValue(dateType string) (interface{}, error) {
 	if f.DataType == "" {
-		return nil
+		return nil, nil
 	}
 	switch dateType {
 	case "BOOLEAN":
-		return f.GetBoolV()
+		return f.GetBoolV(), nil
 		break
 	case "INT32":
-		return f.GetIntV()
+		return f.GetIntV(), nil
 		break
 	case "INT64":
-		return f.GetLongV()
+		return f.GetLongV(), nil
 		break
 	case "FLOAT":
-		return f.GetFloatV()
+		return f.GetFloatV(), nil
 		break
 	case "DOUBLE":
-		return f.GetDoubleV()
+		return f.GetDoubleV(), nil
 		break
 	case "TEXT":
-		return f.GetBinaryV()
+		return f.GetBinaryV(), nil
 		break
 	default:
-		log.Error("not support dataType")
-		return nil
+		return nil, errors.New("unsupported data type " + dateType)
 	}
-	return nil
+	return nil, nil
 }
 
 func (f *Field) IsNull() bool {

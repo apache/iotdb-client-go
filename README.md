@@ -31,6 +31,6 @@ To use go client, add "import github.com/apache/iotdb-client-go"
 
 *Download dependency : go get github.com/apache/iotdb-client-go
 
-*eg:https://github.com/apache/iotdb-client-go/session_example.go
+*eg:https://github.com/apache/iotdb-client-go/example/session_example.go
 
 
