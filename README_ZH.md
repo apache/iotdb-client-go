@@ -20,23 +20,20 @@
 -->
 [English](./README.md) | [中文](./README_ZH.md)
 
-# Apache IoTDB Client for Go
+# Apache IoTDB Go语言客户端
 
-# Overview
+# 概览
 
-This is the GoLang client of Apache IoTDB.
-
-[Apache IoTDB](https://iotdb.apache.org) (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
+本仓库是Apache IoTDB的Go语言客户端.
 
 Apache IoTDB website: https://iotdb.apache.org
 Apache IoTDB Github: https://github.com/apache/iotdb
 
-# How to Compile the Client
+# 如何编译
 
-# How to Use the Client (Quick Start)
+# 如何使用 (快速上手)
 
-
-With go mod
+使用go mod
 
 ```sh
 export GO111MODULE=on
@@ -50,7 +47,7 @@ go mod init session_example
 go run session_example.go
 ```
 
-Without go mod
+不使用go mod，采用GOPATH
 
 ```sh
 # get thrift 0.13.0
