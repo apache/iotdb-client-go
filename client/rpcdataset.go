@@ -371,7 +371,6 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	//   RpcUtils.verifySuccess(resp.getStatus());
 	if !resp.HasResultSet {
 		s.emptyResultSet = true
 	} else {
