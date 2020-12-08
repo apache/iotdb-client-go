@@ -18,7 +18,8 @@
 all: generate
 
 generate:
+	@curl -ss -o rpc.thrift https://raw.githubusercontent.com/apache/iotdb/master/thrift/src/main/thrift/rpc.thrift
 	@thrift -out . -gen go rpc.thrift
-	@rm -rf rpc/t_s_i_service-remote
+	@rm -rf rpc/t_s_i_service-remote rpc.thrift
 
 .PHONY: generate all
