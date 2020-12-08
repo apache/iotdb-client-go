@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package iotdb
+package client
 
 import (
 	"bytes"
@@ -92,10 +92,7 @@ func (s *Session) Close() error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -111,10 +108,7 @@ func (s *Session) SetStorageGroup(storageGroupId string) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -130,10 +124,7 @@ func (s *Session) DeleteStorageGroup(storageGroupId string) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -149,10 +140,7 @@ func (s *Session) DeleteStorageGroups(storageGroupIds []string) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -177,10 +165,7 @@ func (s *Session) CreateTimeseries(path string, dataType int32, encoding int32, 
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -206,10 +191,7 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encod
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -225,10 +207,7 @@ func (s *Session) DeleteTimeseries(paths []string) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -251,10 +230,7 @@ func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) err
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -280,10 +256,7 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /**
@@ -303,10 +276,7 @@ func (s *Session) TestInsertStringRecord(deviceId string, measurements []string,
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -333,10 +303,7 @@ func (s *Session) InsertStringRecords(deviceIds []string, measurements [][]strin
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /**
@@ -357,10 +324,7 @@ func (s *Session) TestInsertStringRecords(deviceIds []string, measurements [][]s
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /*
@@ -382,10 +346,7 @@ func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /**
@@ -400,10 +361,7 @@ func (s *Session) TestInsertRecord(deviceId string, measurements []string, dataT
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *Session) genInsertRecordReq(deviceId string, measurements []string, dataTypes []int32, values []interface{},
@@ -441,10 +399,7 @@ func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dat
 			return err
 		}
 		err = verifySuccess(status)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	}
 
 }
@@ -464,10 +419,7 @@ func (s *Session) TestInsertRecords(deviceIds []string, measurements [][]string,
 			return err
 		}
 		err = verifySuccess(status)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	}
 }
 
@@ -506,10 +458,7 @@ func (s *Session) InsertTablet(tablet Tablet) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /**
@@ -524,10 +473,7 @@ func (s *Session) TestInsertTablet(tablet Tablet) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *Session) genInsertTabletReq(tablet Tablet) *rpc.TSInsertTabletReq {
@@ -560,10 +506,7 @@ func (s *Session) InsertTablets(tablets []Tablet) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 /**
@@ -580,10 +523,7 @@ func (s *Session) TestInsertTablets(tablets []Tablet) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *Session) genInsertTabletsReq(tablets []Tablet) *rpc.TSInsertTabletsReq {
@@ -699,10 +639,7 @@ func (s *Session) ExecuteBatchStatement(inserts []string) error {
 		return err
 	}
 	err = verifySuccess(status)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (s *Session) ExecuteRawDataQuery(paths []string, startTime int64, endTime int64) (*SessionDataSet, error) {

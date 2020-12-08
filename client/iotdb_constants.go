@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package iotdb
+package client
 
 const (
 	BOOLEAN int32 = 0
@@ -54,7 +54,7 @@ const  (
 
 const (
 	SUCCESS_STATUS = 200
-    STILL_EXECUTING_STATUS = 201
+	STILL_EXECUTING_STATUS = 201
 	INVALID_HANDLE_STATUS =202
 	INCOMPATIBLE_VERSION =203
 	NODE_DELETE_FAILED_ERROR =298

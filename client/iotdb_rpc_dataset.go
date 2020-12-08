@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package iotdb
+package client
 
 import (
 	"bytes"

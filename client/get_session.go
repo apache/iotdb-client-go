@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package iotdb
+package client
 
 import (
 	"github.com/apache/iotdb-client-go/rpc"

@@ -18,28 +18,19 @@
     under the License.
 
 -->
-[English](./README.md) | [中文](./README_ZH.md)
 
-# Apache IoTDB Client for Go
+To use go client, add "import github.com/apache/iotdb-client-go" 
 
-# Overview
+## Requirement
+* GoLang 1.13+
 
-This is the GoLang client of Apache IoTDB.
-
-[Apache IoTDB](https://iotdb.apache.org) (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
-
-Apache IoTDB website: https://iotdb.apache.org
-Apache IoTDB Github: https://github.com/apache/iotdb
-
-# How to Compile the Client
-
-# How to Use the Client (Quick Start)
-```
-Create project eg:session
+## Getting started
+*Create project eg:session
 
 *Enter project directory eg:cd session
 
 *Download dependency : go get github.com/apache/iotdb-client-go
 
 *eg:https://github.com/apache/iotdb-client-go/example/session_example.go
-```
+
+

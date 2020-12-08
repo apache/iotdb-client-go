@@ -21,16 +21,16 @@ package test
 
 import (
 	"fmt"
-	"github.com/apache/iotdb-client-go"
+	"github.com/apache/iotdb-client-go/client"
 	"strings"
 	"testing"
 )
 
 func TestSetStorageGroup(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	storageGroupIds := []string{"root.sg1", "root.sg2"}
 	for i := 0; i < 2; i++ {
@@ -59,10 +59,10 @@ func TestSetStorageGroup(t *testing.T) {
 }
 
 func TestDeleteStorageGroup(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	var (
 		actually       = true
@@ -89,10 +89,10 @@ func TestDeleteStorageGroup(t *testing.T) {
 }
 
 func TestDeleteStorageGroups(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	var (
 		actually        = true
@@ -120,10 +120,10 @@ func TestDeleteStorageGroups(t *testing.T) {
 }
 
 func TestCreateTimeseries(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	for _, unit := range []struct {
 		path       string
@@ -132,7 +132,7 @@ func TestCreateTimeseries(t *testing.T) {
 		compressor int32
 		expected   bool
 	}{
-		{"root.sg1.dev1.status", iotdb.FLOAT, iotdb.PLAIN, iotdb.SNAPPY, true},
+		{"root.sg1.dev1.status", client.FLOAT, client.PLAIN, client.SNAPPY, true},
 	} {
 		session.CreateTimeseries(unit.path, unit.dataType, unit.encoding, unit.compressor)
 		if actually := session.CheckTimeseriesExists(unit.path); actually != unit.expected {
@@ -143,10 +143,10 @@ func TestCreateTimeseries(t *testing.T) {
 }
 
 func TestCreateMultiTimeseries(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	for _, unit := range []struct {
 		paths       []string
@@ -155,8 +155,8 @@ func TestCreateMultiTimeseries(t *testing.T) {
 		compressors []int32
 		expected    bool
 	}{
-		{[]string{"root.sg1.dev1.temperature"}, []int32{iotdb.FLOAT}, []int32{iotdb.PLAIN},
-			[]int32{iotdb.SNAPPY}, true},
+		{[]string{"root.sg1.dev1.temperature"}, []int32{client.FLOAT}, []int32{client.PLAIN},
+			[]int32{client.SNAPPY}, true},
 	} {
 		session.CreateMultiTimeseries(unit.paths, unit.dataTypes, unit.encodings, unit.compressors)
 		for _, path := range unit.paths {
@@ -169,10 +169,10 @@ func TestCreateMultiTimeseries(t *testing.T) {
 }
 
 func TestDeleteTimeseries(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	for _, unit := range []struct {
 		paths    []string
@@ -191,10 +191,10 @@ func TestDeleteTimeseries(t *testing.T) {
 }
 
 func TestInsertStringRecord(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	for _, unit := range []struct {
 		deviceId     string
@@ -227,10 +227,10 @@ func TestInsertStringRecord(t *testing.T) {
 }
 
 func TestDeleteData(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	for _, unit := range []struct {
 		paths     []string
@@ -262,22 +262,22 @@ func TestDeleteData(t *testing.T) {
 }
 
 func TestGetTimeZone(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
-	if actually, _ := session.GetTimeZone(); actually != iotdb.DefaultZoneId {
+	if actually, _ := session.GetTimeZone(); actually != client.DefaultZoneId {
 		t.Errorf("GetTimeZone, actually: [%v]", actually)
 	}
 	session.Close()
 }
 
 func TestSetTimeZone(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	for _, unit := range []struct {
 		timeZone string
@@ -294,10 +294,10 @@ func TestSetTimeZone(t *testing.T) {
 }
 
 func TestInsertRecord(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	var val int32 = 2
 	for _, unit := range []struct {
@@ -308,7 +308,7 @@ func TestInsertRecord(t *testing.T) {
 		timestamp    int64
 		expected     bool
 	}{
-		{"root.sg1.dev1", []string{"wind"}, []int32{iotdb.INT32},
+		{"root.sg1.dev1", []string{"wind"}, []int32{client.INT32},
 			[]interface{}{val}, 111, true},
 	} {
 		session.InsertRecord(unit.deviceId, unit.measurements, unit.dataTypes, unit.values, unit.timestamp)
@@ -333,10 +333,10 @@ func TestInsertRecord(t *testing.T) {
 }
 
 func TestInsertRecords(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	var val int32 = 2
 	for _, unit := range []struct {
@@ -347,7 +347,7 @@ func TestInsertRecords(t *testing.T) {
 		timestamps   []int64
 		expected     bool
 	}{
-		{[]string{"root.sg1.dev1"}, [][]string{{"height"}}, [][]int32{{iotdb.INT32}},
+		{[]string{"root.sg1.dev1"}, [][]string{{"height"}}, [][]int32{{client.INT32}},
 			[][]interface{}{{val}}, []int64{222}, true},
 	} {
 		session.InsertRecords(unit.deviceIds, unit.measurements, unit.dataTypes, unit.values, unit.timestamps)
@@ -372,20 +372,20 @@ func TestInsertRecords(t *testing.T) {
 }
 
 func TestInsertTablet(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	var (
 		deviceId     = "root.sg1.dev1"
 		measurements = []string{"s1", "s2"}
-		dataTypes    = []int32{iotdb.INT32, iotdb.INT32}
+		dataTypes    = []int32{client.INT32, client.INT32}
 		values       = make([]interface{}, 2)
 		timestamp    = []int64{154, 123}
 	)
 	values[0] = []int32{777, 6666}
 	values[1] = []int32{888, 999}
-	var tablet = iotdb.Tablet{
+	var tablet = client.Tablet{
 		DeviceId:     deviceId,
 		Measurements: measurements,
 		Values:       values,
@@ -394,7 +394,7 @@ func TestInsertTablet(t *testing.T) {
 	}
 	session.Open(false, 0)
 	for _, unit := range []struct {
-		tablet   iotdb.Tablet
+		tablet   client.Tablet
 		expected bool
 	}{
 		{tablet, true},
@@ -421,20 +421,20 @@ func TestInsertTablet(t *testing.T) {
 }
 
 func TestInsertTablets(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	var (
 		deviceId1     = "root.sg1.dev1"
 		measurements1 = []string{"s3", "s4"}
-		dataTypes1    = []int32{iotdb.TEXT, iotdb.INT32}
+		dataTypes1    = []int32{client.TEXT, client.INT32}
 		values1       = make([]interface{}, 2)
 		timestamp1    = []int64{154, 123}
 	)
 	values1[0] = []string{"aaa", "bbb"}
 	values1[1] = []int32{888, 999}
-	var tablet1 = iotdb.Tablet{
+	var tablet1 = client.Tablet{
 		DeviceId:     deviceId1,
 		Measurements: measurements1,
 		Values:       values1,
@@ -444,23 +444,23 @@ func TestInsertTablets(t *testing.T) {
 	var (
 		deviceId2     = "root.sg1.dev2"
 		measurements2 = []string{"status", "tem"}
-		dataTypes2    = []int32{iotdb.INT32, iotdb.INT32}
+		dataTypes2    = []int32{client.INT32, client.INT32}
 		values2       = make([]interface{}, 2)
 		timestamp2    = []int64{154, 123}
 	)
 	values2[0] = []int32{777, 6666}
 	values2[1] = []int32{888, 999}
-	var tablet2 = iotdb.Tablet{
+	var tablet2 = client.Tablet{
 		DeviceId:     deviceId2,
 		Measurements: measurements2,
 		Values:       values2,
 		Timestamps:   timestamp2,
 		Types:        dataTypes2,
 	}
-	tablets := []iotdb.Tablet{tablet1, tablet2}
+	tablets := []client.Tablet{tablet1, tablet2}
 	session.Open(false, 0)
 	for _, unit := range []struct {
-		tablets  []iotdb.Tablet
+		tablets  []client.Tablet
 		expected bool
 	}{
 		{tablets, true},
@@ -487,10 +487,10 @@ func TestInsertTablets(t *testing.T) {
 }
 
 func TestExecuteStatement(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	for _, unit := range []struct {
 		sql      string
@@ -507,10 +507,10 @@ func TestExecuteStatement(t *testing.T) {
 }
 
 func TestExecuteRawDataQuery(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	session.ExecuteUpdateStatement("insert into root.ln.wf02.wt02(time,s5) values(1,true)")
 	var start int64 = 1
@@ -544,10 +544,10 @@ func TestExecuteRawDataQuery(t *testing.T) {
 }
 
 func TestExecuteBatchStatement(t *testing.T) {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session := iotdb.NewSession(config)
+	session := client.NewSession(config)
 	session.Open(false, 0)
 	var statements = []string{"insert into root.ln.wf02.wt02(time,s5) values(1,true)",
 		"insert into root.ln.wf02.wt02(time,s5) values(2,true)"}

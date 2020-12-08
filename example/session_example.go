@@ -21,16 +21,16 @@ package main
 
 import (
 	"fmt"
-	"github.com/apache/iotdb-client-go"
+	"github.com/apache/iotdb-client-go/client"
 )
 
-var session *iotdb.Session
+var session *client.Session
 
 func main() {
-	config := iotdb.NewConfig()
+	config := client.NewConfig()
 	config.Host = "127.0.0.1"
 	config.Port = "6667"
-	session = iotdb.NewSession(config)
+	session = client.NewSession(config)
 	session.Open(false, 0)
 	setStorageGroup()
 	deleteStorageGroup()
@@ -71,9 +71,9 @@ func deleteStorageGroups() {
 func createTimeseries() {
 	var (
 		path       = "root.sg1.dev1.status"
-		dataType   = iotdb.FLOAT
-		encoding   = iotdb.PLAIN
-		compressor = iotdb.SNAPPY
+		dataType   = client.FLOAT
+		encoding   = client.PLAIN
+		compressor = client.SNAPPY
 	)
 	session.CreateTimeseries(path, dataType, encoding, compressor)
 }
@@ -81,9 +81,9 @@ func createTimeseries() {
 func createMultiTimeseries() {
 	var (
 		paths       = []string{"root.sg1.dev1.temperature"}
-		dataTypes   = []int32{iotdb.TEXT}
-		encodings   = []int32{iotdb.PLAIN}
-		compressors = []int32{iotdb.SNAPPY}
+		dataTypes   = []int32{client.TEXT}
+		encodings   = []int32{client.PLAIN}
+		compressors = []int32{client.SNAPPY}
 	)
 	session.CreateMultiTimeseries(paths, dataTypes, encodings, compressors)
 }
@@ -108,7 +108,7 @@ func insertRecord() {
 		deviceId           = "root.sg1.dev1"
 		measurements       = []string{"status"}
 		values             = []interface{}{"123"}
-		dataTypes          = []int32{iotdb.TEXT}
+		dataTypes          = []int32{client.TEXT}
 		timestamp    int64 = 12
 	)
 	session.InsertRecord(deviceId, measurements, dataTypes, values, timestamp)
@@ -118,7 +118,7 @@ func insertRecords() {
 	var (
 		deviceId     = []string{"root.sg1.dev1"}
 		measurements = [][]string{{"status"}}
-		dataTypes    = [][]int32{{iotdb.TEXT}}
+		dataTypes    = [][]int32{{client.TEXT}}
 		values       = [][]interface{}{{"123"}}
 		timestamp    = []int64{12}
 	)
@@ -138,13 +138,13 @@ func insertTablet() {
 	var (
 		deviceId     = "root.sg1.dev1"
 		measurements = []string{"status", "tem"}
-		dataTypes    = []int32{iotdb.INT32, iotdb.INT32}
+		dataTypes    = []int32{client.INT32, client.INT32}
 		values       = make([]interface{}, 2)
 		timestamp    = []int64{154, 123}
 	)
 	values[0] = []int32{777, 6666}
 	values[1] = []int32{888, 999}
-	var tablet = iotdb.Tablet{
+	var tablet = client.Tablet{
 		DeviceId:     deviceId,
 		Measurements: measurements,
 		Values:       values,
@@ -158,13 +158,13 @@ func insertTablets() {
 	var (
 		deviceId1     = "root.sg1.dev1"
 		measurements1 = []string{"status", "tem"}
-		dataTypes1    = []int32{iotdb.INT32, iotdb.INT32}
+		dataTypes1    = []int32{client.INT32, client.INT32}
 		values1       = make([]interface{}, 2)
 		timestamp1    = []int64{154, 123}
 	)
 	values1[0] = []int32{777, 6666}
 	values1[1] = []int32{888, 999}
-	var tablet1 = iotdb.Tablet{
+	var tablet1 = client.Tablet{
 		DeviceId:     deviceId1,
 		Measurements: measurements1,
 		Values:       values1,
@@ -174,20 +174,20 @@ func insertTablets() {
 	var (
 		deviceId2     = "root.sg1.dev2"
 		measurements2 = []string{"status", "tem"}
-		dataTypes2    = []int32{iotdb.INT32, iotdb.INT32}
+		dataTypes2    = []int32{client.INT32, client.INT32}
 		values2       = make([]interface{}, 2)
 		timestamp2    = []int64{154, 123}
 	)
 	values2[0] = []int32{777, 6666}
 	values2[1] = []int32{888, 999}
-	var tablet2 = iotdb.Tablet{
+	var tablet2 = client.Tablet{
 		DeviceId:     deviceId2,
 		Measurements: measurements2,
 		Values:       values2,
 		Timestamps:   timestamp2,
 		Types:        dataTypes2,
 	}
-	tablets := []iotdb.Tablet{tablet1, tablet2}
+	tablets := []client.Tablet{tablet1, tablet2}
 	session.InsertTablets(tablets)
 }
 
