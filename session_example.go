@@ -26,15 +26,16 @@ import (
 	"time"
 
 	"github.com/apache/iotdb-client-go/client"
+	"github.com/apache/iotdb-client-go/rpc"
 )
 
 var session *client.Session
 
 func main() {
 	config := &client.Config{
-		UserName: client.DefaultUser,
-		Password: client.DefaultPassword,
-		ZoneId:   client.DefaultZoneId,
+		UserName: "root",
+		Password: "root",
+		TimeZone: client.DEFAULT_TIME_ZONE,
 		Port:     "6667",
 	}
 	session = client.NewSession(config)
@@ -224,17 +225,20 @@ func printDevice1(sds *client.SessionDataSet) {
 
 func setStorageGroup() {
 	var storageGroupId = "root.ln1"
-	session.SetStorageGroup(storageGroupId)
+	status, err := session.SetStorageGroup(storageGroupId)
+	checkError(status, err)
 }
 
 func deleteStorageGroup() {
 	var storageGroupId = "root.ln1"
-	session.DeleteStorageGroup(storageGroupId)
+	status, err := session.DeleteStorageGroup(storageGroupId)
+	checkError(status, err)
 }
 
 func deleteStorageGroups() {
 	var storageGroupId = []string{"root.ln1"}
-	session.DeleteStorageGroups(storageGroupId)
+	status, err := session.DeleteStorageGroups(storageGroupId)
+	checkError(status, err)
 }
 
 func createTimeseries() {
@@ -242,7 +246,8 @@ func createTimeseries() {
 	var dataType = client.FLOAT
 	var encoding = client.PLAIN
 	var compressor = client.SNAPPY
-	session.CreateTimeseries(path, dataType, encoding, compressor, nil, nil)
+	status, err := session.CreateTimeseries(path, dataType, encoding, compressor, nil, nil)
+	checkError(status, err)
 }
 
 func createMultiTimeseries() {
@@ -250,12 +255,14 @@ func createMultiTimeseries() {
 	var dataTypes = []int32{client.TEXT}
 	var encodings = []int32{client.PLAIN}
 	var compressors = []int32{client.SNAPPY}
-	session.CreateMultiTimeseries(paths, dataTypes, encodings, compressors)
+	status, err := session.CreateMultiTimeseries(paths, dataTypes, encodings, compressors)
+	checkError(status, err)
 }
 
 func deleteTimeseries() {
 	var paths = []string{"root.sg1.dev1.status"}
-	session.DeleteTimeseries(paths)
+	status, err := session.DeleteTimeseries(paths)
+	checkError(status, err)
 }
 
 func insertStringRecord() {
@@ -263,19 +270,31 @@ func insertStringRecord() {
 	var measurements = []string{"hardware"}
 	var values = []string{"123"}
 	var timestamp int64 = 12
-	session.InsertStringRecord(deviceId, measurements, values, timestamp)
+	status, err := session.InsertStringRecord(deviceId, measurements, values, timestamp)
+	checkError(status, err)
+}
+
+func checkError(status *rpc.TSStatus, err error) {
+	if err != nil {
+		if status != nil {
+			log.Printf("status: %d, msg: %v", status.Code, status.Message)
+		}
+		log.Fatal(err)
+	}
 }
 
 func deleteData() {
 	var paths = []string{"root.sg1.dev1.status"}
 	var startTime int64 = 0
 	var endTime int64 = 12
-	session.DeleteData(paths, startTime, endTime)
+	status, err := session.DeleteData(paths, startTime, endTime)
+	checkError(status, err)
 }
 
 func setTimeZone() {
 	var timeZone = "GMT"
-	session.SetTimeZone(timeZone)
+	status, err := session.SetTimeZone(timeZone)
+	checkError(status, err)
 }
 
 func getTimeZone() (string, error) {

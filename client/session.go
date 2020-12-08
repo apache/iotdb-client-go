@@ -31,11 +31,8 @@ import (
 )
 
 const (
-	DefaultUser      = "root"
-	DefaultPassword  = "root"
-	DefaultZoneId    = "Asia/Shanghai"
-	protocolVersion  = rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3
-	DefaultFetchSize = 1024
+	DEFAULT_TIME_ZONE  = "Asia/Shanghai"
+	DEFAULT_FETCH_SIZE = 1024
 )
 
 type Config struct {
@@ -44,7 +41,7 @@ type Config struct {
 	UserName  string
 	Password  string
 	FetchSize int32
-	ZoneId    string
+	TimeZone  string
 }
 
 type Session struct {
@@ -58,10 +55,10 @@ type Session struct {
 
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) error {
 	if s.config.FetchSize <= 0 {
-		s.config.FetchSize = DefaultFetchSize
+		s.config.FetchSize = DEFAULT_FETCH_SIZE
 	}
-	if s.config.ZoneId == "" {
-		s.config.ZoneId = DefaultZoneId
+	if s.config.TimeZone == "" {
+		s.config.TimeZone = DEFAULT_TIME_ZONE
 	}
 
 	var protocolFactory thrift.TProtocolFactory
@@ -85,7 +82,7 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	iprot := protocolFactory.GetProtocol(s.trans)
 	oprot := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iprot, oprot))
-	req := rpc.TSOpenSessionReq{ClientProtocol: protocolVersion, ZoneId: s.config.ZoneId, Username: &s.config.UserName,
+	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: &s.config.UserName,
 		Password: &s.config.Password}
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
@@ -97,8 +94,8 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 		return err
 	}
 
-	s.SetTimeZone(s.config.ZoneId)
-	s.config.ZoneId, err = s.GetTimeZone()
+	s.SetTimeZone(s.config.TimeZone)
+	s.config.TimeZone, err = s.GetTimeZone()
 	return err
 }
 
@@ -244,8 +241,8 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
 }
 
 func (s *Session) GetTimeZone() (string, error) {
-	if s.config.ZoneId != "" {
-		return s.config.ZoneId, nil
+	if s.config.TimeZone != "" {
+		return s.config.TimeZone, nil
 	} else {
 		resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
 		if err != nil {
@@ -258,7 +255,7 @@ func (s *Session) GetTimeZone() (string, error) {
 func (s *Session) SetTimeZone(timeZone string) (r *rpc.TSStatus, err error) {
 	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
 	r, err = s.client.SetTimeZone(context.Background(), &request)
-	s.config.ZoneId = timeZone
+	s.config.TimeZone = timeZone
 	return r, err
 }
 
