@@ -60,8 +60,14 @@ func main() {
 		fmt.Printf("TimeZone: %s\n", tz)
 	}
 	ts := time.Now().UTC().UnixNano() / 1000000
-	session.InsertRecord("root.ln.device1", []string{"description", "price", "tick_count", "status", "restart_count", "temperature"}, []int32{client.TEXT, client.DOUBLE, client.INT64, client.BOOLEAN, client.INT32, client.FLOAT},
+	status, err := session.InsertRecord("root.ln.device1", []string{"description", "price", "tick_count", "status", "restart_count", "temperature"}, []int32{client.TEXT, client.DOUBLE, client.INT64, client.BOOLEAN, client.INT32, client.FLOAT},
 		[]interface{}{string("Test Device 1"), float64(1988.20), int64(3333333), true, int32(1), float32(12.10)}, ts)
+	if err != nil {
+		if status != nil {
+			log.Printf("Code: %d, Message: %d", status.Code, status.Message)
+		}
+		log.Fatal(err)
+	}
 
 	sessionDataSet, err := session.ExecuteQueryStatement("SHOW TIMESERIES")
 	if err != nil {

@@ -23,7 +23,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"net"
+	"reflect"
 	"time"
 
 	"github.com/apache/iotdb-client-go/rpc"
@@ -276,7 +278,7 @@ func (s *Session) ExecuteQueryStatement(sql string) (*SessionDataSet, error) {
 func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	measurements []string,
 	types []int32,
-	values []interface{}) *rpc.TSInsertRecordReq {
+	values []interface{}) (*rpc.TSInsertRecordReq, error) {
 	request := &rpc.TSInsertRecordReq{}
 	request.SessionId = s.sessionId
 	request.DeviceId = deviceId
@@ -286,23 +288,76 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	buff := &bytes.Buffer{}
 	for i, t := range types {
 		binary.Write(buff, binary.BigEndian, int16(t))
-		if t == TEXT {
-			text := values[i].(string)
-			size := len(text)
-			binary.Write(buff, binary.BigEndian, int32(size))
-			binary.Write(buff, binary.BigEndian, []byte(text))
-		} else {
-			binary.Write(buff, binary.BigEndian, values[i])
+		v := values[i]
+		if v == nil {
+			return nil, fmt.Errorf("values[%d] can't be nil", i)
+		}
+
+		switch t {
+		case BOOLEAN:
+			switch v.(type) {
+			case bool:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be bool", i, v, reflect.TypeOf(v))
+			}
+		case INT32:
+			switch v.(type) {
+			case int32:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be int32", i, v, reflect.TypeOf(v))
+			}
+		case INT64:
+			switch v.(type) {
+			case int64:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be int64", i, v, reflect.TypeOf(v))
+			}
+		case FLOAT:
+			switch v.(type) {
+			case float32:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be float32", i, v, reflect.TypeOf(v))
+			}
+		case DOUBLE:
+			switch v.(type) {
+			case float64:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be float64", i, v, reflect.TypeOf(v))
+			}
+		case TEXT:
+			switch v.(type) {
+			case string:
+				text := v.(string)
+				size := len(text)
+				binary.Write(buff, binary.BigEndian, int32(size))
+				binary.Write(buff, binary.BigEndian, []byte(text))
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
+			}
+		default:
+			return nil, fmt.Errorf("types[%d] is incorrect, it must in (BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT)", i)
 		}
 	}
 	request.Values = buff.Bytes()
-	return request
+	return request, nil
 }
 
 func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{}, timestamp int64) (r *rpc.TSStatus, err error) {
-	request := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values)
+	request, err := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values)
+	if err != nil {
+		return nil, err
+	}
 	r, err = s.client.InsertRecord(context.Background(), request)
 	return r, err
+}
+
+func (s *Session) GetSessionId() int64 {
+	return s.sessionId
 }
 
 func NewSession(config *Config) *Session {
