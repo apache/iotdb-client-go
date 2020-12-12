@@ -17,37 +17,42 @@
  * under the License.
  */
 
-
 package client
 
+type TSDataType int16
+
+type TSEncoding int16
+
+type TSCompressionType int16
+
 const (
-	BOOLEAN int32 = 0
-	INT32   int32 = 1
-	INT64   int32 = 2
-	FLOAT   int32 = 3
-	DOUBLE  int32 = 4
-	TEXT    int32 = 5
+	BOOLEAN TSDataType = 0
+	INT32   TSDataType = 1
+	INT64   TSDataType = 2
+	FLOAT   TSDataType = 3
+	DOUBLE  TSDataType = 4
+	TEXT    TSDataType = 5
 )
 
 const (
-	PLAIN            int32 = 0
-	PLAIN_DICTIONARY int32 = 1
-	RLE              int32 = 2
-	DIFF             int32 = 3
-	TS_2DIFF         int32 = 4
-	BITMAP           int32 = 5
-	GORILLA_V1       int32 = 6
-	REGULAR          int32 = 7
-	GORILLA          int32 = 8
+	PLAIN            TSEncoding = 0
+	PLAIN_DICTIONARY TSEncoding = 1
+	RLE              TSEncoding = 2
+	DIFF             TSEncoding = 3
+	TS_2DIFF         TSEncoding = 4
+	BITMAP           TSEncoding = 5
+	GORILLA_V1       TSEncoding = 6
+	REGULAR          TSEncoding = 7
+	GORILLA          TSEncoding = 8
 )
 
 const (
-	UNCOMPRESSED int32 = 0
-	SNAPPY       int32 = 1
-	GZIP         int32 = 2
-	LZO          int32 = 3
-	SDT          int32 = 4
-	PAA          int32 = 5
-	PLA          int32 = 6
-	LZ4          int32 = 7
+	UNCOMPRESSED TSCompressionType = 0
+	SNAPPY       TSCompressionType = 1
+	GZIP         TSCompressionType = 2
+	LZO          TSCompressionType = 3
+	SDT          TSCompressionType = 4
+	PAA          TSCompressionType = 5
+	PLA          TSCompressionType = 6
+	LZ4          TSCompressionType = 7
 )

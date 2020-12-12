@@ -73,7 +73,7 @@ func (s *SessionDataSet) GetColumnCount() int {
 	return s.ioTDBRpcDataSet.columnCount
 }
 
-func (s *SessionDataSet) GetColumnDataType(columnIndex int) int32 {
+func (s *SessionDataSet) GetColumnDataType(columnIndex int) TSDataType {
 	return s.ioTDBRpcDataSet.columnTypeList[columnIndex]
 }
 
@@ -85,15 +85,19 @@ func (s *SessionDataSet) IsIgnoreTimeStamp() bool {
 	return s.ioTDBRpcDataSet.ignoreTimeStamp
 }
 
+func (s *SessionDataSet) Close() error {
+	return s.ioTDBRpcDataSet.Close()
+}
+
 func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string,
 	columnNameIndex map[string]int32,
 	queryId int64, client *rpc.TSIServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
-	ignoreTimeStamp bool) *SessionDataSet {
+	ignoreTimeStamp bool, fetchSize int32) *SessionDataSet {
 
 	return &SessionDataSet{
 		ioTDBRpcDataSet: NewIoTDBRpcDataSet(sql, columnNameList, columnTypeList,
 			columnNameIndex,
 			queryId, client, sessionId, queryDataSet,
-			ignoreTimeStamp),
+			ignoreTimeStamp, fetchSize),
 	}
 }

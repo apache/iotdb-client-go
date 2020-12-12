@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	DEFAULT_TIME_ZONE  = "Asia/Shanghai"
-	DEFAULT_FETCH_SIZE = 1024
+	DefaultTimeZone  = "Asia/Shanghai"
+	DefaultFetchSize = 1024
 )
 
 type Config struct {
@@ -57,10 +57,10 @@ type Session struct {
 
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) error {
 	if s.config.FetchSize <= 0 {
-		s.config.FetchSize = DEFAULT_FETCH_SIZE
+		s.config.FetchSize = DefaultFetchSize
 	}
 	if s.config.TimeZone == "" {
-		s.config.TimeZone = DEFAULT_TIME_ZONE
+		s.config.TimeZone = DefaultTimeZone
 	}
 
 	var protocolFactory thrift.TProtocolFactory
@@ -113,10 +113,8 @@ func (s *Session) Close() (r *rpc.TSStatus, err error) {
 
 /*
  *set one storage group
- *
  *param
  *storageGroupId: string, storage group name (starts from root)
- *
  *return
  *error: correctness of operation
  */
@@ -127,10 +125,8 @@ func (s *Session) SetStorageGroup(storageGroupId string) (r *rpc.TSStatus, err e
 
 /*
  *delete one storage group
- *
  *param
  *storageGroupId: string, storage group name (starts from root)
- *
  *return
  *error: correctness of operation
  */
@@ -141,10 +137,8 @@ func (s *Session) DeleteStorageGroup(storageGroupId string) (r *rpc.TSStatus, er
 
 /*
  *delete multiple storage group
- *
  *param
  *storageGroupIds: []string, paths of the target storage groups
- *
  *return
  *error: correctness of operation
  */
@@ -155,38 +149,49 @@ func (s *Session) DeleteStorageGroups(storageGroupIds []string) (r *rpc.TSStatus
 
 /*
  *create single time series
- *
  *params
  *path: string, complete time series path (starts from root)
  *dataType: int32, data type for this time series
  *encoding: int32, data type for this time series
  *compressor: int32, compressing type for this time series
- *
  *return
  *error: correctness of operation
  */
-func (s *Session) CreateTimeseries(path string, dataType int32, encoding int32, compressor int32, attributes map[string]string, tags map[string]string) (r *rpc.TSStatus, err error) {
-	request := rpc.TSCreateTimeseriesReq{SessionId: s.sessionId, Path: path, DataType: dataType, Encoding: encoding,
-		Compressor: compressor, Attributes: attributes, Tags: tags}
+func (s *Session) CreateTimeseries(path string, dataType TSDataType, encoding TSEncoding, compressor TSCompressionType, attributes map[string]string, tags map[string]string) (r *rpc.TSStatus, err error) {
+	request := rpc.TSCreateTimeseriesReq{SessionId: s.sessionId, Path: path, DataType: int32(dataType), Encoding: int32(encoding),
+		Compressor: int32(compressor), Attributes: attributes, Tags: tags}
 	status, err := s.client.CreateTimeseries(context.Background(), &request)
 	return status, err
 }
 
 /*
  *create multiple time series
- *
  *params
  *paths: []string, complete time series paths (starts from root)
  *dataTypes: []int32, data types for time series
  *encodings: []int32, encodings for time series
  *compressors: []int32, compressing types for time series
- *
  *return
  *error: correctness of operation
  */
-func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encodings []int32, compressors []int32) (r *rpc.TSStatus, err error) {
-	request := rpc.TSCreateMultiTimeseriesReq{SessionId: s.sessionId, Paths: paths, DataTypes: dataTypes,
-		Encodings: encodings, Compressors: compressors}
+func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []TSDataType, encodings []TSEncoding, compressors []TSCompressionType) (r *rpc.TSStatus, err error) {
+	destTypes := make([]int32, len(dataTypes))
+	for i, t := range dataTypes {
+		destTypes[i] = int32(t)
+	}
+
+	destEncodings := make([]int32, len(encodings))
+	for i, e := range encodings {
+		destEncodings[i] = int32(e)
+	}
+
+	destCompressions := make([]int32, len(compressors))
+	for i, e := range compressors {
+		destCompressions[i] = int32(e)
+	}
+
+	request := rpc.TSCreateMultiTimeseriesReq{SessionId: s.sessionId, Paths: paths, DataTypes: destTypes,
+		Encodings: destEncodings, Compressors: destCompressions}
 	r, err = s.client.CreateMultiTimeseries(context.Background(), &request)
 
 	return r, err
@@ -194,10 +199,8 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []int32, encod
 
 /*
  *delete multiple time series, including data and schema
- *
  *params
  *paths: []string, time series paths, which should be complete (starts from root)
- *
  *return
  *error: correctness of operation
  */
@@ -208,12 +211,10 @@ func (s *Session) DeleteTimeseries(paths []string) (r *rpc.TSStatus, err error) 
 
 /*
  *delete all startTime <= data <= endTime in multiple time series
- *
  *params
  *paths: []string, time series array that the data in
  *startTime: int64, start time of deletion range
  *endTime: int64, end time of deletion range
- *
  *return
  *error: correctness of operation
  */
@@ -225,13 +226,11 @@ func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) (r 
 
 /*
  *special case for inserting one row of String (TEXT) value
- *
  *params
  *deviceId: string, time series path for device
  *measurements: []string, sensor names
  *values: []string, values to be inserted, for each sensor
  *timestamp: int64, indicate the timestamp of the row of data
- *
  *return
  *error: correctness of operation
  */
@@ -272,12 +271,12 @@ func (s *Session) ExecuteQueryStatement(sql string) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.config.FetchSize}
 	resp, err := s.client.ExecuteQueryStatement(context.Background(), &request)
-	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp), err
+	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize), err
 }
 
 func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	measurements []string,
-	types []int32,
+	types []TSDataType,
 	values []interface{}) (*rpc.TSInsertRecordReq, error) {
 	request := &rpc.TSInsertRecordReq{}
 	request.SessionId = s.sessionId
@@ -347,7 +346,7 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	return request, nil
 }
 
-func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []int32, values []interface{}, timestamp int64) (r *rpc.TSStatus, err error) {
+func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []TSDataType, values []interface{}, timestamp int64) (r *rpc.TSStatus, err error) {
 	request, err := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values)
 	if err != nil {
 		return nil, err

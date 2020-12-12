@@ -26,7 +26,7 @@ import (
 
 func TestField_IsNull(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
@@ -69,14 +69,14 @@ func TestField_IsNull(t *testing.T) {
 
 func TestField_GetDataType(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
 	tests := []struct {
 		name   string
 		fields fields
-		want   int32
+		want   TSDataType
 	}{
 		{
 			name: "GetDataType-BOOLEAN",
@@ -144,7 +144,7 @@ func TestField_GetDataType(t *testing.T) {
 
 func TestField_GetValue(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
@@ -219,7 +219,7 @@ func TestField_GetValue(t *testing.T) {
 
 func TestField_GetInt32(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
@@ -254,7 +254,7 @@ func TestField_GetInt32(t *testing.T) {
 
 func TestField_GetInt64(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
@@ -289,7 +289,7 @@ func TestField_GetInt64(t *testing.T) {
 
 func TestField_GetFloat32(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
@@ -324,7 +324,7 @@ func TestField_GetFloat32(t *testing.T) {
 
 func TestField_GetFloat64(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
@@ -359,7 +359,7 @@ func TestField_GetFloat64(t *testing.T) {
 
 func TestField_GetText(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}
@@ -394,7 +394,7 @@ func TestField_GetText(t *testing.T) {
 
 func TestField_getName(t *testing.T) {
 	type fields struct {
-		dataType int32
+		dataType TSDataType
 		name     string
 		value    interface{}
 	}

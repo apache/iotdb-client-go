@@ -20,7 +20,7 @@
 package client
 
 type Field struct {
-	dataType int32
+	dataType TSDataType
 	name     string
 	value    interface{}
 }
@@ -29,7 +29,7 @@ func (f *Field) IsNull() bool {
 	return f.value == nil
 }
 
-func (f *Field) GetDataType() int32 {
+func (f *Field) GetDataType() TSDataType {
 	return f.dataType
 }
 

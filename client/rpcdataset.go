@@ -46,11 +46,11 @@ type IoTDBRpcDataSet struct {
 	sql                        string
 	fetchSize                  int32
 	columnNameList             []string
-	columnTypeList             []int32
+	columnTypeList             []TSDataType
 	columnOrdinalMap           map[string]int32
-	columnTypeDeduplicatedList []int32
+	columnTypeDeduplicatedList []TSDataType
 	columnNameIndexMap         map[string]int32
-	columnTypeMap              map[string]int32
+	columnTypeMap              map[string]TSDataType
 	currentBitmap              []byte
 	time                       []byte
 	value                      [][]byte
@@ -131,7 +131,7 @@ func (s *IoTDBRpcDataSet) getText(columnName string) string {
 	return s.getString(int(index), s.columnTypeDeduplicatedList[index])
 }
 
-func (s *IoTDBRpcDataSet) getString(index int, dataType int32) string {
+func (s *IoTDBRpcDataSet) getString(index int, dataType TSDataType) string {
 	switch dataType {
 	case BOOLEAN:
 		if s.value[index][0] != 0 {
@@ -379,11 +379,16 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 	return resp.HasResultSet, nil
 }
 
+func (s *IoTDBRpcDataSet) Close() error {
+	//it doesn't have any resources to close
+	return nil
+}
+
 func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []string,
 	columnNameIndex map[string]int32,
 	queryId int64, client *rpc.TSIServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
-	ignoreTimeStamp bool) *IoTDBRpcDataSet {
-	typeMap := map[string]int32{
+	ignoreTimeStamp bool, fetchSize int32) *IoTDBRpcDataSet {
+	typeMap := map[string]TSDataType{
 		"BOOLEAN": BOOLEAN,
 		"INT32":   INT32,
 		"INT64":   INT64,
@@ -401,14 +406,14 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []strin
 		client:             client,
 		sessionId:          sessionId,
 		queryDataSet:       queryDataSet,
-		fetchSize:          1024,
+		fetchSize:          fetchSize,
 		currentBitmap:      make([]byte, len(columnNameList)),
 		value:              make([][]byte, len(columnTypes)),
 		columnCount:        len(columnNameList),
 	}
 
-	ds.columnTypeList = make([]int32, 0)
-	ds.columnTypeMap = make(map[string]int32)
+	ds.columnTypeList = make([]TSDataType, 0)
+	ds.columnTypeMap = make(map[string]TSDataType)
 
 	// deduplicate and map
 	ds.columnOrdinalMap = make(map[string]int32)
@@ -417,7 +422,7 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []strin
 	}
 
 	if columnNameIndex != nil {
-		ds.columnTypeDeduplicatedList = make([]int32, len(columnNameIndex))
+		ds.columnTypeDeduplicatedList = make([]TSDataType, len(columnNameIndex))
 		for i, name := range columnNameList {
 			columnTypeString := columnTypes[i]
 			columnDataType := typeMap[columnTypeString]
@@ -430,7 +435,7 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []strin
 			}
 		}
 	} else {
-		ds.columnTypeDeduplicatedList = make([]int32, ds.columnCount)
+		ds.columnTypeDeduplicatedList = make([]TSDataType, ds.columnCount)
 		index := START_INDEX
 		for i := 0; i < len(columnNameList); i++ {
 			name := columnNameList[i]

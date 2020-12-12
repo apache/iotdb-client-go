@@ -35,7 +35,7 @@ func main() {
 	config := &client.Config{
 		UserName: "root",
 		Password: "root",
-		TimeZone: client.DEFAULT_TIME_ZONE,
+		TimeZone: client.DefaultTimeZone,
 		Port:     "6667",
 	}
 	session = client.NewSession(config)
@@ -45,6 +45,7 @@ func main() {
 	}
 
 	defer session.Close()
+	setStorageGroup()
 	setStorageGroup()
 	deleteStorageGroup()
 
@@ -60,7 +61,7 @@ func main() {
 		fmt.Printf("TimeZone: %s\n", tz)
 	}
 	ts := time.Now().UTC().UnixNano() / 1000000
-	status, err := session.InsertRecord("root.ln.device1", []string{"description", "price", "tick_count", "status", "restart_count", "temperature"}, []int32{client.TEXT, client.DOUBLE, client.INT64, client.BOOLEAN, client.INT32, client.FLOAT},
+	status, err := session.InsertRecord("root.ln.device1", []string{"description", "price", "tick_count", "status", "restart_count", "temperature"}, []client.TSDataType{client.TEXT, client.DOUBLE, client.INT64, client.BOOLEAN, client.INT32, client.FLOAT},
 		[]interface{}{string("Test Device 1"), float64(1988.20), int64(3333333), true, int32(1), float32(12.10)}, ts)
 	if err != nil {
 		if status != nil {
@@ -69,12 +70,13 @@ func main() {
 		log.Fatal(err)
 	}
 
-	sessionDataSet, err := session.ExecuteQueryStatement("SHOW TIMESERIES")
+	sds, err := session.ExecuteQueryStatement("SHOW TIMESERIES")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	printDataSet0(sessionDataSet)
+	printDataSet0(sds)
+	sds.Close()
 
 	ds, err := session.ExecuteQueryStatement("select * from root.ln.device1")
 	if err != nil {
@@ -82,6 +84,7 @@ func main() {
 		os.Exit(1)
 	}
 	printDevice1(ds)
+	ds.Close()
 	session.ExecuteStatement(fmt.Sprintf("delete from root.ln.device1 where time=%v", ts))
 }
 
@@ -258,9 +261,9 @@ func createTimeseries() {
 
 func createMultiTimeseries() {
 	var paths = []string{"root.sg1.dev1.temperature"}
-	var dataTypes = []int32{client.TEXT}
-	var encodings = []int32{client.PLAIN}
-	var compressors = []int32{client.SNAPPY}
+	var dataTypes = []client.TSDataType{client.TEXT}
+	var encodings = []client.TSEncoding{client.PLAIN}
+	var compressors = []client.TSCompressionType{client.SNAPPY}
 	status, err := session.CreateMultiTimeseries(paths, dataTypes, encodings, compressors)
 	checkError(status, err)
 }
@@ -281,10 +284,17 @@ func insertStringRecord() {
 }
 
 func checkError(status *rpc.TSStatus, err error) {
-	if err != nil {
-		if status != nil {
-			log.Printf("status: %d, msg: %v", status.Code, status.Message)
+	if status != nil && status.Code != 200 {
+		if status.Message != nil {
+			log.Printf("Code: %d, msg: %s\n", status.Code, *status.Message)
+		} else {
+			for _, s := range status.SubStatus {
+				checkError(s, nil)
+			}
 		}
+	}
+
+	if err != nil {
 		log.Fatal(err)
 	}
 }
