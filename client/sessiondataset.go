@@ -21,6 +21,8 @@ package client
 
 import "github.com/apache/iotdb-client-go/rpc"
 
+const (TimestampColumnName = "Time")
+
 type SessionDataSet struct {
 	ioTDBRpcDataSet *IoTDBRpcDataSet
 }
@@ -66,7 +68,7 @@ func (s *SessionDataSet) GetValue(columnName string) interface{} {
 }
 
 func (s *SessionDataSet) GetRowRecord() *RowRecord {
-	return s.ioTDBRpcDataSet.GetRowRecord()
+	return s.ioTDBRpcDataSet.getRowRecord()
 }
 
 func (s *SessionDataSet) GetColumnCount() int {

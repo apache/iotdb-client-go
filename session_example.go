@@ -22,6 +22,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -61,8 +62,9 @@ func main() {
 		fmt.Printf("TimeZone: %s\n", tz)
 	}
 	ts := time.Now().UTC().UnixNano() / 1000000
+	rand.Seed(time.Now().UTC().UnixNano())
 	status, err := session.InsertRecord("root.ln.device1", []string{"description", "price", "tick_count", "status", "restart_count", "temperature"}, []client.TSDataType{client.TEXT, client.DOUBLE, client.INT64, client.BOOLEAN, client.INT32, client.FLOAT},
-		[]interface{}{string("Test Device 1"), float64(1988.20), int64(3333333), true, int32(1), float32(12.10)}, ts)
+		[]interface{}{string("Test Device 1"), rand.Float64(), rand.Int63(), true, rand.Int31(), rand.Float32()}, ts)
 	if err != nil {
 		if status != nil {
 			log.Printf("Code: %d, Message: %d", status.Code, status.Message)
@@ -101,7 +103,7 @@ func printDataSet0(sessionDataSet *client.SessionDataSet) {
 
 	for next, err := sessionDataSet.Next(); err == nil && next; next, err = sessionDataSet.Next() {
 		if showTimestamp {
-			fmt.Printf("%s\t", sessionDataSet.GetText(client.TIMESTAMP_STR))
+			fmt.Printf("%s\t", sessionDataSet.GetText(client.TimestampColumnName))
 		}
 		for i := 0; i < sessionDataSet.GetColumnCount(); i++ {
 			columnName := sessionDataSet.GetColumnName(i)
@@ -144,7 +146,7 @@ func printDataSet1(sds *client.SessionDataSet) {
 
 	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
 		if showTimestamp {
-			fmt.Printf("%s\t", sds.GetText(client.TIMESTAMP_STR))
+			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
 		}
 		for i := 0; i < sds.GetColumnCount(); i++ {
 			columnName := sds.GetColumnName(i)
@@ -171,7 +173,7 @@ func printDataSet2(sds *client.SessionDataSet) {
 
 	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
 		if showTimestamp {
-			fmt.Printf("%s\t", sds.GetText(client.TIMESTAMP_STR))
+			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
 		}
 
 		for _, field := range sds.GetRowRecord().GetFields() {
@@ -198,7 +200,7 @@ func printDevice1(sds *client.SessionDataSet) {
 
 	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
 		if showTimestamp {
-			fmt.Printf("%s\t", sds.GetText(client.TIMESTAMP_STR))
+			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
 		}
 
 		var restartCount int32
@@ -223,7 +225,7 @@ func printDevice1(sds *client.SessionDataSet) {
 		whitespace := "\t\t"
 		fmt.Printf("%v%s", restartCount, whitespace)
 		fmt.Printf("%v%s", price, whitespace)
-		fmt.Printf("%v%s", restartCount, whitespace)
+		fmt.Printf("%v%s", tickCount, whitespace)
 		fmt.Printf("%v%s", temperature, whitespace)
 		fmt.Printf("%v%s", description, whitespace)
 		fmt.Printf("%v%s", status, whitespace)

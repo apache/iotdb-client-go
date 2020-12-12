@@ -31,9 +31,19 @@ import (
 )
 
 const (
-	TIMESTAMP_STR = "Time"
-	START_INDEX   = 2
-	FLAG          = 0x80
+	startIndex          = 2
+	flag                = 0x80
+)
+
+var (
+	tsTypeMap map[string]TSDataType = map[string]TSDataType{
+		"BOOLEAN": BOOLEAN,
+		"INT32":   INT32,
+		"INT64":   INT64,
+		"FLOAT":   FLOAT,
+		"DOUBLE":  DOUBLE,
+		"TEXT":    TEXT,
+	}
 )
 
 type IoTDBRpcDataSet struct {
@@ -49,20 +59,26 @@ type IoTDBRpcDataSet struct {
 	columnTypeList             []TSDataType
 	columnOrdinalMap           map[string]int32
 	columnTypeDeduplicatedList []TSDataType
-	columnNameIndexMap         map[string]int32
-	columnTypeMap              map[string]TSDataType
 	currentBitmap              []byte
 	time                       []byte
-	value                      [][]byte
+	values                     [][]byte
 	client                     *rpc.TSIServiceClient
 	emptyResultSet             bool
 	ignoreTimeStamp            bool
 }
 
+func (s *IoTDBRpcDataSet) getColumnIndex(columnName string) int32 {
+	return s.columnOrdinalMap[columnName] - startIndex
+}
+
+func (s *IoTDBRpcDataSet) getColumnType(columnName string) TSDataType {
+	return s.columnTypeDeduplicatedList[s.getColumnIndex(columnName)]
+}
+
 func (s *IoTDBRpcDataSet) isNull(columnIndex int, rowIndex int) bool {
 	bitmap := s.currentBitmap[columnIndex]
 	shift := rowIndex % 8
-	return ((FLAG >> shift) & (bitmap & 0xff)) == 0
+	return ((flag >> shift) & (bitmap & 0xff)) == 0
 }
 
 func (s *IoTDBRpcDataSet) constructOneRow() error {
@@ -81,28 +97,28 @@ func (s *IoTDBRpcDataSet) constructOneRow() error {
 			dataType := s.columnTypeDeduplicatedList[i]
 			switch dataType {
 			case BOOLEAN:
-				s.value[i] = valueBuffer[:1]
+				s.values[i] = valueBuffer[:1]
 				s.queryDataSet.ValueList[i] = valueBuffer[1:]
 				break
 			case INT32:
-				s.value[i] = valueBuffer[:4]
+				s.values[i] = valueBuffer[:4]
 				s.queryDataSet.ValueList[i] = valueBuffer[4:]
 				break
 			case INT64:
-				s.value[i] = valueBuffer[:8]
+				s.values[i] = valueBuffer[:8]
 				s.queryDataSet.ValueList[i] = valueBuffer[8:]
 				break
 			case FLOAT:
-				s.value[i] = valueBuffer[:4]
+				s.values[i] = valueBuffer[:4]
 				s.queryDataSet.ValueList[i] = valueBuffer[4:]
 				break
 			case DOUBLE:
-				s.value[i] = valueBuffer[:8]
+				s.values[i] = valueBuffer[:8]
 				s.queryDataSet.ValueList[i] = valueBuffer[8:]
 				break
 			case TEXT:
 				length := bytesToInt32(valueBuffer[:4])
-				s.value[i] = valueBuffer[4 : 4+length]
+				s.values[i] = valueBuffer[4 : 4+length]
 				s.queryDataSet.ValueList[i] = valueBuffer[4+length:]
 			default:
 				return fmt.Errorf("unsupported data type %d", dataType)
@@ -118,76 +134,79 @@ func (s *IoTDBRpcDataSet) GetTimestamp() int64 {
 }
 
 func (s *IoTDBRpcDataSet) getText(columnName string) string {
-	if columnName == TIMESTAMP_STR {
+	if columnName == TimestampColumnName {
 		return time.Unix(0, bytesToInt64(s.time)*1000000).Format(time.RFC3339)
 	}
 
-	index := s.columnOrdinalMap[columnName] - START_INDEX
-	if index < 0 || int(index) >= len(s.value) || s.isNull(int(index), s.rowsIndex-1) {
+	columnIndex := s.getColumnIndex(columnName)
+	if columnIndex < 0 || int(columnIndex) >= len(s.values) || s.isNull(int(columnIndex), s.rowsIndex-1) {
 		s.lastReadWasNull = true
 		return ""
 	}
 	s.lastReadWasNull = false
-	return s.getString(int(index), s.columnTypeDeduplicatedList[index])
+	return s.getString(int(columnIndex), s.columnTypeDeduplicatedList[columnIndex])
 }
 
-func (s *IoTDBRpcDataSet) getString(index int, dataType TSDataType) string {
+func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string {
+	valueBytes := s.values[columnIndex]
 	switch dataType {
 	case BOOLEAN:
-		if s.value[index][0] != 0 {
+		if valueBytes[0] != 0 {
 			return "true"
 		}
 		return "false"
 	case INT32:
-		return fmt.Sprintf("%v", bytesToInt32(s.value[index]))
+		return fmt.Sprintf("%v", bytesToInt32(valueBytes))
 	case INT64:
-		return fmt.Sprintf("%v", bytesToInt64(s.value[index]))
+		return fmt.Sprintf("%v", bytesToInt64(valueBytes))
 	case FLOAT:
-		bits := binary.BigEndian.Uint32(s.value[index])
+		bits := binary.BigEndian.Uint32(valueBytes)
 		return fmt.Sprintf("%v", math.Float32frombits(bits))
 	case DOUBLE:
-		bits := binary.BigEndian.Uint64(s.value[index])
+		bits := binary.BigEndian.Uint64(valueBytes)
 		return fmt.Sprintf("%v", math.Float64frombits(bits))
 	case TEXT:
-		return string(s.value[index])
+		return string(valueBytes)
 	default:
 		return ""
 	}
 }
 
 func (s *IoTDBRpcDataSet) getValue(columnName string) interface{} {
-	index := int(s.columnOrdinalMap[columnName] - START_INDEX)
-	if s.isNull(index, s.rowsIndex-1) {
+	columnIndex := int(s.getColumnIndex(columnName))
+	if s.isNull(columnIndex, s.rowsIndex-1) {
 		return nil
 	}
-	dataType := s.columnTypeMap[columnName]
+
+	dataType := s.getColumnType(columnName)
+	valueBytes := s.values[columnIndex]
 	switch dataType {
 	case BOOLEAN:
-		return bool(s.value[index][0] != 0)
+		return bool(valueBytes[0] != 0)
 	case INT32:
-		return bytesToInt32(s.value[index])
+		return bytesToInt32(valueBytes)
 	case INT64:
-		return bytesToInt64(s.value[index])
+		return bytesToInt64(valueBytes)
 	case FLOAT:
-		bits := binary.BigEndian.Uint32(s.value[index])
+		bits := binary.BigEndian.Uint32(valueBytes)
 		return math.Float32frombits(bits)
 	case DOUBLE:
-		bits := binary.BigEndian.Uint64(s.value[index])
+		bits := binary.BigEndian.Uint64(valueBytes)
 		return math.Float64frombits(bits)
 	case TEXT:
-		return string(s.value[index])
+		return string(valueBytes)
 	default:
 		return nil
 	}
 }
 
-func (s *IoTDBRpcDataSet) GetRowRecord() *RowRecord {
+func (s *IoTDBRpcDataSet) getRowRecord() *RowRecord {
 	fields := make([]*Field, s.columnCount)
 	for i := 0; i < s.columnCount; i++ {
 		columnName := s.columnNameList[i]
 		field := Field{
 			name:     columnName,
-			dataType: s.columnTypeMap[columnName],
+			dataType: s.getColumnType(columnName),
 			value:    s.getValue(columnName),
 		}
 		fields[i] = &field
@@ -199,10 +218,9 @@ func (s *IoTDBRpcDataSet) GetRowRecord() *RowRecord {
 }
 
 func (s *IoTDBRpcDataSet) getBool(columnName string) bool {
-	index := s.columnOrdinalMap[columnName] - START_INDEX
-	if !s.isNull(int(index), s.rowsIndex-1) {
-		s.lastReadWasNull = false
-		return s.value[index][0] != 0
+	columnIndex := s.getColumnIndex(columnName)
+	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
+		return s.values[columnIndex][0] != 0
 	}
 	s.lastReadWasNull = true
 	return false
@@ -216,21 +234,21 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 
 	for i := 0; i < count; i++ {
 		columnName := s.columnNameList[i]
-		index := int(s.columnOrdinalMap[columnName] - START_INDEX)
-		if s.isNull(index, s.rowsIndex-1) {
+		columnIndex := int(s.getColumnIndex(columnName))
+		if s.isNull(columnIndex, s.rowsIndex-1) {
 			continue
 		}
 
-		dataType := s.columnTypeMap[columnName]
+		dataType := s.getColumnType(columnName)
 		d := dest[i]
-
+		valueBytes := s.values[columnIndex]
 		switch dataType {
 		case BOOLEAN:
 			switch t := d.(type) {
 			case *bool:
-				*t = bool(s.value[index][0] != 0)
+				*t = bool(valueBytes[0] != 0)
 			case *string:
-				if s.value[index][0] != 0 {
+				if valueBytes[0] != 0 {
 					*t = "true"
 				} else {
 					*t = "false"
@@ -242,28 +260,28 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 		case INT32:
 			switch t := d.(type) {
 			case *int32:
-				*t = bytesToInt32(s.value[index])
+				*t = bytesToInt32(valueBytes)
 			case *string:
-				*t = strconv.FormatInt(int64(bytesToInt32(s.value[index])), 10)
+				*t = strconv.FormatInt(int64(bytesToInt32(valueBytes)), 10)
 			default:
 				return fmt.Errorf("dest[%d] types must be *int32 or *string", i)
 			}
 		case INT64:
 			switch t := d.(type) {
 			case *int64:
-				*t = bytesToInt64(s.value[index])
+				*t = bytesToInt64(valueBytes)
 			case *string:
-				*t = strconv.FormatInt(bytesToInt64(s.value[index]), 10)
+				*t = strconv.FormatInt(bytesToInt64(valueBytes), 10)
 			default:
 				return fmt.Errorf("dest[%d] types must be *int64 or *string", i)
 			}
 		case FLOAT:
 			switch t := d.(type) {
 			case *float32:
-				bits := binary.BigEndian.Uint32(s.value[index])
+				bits := binary.BigEndian.Uint32(valueBytes)
 				*t = math.Float32frombits(bits)
 			case *string:
-				bits := binary.BigEndian.Uint32(s.value[index])
+				bits := binary.BigEndian.Uint32(valueBytes)
 				*t = fmt.Sprintf("%v", math.Float32frombits(bits))
 			default:
 				return fmt.Errorf("dest[%d] types must be *float32 or *string", i)
@@ -271,10 +289,10 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 		case DOUBLE:
 			switch t := d.(type) {
 			case *float64:
-				bits := binary.BigEndian.Uint64(s.value[index])
+				bits := binary.BigEndian.Uint64(valueBytes)
 				*t = math.Float64frombits(bits)
 			case *string:
-				bits := binary.BigEndian.Uint64(s.value[index])
+				bits := binary.BigEndian.Uint64(valueBytes)
 				*t = fmt.Sprintf("%v", math.Float64frombits(bits))
 			default:
 				return fmt.Errorf("dest[%d] types must be *float64 or *string", i)
@@ -282,7 +300,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 		case TEXT:
 			switch t := d.(type) {
 			case *string:
-				*t = string(s.value[index])
+				*t = string(valueBytes)
 			default:
 				return fmt.Errorf("dest[%d] types must be *string", i)
 			}
@@ -294,10 +312,10 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 }
 
 func (s *IoTDBRpcDataSet) getFloat(columnName string) float32 {
-	index := s.columnOrdinalMap[columnName] - START_INDEX
-	if !s.isNull(int(index), s.rowsIndex-1) {
+	columnIndex := s.getColumnIndex(columnName)
+	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
 		s.lastReadWasNull = false
-		bits := binary.BigEndian.Uint32(s.value[index])
+		bits := binary.BigEndian.Uint32(s.values[columnIndex])
 		return math.Float32frombits(bits)
 	}
 	s.lastReadWasNull = true
@@ -305,11 +323,11 @@ func (s *IoTDBRpcDataSet) getFloat(columnName string) float32 {
 }
 
 func (s *IoTDBRpcDataSet) getDouble(columnName string) float64 {
-	index := s.columnOrdinalMap[columnName] - START_INDEX
+	columnIndex := s.getColumnIndex(columnName)
 
-	if !s.isNull(int(index), s.rowsIndex-1) {
+	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
 		s.lastReadWasNull = false
-		bits := binary.BigEndian.Uint64(s.value[index])
+		bits := binary.BigEndian.Uint64(s.values[columnIndex])
 		return math.Float64frombits(bits)
 	}
 	s.lastReadWasNull = true
@@ -317,10 +335,10 @@ func (s *IoTDBRpcDataSet) getDouble(columnName string) float64 {
 }
 
 func (s *IoTDBRpcDataSet) getInt32(columnName string) int32 {
-	index := s.columnOrdinalMap[columnName] - START_INDEX
-	if !s.isNull(int(index), s.rowsIndex-1) {
+	columnIndex := s.getColumnIndex(columnName)
+	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
 		s.lastReadWasNull = false
-		return bytesToInt32(s.value[index])
+		return bytesToInt32(s.values[columnIndex])
 	}
 
 	s.lastReadWasNull = true
@@ -328,14 +346,14 @@ func (s *IoTDBRpcDataSet) getInt32(columnName string) int32 {
 }
 
 func (s *IoTDBRpcDataSet) getInt64(columnName string) int64 {
-	if columnName == TIMESTAMP_STR {
+	if columnName == TimestampColumnName {
 		return bytesToInt64(s.time)
 	}
 
-	index := s.columnOrdinalMap[columnName] - START_INDEX
-	bys := s.value[index]
+	columnIndex := s.getColumnIndex(columnName)
+	bys := s.values[columnIndex]
 
-	if !s.isNull(int(index), s.rowsIndex-1) {
+	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
 		s.lastReadWasNull = false
 		return bytesToInt64(bys)
 	}
@@ -388,60 +406,48 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []strin
 	columnNameIndex map[string]int32,
 	queryId int64, client *rpc.TSIServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
 	ignoreTimeStamp bool, fetchSize int32) *IoTDBRpcDataSet {
-	typeMap := map[string]TSDataType{
-		"BOOLEAN": BOOLEAN,
-		"INT32":   INT32,
-		"INT64":   INT64,
-		"FLOAT":   FLOAT,
-		"DOUBLE":  DOUBLE,
-		"TEXT":    TEXT,
-	}
 
 	ds := &IoTDBRpcDataSet{
-		sql:                sql,
-		columnNameList:     columnNameList,
-		columnNameIndexMap: columnNameIndex,
-		ignoreTimeStamp:    ignoreTimeStamp,
-		queryId:            queryId,
-		client:             client,
-		sessionId:          sessionId,
-		queryDataSet:       queryDataSet,
-		fetchSize:          fetchSize,
-		currentBitmap:      make([]byte, len(columnNameList)),
-		value:              make([][]byte, len(columnTypes)),
-		columnCount:        len(columnNameList),
+		sql:             sql,
+		columnNameList:  columnNameList,
+		ignoreTimeStamp: ignoreTimeStamp,
+		queryId:         queryId,
+		client:          client,
+		sessionId:       sessionId,
+		queryDataSet:    queryDataSet,
+		fetchSize:       fetchSize,
+		currentBitmap:   make([]byte, len(columnNameList)),
+		values:          make([][]byte, len(columnTypes)),
+		columnCount:     len(columnNameList),
 	}
 
 	ds.columnTypeList = make([]TSDataType, 0)
-	ds.columnTypeMap = make(map[string]TSDataType)
 
 	// deduplicate and map
 	ds.columnOrdinalMap = make(map[string]int32)
 	if !ignoreTimeStamp {
-		ds.columnOrdinalMap[TIMESTAMP_STR] = 1
+		ds.columnOrdinalMap[TimestampColumnName] = 1
 	}
 
 	if columnNameIndex != nil {
 		ds.columnTypeDeduplicatedList = make([]TSDataType, len(columnNameIndex))
 		for i, name := range columnNameList {
 			columnTypeString := columnTypes[i]
-			columnDataType := typeMap[columnTypeString]
-			ds.columnTypeMap[name] = columnDataType
+			columnDataType := tsTypeMap[columnTypeString]
 			ds.columnTypeList = append(ds.columnTypeList, columnDataType)
 			if _, exists := ds.columnOrdinalMap[name]; !exists {
 				index := columnNameIndex[name]
-				ds.columnOrdinalMap[name] = index + START_INDEX
-				ds.columnTypeDeduplicatedList[index] = typeMap[columnTypeString]
+				ds.columnOrdinalMap[name] = index + startIndex
+				ds.columnTypeDeduplicatedList[index] = tsTypeMap[columnTypeString]
 			}
 		}
 	} else {
 		ds.columnTypeDeduplicatedList = make([]TSDataType, ds.columnCount)
-		index := START_INDEX
+		index := startIndex
 		for i := 0; i < len(columnNameList); i++ {
 			name := columnNameList[i]
-			dataType := typeMap[columnTypes[i]]
+			dataType := tsTypeMap[columnTypes[i]]
 			ds.columnTypeList = append(ds.columnTypeList, dataType)
-			ds.columnTypeMap[name] = dataType
 			ds.columnTypeDeduplicatedList[i] = dataType
 			if _, exists := ds.columnOrdinalMap[name]; !exists {
 				ds.columnOrdinalMap[name] = int32(index)
