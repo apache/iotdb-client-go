@@ -64,7 +64,7 @@ func main() {
 	ts := time.Now().UTC().UnixNano() / 1000000
 	rand.Seed(time.Now().UTC().UnixNano())
 	status, err := session.InsertRecord("root.ln.device1", []string{"description", "price", "tick_count", "status", "restart_count", "temperature"}, []client.TSDataType{client.TEXT, client.DOUBLE, client.INT64, client.BOOLEAN, client.INT32, client.FLOAT},
-		[]interface{}{string("Test Device 1"), rand.Float64(), rand.Int63(), true, rand.Int31(), rand.Float32()}, ts)
+		[]interface{}{string("Test Device 1"), rand.Float64(), rand.Int63(), ts%2 == 0, rand.Int31(), rand.Float32()}, ts)
 	if err != nil {
 		if status != nil {
 			log.Printf("Code: %d, Message: %d", status.Code, status.Message)
@@ -176,14 +176,17 @@ func printDataSet2(sds *client.SessionDataSet) {
 			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
 		}
 
-		for _, field := range sds.GetRowRecord().GetFields() {
-			v := field.GetValue()
-			if field.IsNull() {
-				v = "null"
+		if record, err := sds.GetRowRecord(); err == nil {
+			for _, field := range record.GetFields() {
+				v := field.GetValue()
+				if field.IsNull() {
+					v = "null"
+				}
+				fmt.Printf("%v\t\t", v)
 			}
-			fmt.Printf("%v\t\t", v)
+			fmt.Println()
 		}
-		fmt.Println()
+
 	}
 }
 
