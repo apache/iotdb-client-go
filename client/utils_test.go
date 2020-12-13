@@ -74,3 +74,107 @@ func Test_bytesToInt64(t *testing.T) {
 		})
 	}
 }
+
+func Test_int32ToString(t *testing.T) {
+	type args struct {
+		n int32
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test Int32",
+			args: args{
+				n: 65535,
+			},
+			want: "65535",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := int32ToString(tt.args.n); got != tt.want {
+				t.Errorf("int32ToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_int64ToString(t *testing.T) {
+	type args struct {
+		n int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test Int64",
+			args: args{
+				n: 7684873721715404507,
+			},
+			want: "7684873721715404507",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := int64ToString(tt.args.n); got != tt.want {
+				t.Errorf("int64ToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_float32ToString(t *testing.T) {
+	type args struct {
+		val float32
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test Float32",
+			args: args{
+				val: 0.97800666,
+			},
+			want: "0.97800666",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := float32ToString(tt.args.val); got != tt.want {
+				t.Errorf("float32ToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_float64ToString(t *testing.T) {
+	type args struct {
+		val float64
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test Flota64",
+			args: args{
+				val: 0.39751212862981283,
+			},
+			want: "0.39751212862981283",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := float64ToString(tt.args.val); got != tt.want {
+				t.Errorf("float64ToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

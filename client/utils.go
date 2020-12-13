@@ -22,7 +22,24 @@ package client
 import (
 	"bytes"
 	"encoding/binary"
+	"strconv"
 )
+
+func int32ToString(n int32) string {
+	return strconv.Itoa(int(n))
+}
+
+func int64ToString(n int64) string {
+	return strconv.FormatInt(n, 10)
+}
+
+func float32ToString(val float32) string {
+	return strconv.FormatFloat(float64(val), 'f', -1, 32)
+}
+
+func float64ToString(val float64) string {
+	return strconv.FormatFloat(val, 'f', -1, 64)
+}
 
 func int32ToBytes(n int32) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})

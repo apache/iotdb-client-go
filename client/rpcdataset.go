@@ -37,8 +37,8 @@ const (
 )
 
 var (
-	dataSetClosedError error                 = errors.New("DataSet is Closed")
-	tsTypeMap          map[string]TSDataType = map[string]TSDataType{
+	errClosed error                 = errors.New("DataSet is Closed")
+	tsTypeMap map[string]TSDataType = map[string]TSDataType{
 		"BOOLEAN": BOOLEAN,
 		"INT32":   INT32,
 		"INT64":   INT64,
@@ -95,7 +95,7 @@ func (s *IoTDBRpcDataSet) isNull(columnIndex int, rowIndex int) bool {
 
 func (s *IoTDBRpcDataSet) constructOneRow() error {
 	if s.closed {
-		return dataSetClosedError
+		return errClosed
 	}
 
 	// simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
@@ -181,15 +181,15 @@ func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string
 		}
 		return "false"
 	case INT32:
-		return fmt.Sprintf("%v", bytesToInt32(valueBytes))
+		return int32ToString(bytesToInt32(valueBytes))
 	case INT64:
-		return fmt.Sprintf("%v", bytesToInt64(valueBytes))
+		return int64ToString(bytesToInt64(valueBytes))
 	case FLOAT:
 		bits := binary.BigEndian.Uint32(valueBytes)
-		return fmt.Sprintf("%v", math.Float32frombits(bits))
+		return float32ToString(math.Float32frombits(bits))
 	case DOUBLE:
 		bits := binary.BigEndian.Uint64(valueBytes)
-		return fmt.Sprintf("%v", math.Float64frombits(bits))
+		return float64ToString(math.Float64frombits(bits))
 	case TEXT:
 		return string(valueBytes)
 	default:
@@ -230,7 +230,7 @@ func (s *IoTDBRpcDataSet) getValue(columnName string) interface{} {
 
 func (s *IoTDBRpcDataSet) getRowRecord() (*RowRecord, error) {
 	if s.closed {
-		return nil, dataSetClosedError
+		return nil, errClosed
 	}
 
 	fields := make([]*Field, s.columnCount)
@@ -263,7 +263,7 @@ func (s *IoTDBRpcDataSet) getBool(columnName string) bool {
 
 func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 	if s.closed {
-		return dataSetClosedError
+		return errClosed
 	}
 
 	count := s.columnCount
@@ -321,7 +321,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 				*t = math.Float32frombits(bits)
 			case *string:
 				bits := binary.BigEndian.Uint32(valueBytes)
-				*t = fmt.Sprintf("%v", math.Float32frombits(bits))
+				*t = float32ToString(math.Float32frombits(bits))
 			default:
 				return fmt.Errorf("dest[%d] types must be *float32 or *string", i)
 			}
@@ -332,7 +332,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 				*t = math.Float64frombits(bits)
 			case *string:
 				bits := binary.BigEndian.Uint64(valueBytes)
-				*t = fmt.Sprintf("%v", math.Float64frombits(bits))
+				*t = float64ToString(math.Float64frombits(bits))
 			default:
 				return fmt.Errorf("dest[%d] types must be *float64 or *string", i)
 			}
@@ -421,7 +421,7 @@ func (s *IoTDBRpcDataSet) hasCachedResults() bool {
 
 func (s *IoTDBRpcDataSet) next() (bool, error) {
 	if s.closed {
-		return false, dataSetClosedError
+		return false, errClosed
 	}
 
 	if s.hasCachedResults() {
@@ -442,7 +442,7 @@ func (s *IoTDBRpcDataSet) next() (bool, error) {
 
 func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 	if s.closed {
-		return false, dataSetClosedError
+		return false, errClosed
 	}
 	s.rowsIndex = 0
 	req := rpc.TSFetchResultsReq{s.sessionId, s.sql, s.fetchSize, s.queryId, true}
