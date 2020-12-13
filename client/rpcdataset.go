@@ -22,6 +22,7 @@ package client
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
@@ -31,12 +32,13 @@ import (
 )
 
 const (
-	startIndex          = 2
-	flag                = 0x80
+	startIndex = 2
+	flag       = 0x80
 )
 
 var (
-	tsTypeMap map[string]TSDataType = map[string]TSDataType{
+	dataSetClosedError error                 = errors.New("DataSet is Closed")
+	tsTypeMap          map[string]TSDataType = map[string]TSDataType{
 		"BOOLEAN": BOOLEAN,
 		"INT32":   INT32,
 		"INT64":   INT64,
@@ -65,23 +67,37 @@ type IoTDBRpcDataSet struct {
 	client                     *rpc.TSIServiceClient
 	emptyResultSet             bool
 	ignoreTimeStamp            bool
+	closed                     bool
 }
 
 func (s *IoTDBRpcDataSet) getColumnIndex(columnName string) int32 {
+	if s.closed {
+		return -1
+	}
 	return s.columnOrdinalMap[columnName] - startIndex
 }
 
 func (s *IoTDBRpcDataSet) getColumnType(columnName string) TSDataType {
+	if s.closed {
+		return UNKNOW
+	}
 	return s.columnTypeDeduplicatedList[s.getColumnIndex(columnName)]
 }
 
 func (s *IoTDBRpcDataSet) isNull(columnIndex int, rowIndex int) bool {
+	if s.closed {
+		return true
+	}
 	bitmap := s.currentBitmap[columnIndex]
 	shift := rowIndex % 8
 	return ((flag >> shift) & (bitmap & 0xff)) == 0
 }
 
 func (s *IoTDBRpcDataSet) constructOneRow() error {
+	if s.closed {
+		return dataSetClosedError
+	}
+
 	// simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
 	s.time = s.queryDataSet.Time[:8]
 	s.queryDataSet.Time = s.queryDataSet.Time[8:]
@@ -130,10 +146,16 @@ func (s *IoTDBRpcDataSet) constructOneRow() error {
 }
 
 func (s *IoTDBRpcDataSet) GetTimestamp() int64 {
+	if s.closed {
+		return -1
+	}
 	return bytesToInt64(s.time)
 }
 
 func (s *IoTDBRpcDataSet) getText(columnName string) string {
+	if s.closed {
+		return ""
+	}
 	if columnName == TimestampColumnName {
 		return time.Unix(0, bytesToInt64(s.time)*1000000).Format(time.RFC3339)
 	}
@@ -148,6 +170,9 @@ func (s *IoTDBRpcDataSet) getText(columnName string) string {
 }
 
 func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string {
+	if s.closed {
+		return ""
+	}
 	valueBytes := s.values[columnIndex]
 	switch dataType {
 	case BOOLEAN:
@@ -173,6 +198,9 @@ func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string
 }
 
 func (s *IoTDBRpcDataSet) getValue(columnName string) interface{} {
+	if s.closed {
+		return nil
+	}
 	columnIndex := int(s.getColumnIndex(columnName))
 	if s.isNull(columnIndex, s.rowsIndex-1) {
 		return nil
@@ -200,7 +228,11 @@ func (s *IoTDBRpcDataSet) getValue(columnName string) interface{} {
 	}
 }
 
-func (s *IoTDBRpcDataSet) getRowRecord() *RowRecord {
+func (s *IoTDBRpcDataSet) getRowRecord() (*RowRecord, error) {
+	if s.closed {
+		return nil, dataSetClosedError
+	}
+
 	fields := make([]*Field, s.columnCount)
 	for i := 0; i < s.columnCount; i++ {
 		columnName := s.columnNameList[i]
@@ -214,10 +246,13 @@ func (s *IoTDBRpcDataSet) getRowRecord() *RowRecord {
 	return &RowRecord{
 		timestamp: s.GetTimestamp(),
 		fields:    fields,
-	}
+	}, nil
 }
 
 func (s *IoTDBRpcDataSet) getBool(columnName string) bool {
+	if s.closed {
+		return false
+	}
 	columnIndex := s.getColumnIndex(columnName)
 	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
 		return s.values[columnIndex][0] != 0
@@ -227,6 +262,10 @@ func (s *IoTDBRpcDataSet) getBool(columnName string) bool {
 }
 
 func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
+	if s.closed {
+		return dataSetClosedError
+	}
+
 	count := s.columnCount
 	if count > len(dest) {
 		count = len(dest)
@@ -312,6 +351,9 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 }
 
 func (s *IoTDBRpcDataSet) getFloat(columnName string) float32 {
+	if s.closed {
+		return 0
+	}
 	columnIndex := s.getColumnIndex(columnName)
 	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
 		s.lastReadWasNull = false
@@ -323,6 +365,9 @@ func (s *IoTDBRpcDataSet) getFloat(columnName string) float32 {
 }
 
 func (s *IoTDBRpcDataSet) getDouble(columnName string) float64 {
+	if s.closed {
+		return 0
+	}
 	columnIndex := s.getColumnIndex(columnName)
 
 	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
@@ -335,6 +380,9 @@ func (s *IoTDBRpcDataSet) getDouble(columnName string) float64 {
 }
 
 func (s *IoTDBRpcDataSet) getInt32(columnName string) int32 {
+	if s.closed {
+		return 0
+	}
 	columnIndex := s.getColumnIndex(columnName)
 	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
 		s.lastReadWasNull = false
@@ -346,6 +394,9 @@ func (s *IoTDBRpcDataSet) getInt32(columnName string) int32 {
 }
 
 func (s *IoTDBRpcDataSet) getInt64(columnName string) int64 {
+	if s.closed {
+		return 0
+	}
 	if columnName == TimestampColumnName {
 		return bytesToInt64(s.time)
 	}
@@ -362,10 +413,17 @@ func (s *IoTDBRpcDataSet) getInt64(columnName string) int64 {
 }
 
 func (s *IoTDBRpcDataSet) hasCachedResults() bool {
+	if s.closed {
+		return false
+	}
 	return (s.queryDataSet != nil && len(s.queryDataSet.Time) > 0)
 }
 
 func (s *IoTDBRpcDataSet) next() (bool, error) {
+	if s.closed {
+		return false, dataSetClosedError
+	}
+
 	if s.hasCachedResults() {
 		s.constructOneRow()
 		return true, nil
@@ -383,6 +441,9 @@ func (s *IoTDBRpcDataSet) next() (bool, error) {
 }
 
 func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
+	if s.closed {
+		return false, dataSetClosedError
+	}
 	s.rowsIndex = 0
 	req := rpc.TSFetchResultsReq{s.sessionId, s.sql, s.fetchSize, s.queryId, true}
 	resp, err := s.client.FetchResults(context.Background(), &req)
@@ -397,8 +458,32 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 	return resp.HasResultSet, nil
 }
 
+func (s *IoTDBRpcDataSet) IsClosed() bool {
+	return s.closed
+}
+
 func (s *IoTDBRpcDataSet) Close() error {
-	//it doesn't have any resources to close
+	if s.IsClosed() {
+		return nil
+	}
+
+	s.columnCount = 0
+	s.sessionId = -1
+	s.queryId = -1
+	s.rowsIndex = -1
+	s.queryDataSet = nil
+	s.sql = ""
+	s.fetchSize = 0
+	s.columnNameList = nil
+	s.columnTypeList = nil
+	s.columnOrdinalMap = nil
+	s.columnTypeDeduplicatedList = nil
+	s.currentBitmap = nil
+	s.time = nil
+	s.values = nil
+	s.client = nil
+	s.emptyResultSet = true
+	s.closed = true
 	return nil
 }
 
@@ -419,6 +504,7 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []strin
 		currentBitmap:   make([]byte, len(columnNameList)),
 		values:          make([][]byte, len(columnTypes)),
 		columnCount:     len(columnNameList),
+		closed:          false,
 	}
 
 	ds.columnTypeList = make([]TSDataType, 0)

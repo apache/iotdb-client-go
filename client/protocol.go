@@ -26,6 +26,7 @@ type TSEncoding int16
 type TSCompressionType int16
 
 const (
+	UNKNOW  TSDataType = -1
 	BOOLEAN TSDataType = 0
 	INT32   TSDataType = 1
 	INT64   TSDataType = 2
