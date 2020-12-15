@@ -289,18 +289,14 @@ func insertStringRecord() {
 }
 
 func checkError(status *rpc.TSStatus, err error) {
-	if status != nil && status.Code != 200 {
-		if status.Message != nil {
-			log.Printf("Code: %d, msg: %s\n", status.Code, *status.Message)
-		} else {
-			for _, s := range status.SubStatus {
-				checkError(s, nil)
-			}
-		}
-	}
-
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if status != nil {
+		if err = client.VerifySuccess(status); err != nil {
+			log.Println(err)
+		}
 	}
 }
 

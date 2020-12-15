@@ -57,3 +57,72 @@ const (
 	PLA          TSCompressionType = 6
 	LZ4          TSCompressionType = 7
 )
+
+//TSStatusCode
+const (
+	SuccessStatus        int32 = 200
+	StillExecutingStatus int32 = 201
+	InvalidHandleStatus  int32 = 202
+	IncompatibleVersion  int32 = 203
+
+	NodeDeleteFailedError                  int32 = 298
+	AliasAlreadyExistError                 int32 = 299
+	PathAlreadyExistError                  int32 = 300
+	PathNotExistError                      int32 = 301
+	UnsupportedFetchMetadataOperationError int32 = 302
+	MetadataError                          int32 = 303
+	TimeseriesNotExist                     int32 = 304
+	OutOfTTLError                          int32 = 305
+	ConfigAdjuster                         int32 = 306
+	MergeError                             int32 = 307
+	SystemCheckError                       int32 = 308
+	SyncDeviceOwnerConflictError           int32 = 309
+	SyncConnectionException                int32 = 310
+	StorageGroupProcessorError             int32 = 311
+	StorageGroupError                      int32 = 312
+	StorageEngineError                     int32 = 313
+	TsfileProcessorError                   int32 = 314
+	PathIllegal                            int32 = 315
+	LoadFileError                          int32 = 316
+	StorageGroupNotReady                   int32 = 317
+
+	ExecuteStatementError    int32 = 400
+	SQLParseError            int32 = 401
+	GenerateTimeZoneError    int32 = 402
+	SetTimeZoneError         int32 = 403
+	NotStorageGroupError     int32 = 404
+	QueryNotAllowed          int32 = 405
+	AstFormatError           int32 = 406
+	LogicalOperatorError     int32 = 407
+	LogicalOptimizeError     int32 = 408
+	UnsupportedFillTypeError int32 = 409
+	PathErroRint32                 = 410
+	QueryProcessError        int32 = 411
+	WriteProcessError        int32 = 412
+	WriteProcessReject       int32 = 413
+
+	UnsupportedIndexFuncError int32 = 421
+	UnsupportedIndexTypeError int32 = 422
+
+	InternalServerError        int32 = 500
+	CloseOperationError        int32 = 501
+	ReadOnlySystemError        int32 = 502
+	DiskSpaceInsufficientError int32 = 503
+	StartUpError               int32 = 504
+	ShutDownError              int32 = 505
+	MultipleError              int32 = 506
+
+	WrongLoginPasswordError int32 = 600
+	NotLoginError           int32 = 601
+	NoPermissionError       int32 = 602
+	UninitializedAuthError  int32 = 603
+
+	PartitionNotReady    int32 = 700
+	TimeOut              int32 = 701
+	NoLeader             int32 = 702
+	UnsupportedOperation int32 = 703
+	NodeReadOnly         int32 = 704
+	ConsistencyFailure   int32 = 705
+	NoConnection         int32 = 706
+	NeedRedirection      int32 = 707
+)

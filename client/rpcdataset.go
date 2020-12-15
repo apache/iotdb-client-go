@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"strconv"
 	"time"
 
 	"github.com/apache/iotdb-client-go/rpc"
@@ -301,7 +300,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 			case *int32:
 				*t = bytesToInt32(valueBytes)
 			case *string:
-				*t = strconv.FormatInt(int64(bytesToInt32(valueBytes)), 10)
+				*t = int32ToString(bytesToInt32(valueBytes))
 			default:
 				return fmt.Errorf("dest[%d] types must be *int32 or *string", i)
 			}
@@ -310,7 +309,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 			case *int64:
 				*t = bytesToInt64(valueBytes)
 			case *string:
-				*t = strconv.FormatInt(bytesToInt64(valueBytes), 10)
+				*t = int64ToString(bytesToInt64(valueBytes))
 			default:
 				return fmt.Errorf("dest[%d] types must be *int64 or *string", i)
 			}
@@ -447,9 +446,15 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 	s.rowsIndex = 0
 	req := rpc.TSFetchResultsReq{s.sessionId, s.sql, s.fetchSize, s.queryId, true}
 	resp, err := s.client.FetchResults(context.Background(), &req)
+
 	if err != nil {
 		return false, err
 	}
+
+	if err = VerifySuccess(resp.Status); err != nil {
+		return false, err
+	}
+
 	if !resp.HasResultSet {
 		s.emptyResultSet = true
 	} else {
@@ -465,6 +470,16 @@ func (s *IoTDBRpcDataSet) IsClosed() bool {
 func (s *IoTDBRpcDataSet) Close() error {
 	if s.IsClosed() {
 		return nil
+	}
+
+	closeRequest := &rpc.TSCloseOperationReq{
+		SessionId: s.sessionId,
+		QueryId:   &s.queryId,
+	}
+
+	status, err := s.client.CloseOperation(context.Background(), closeRequest)
+	if err == nil {
+		err = VerifySuccess(status)
 	}
 
 	s.columnCount = 0
@@ -484,7 +499,7 @@ func (s *IoTDBRpcDataSet) Close() error {
 	s.client = nil
 	s.emptyResultSet = true
 	s.closed = true
-	return nil
+	return err
 }
 
 func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []string,

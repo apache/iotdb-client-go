@@ -21,6 +21,8 @@ package client
 
 import (
 	"testing"
+
+	"github.com/apache/iotdb-client-go/rpc"
 )
 
 func Test_bytesToInt32(t *testing.T) {
@@ -174,6 +176,122 @@ func Test_float64ToString(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := float64ToString(tt.args.val); got != tt.want {
 				t.Errorf("float64ToString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_verifySuccess(t *testing.T) {
+	type args struct {
+		status *rpc.TSStatus
+	}
+	var errMsg string = "Server ShutDown"
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "NeedRedirection",
+			args: args{
+				status: &rpc.TSStatus{
+					Code:      NeedRedirection,
+					Message:   nil,
+					SubStatus: []*rpc.TSStatus{},
+				},
+			},
+			wantErr: false,
+		}, {
+			name: "SuccessStatus",
+			args: args{
+				status: &rpc.TSStatus{
+					Code:      SuccessStatus,
+					Message:   nil,
+					SubStatus: []*rpc.TSStatus{},
+				},
+			},
+			wantErr: false,
+		}, {
+			name: "MultipleError",
+			args: args{
+				status: &rpc.TSStatus{
+					Code:    MultipleError,
+					Message: nil,
+					SubStatus: []*rpc.TSStatus{
+						&rpc.TSStatus{
+							Code:    ShutDownError,
+							Message: &errMsg,
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := VerifySuccess(tt.args.status); (err != nil) != tt.wantErr {
+				t.Errorf("VerifySuccess() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_verifySuccesses(t *testing.T) {
+	type args struct {
+		statuses []*rpc.TSStatus
+	}
+	var internalServerError string = "InternalServerError"
+	var success string = "Success"
+	var needRedirection string = "NeedRedirection"
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "InternalServerError",
+			args: args{
+				statuses: []*rpc.TSStatus{
+					&rpc.TSStatus{
+						Code:      InternalServerError,
+						Message:   &internalServerError,
+						SubStatus: []*rpc.TSStatus{},
+					},
+				},
+			},
+			wantErr: true,
+		}, {
+			name: "SuccessStatus",
+			args: args{
+				statuses: []*rpc.TSStatus{
+					&rpc.TSStatus{
+						Code:      SuccessStatus,
+						Message:   &success,
+						SubStatus: []*rpc.TSStatus{},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "NeedRedirection",
+			args: args{
+				statuses: []*rpc.TSStatus{
+					&rpc.TSStatus{
+						Code:      NeedRedirection,
+						Message:   &needRedirection,
+						SubStatus: []*rpc.TSStatus{},
+					},
+				},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := verifySuccesses(tt.args.statuses); (err != nil) != tt.wantErr {
+				t.Errorf("verifySuccesses() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

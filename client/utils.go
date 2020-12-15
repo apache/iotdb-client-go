@@ -22,7 +22,10 @@ package client
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"strconv"
+
+	"github.com/apache/iotdb-client-go/rpc"
 )
 
 func int32ToString(n int32) string {
@@ -65,4 +68,34 @@ func bytesToInt64(bys []byte) int64 {
 	var data int64
 	binary.Read(bytebuff, binary.BigEndian, &data)
 	return int64(data)
+}
+
+func verifySuccesses(statuses []*rpc.TSStatus) error {
+	buff := bytes.Buffer{}
+	for _, status := range statuses {
+		if status.Code != SuccessStatus && status.Code != NeedRedirection {
+			buff.WriteString(*status.Message + ";")
+		}
+	}
+	errMsgs := buff.String()
+	if len(errMsgs) > 0 {
+		return NewBatchError(statuses)
+	}
+	return nil
+}
+
+func VerifySuccess(status *rpc.TSStatus) error {
+	if status.Code == NeedRedirection {
+		return nil
+	}
+
+	if status.Code == MultipleError {
+		if err := verifySuccesses(status.GetSubStatus()); err != nil {
+			return err
+		}
+	}
+	if status.Code != SuccessStatus {
+		return errors.New(*status.Message)
+	}
+	return nil
 }
