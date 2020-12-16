@@ -467,19 +467,20 @@ func (s *IoTDBRpcDataSet) IsClosed() bool {
 	return s.closed
 }
 
-func (s *IoTDBRpcDataSet) Close() error {
+func (s *IoTDBRpcDataSet) Close() (err error) {
 	if s.IsClosed() {
 		return nil
 	}
+	if s.client != nil {
+		closeRequest := &rpc.TSCloseOperationReq{
+			SessionId: s.sessionId,
+			QueryId:   &s.queryId,
+		}
 
-	closeRequest := &rpc.TSCloseOperationReq{
-		SessionId: s.sessionId,
-		QueryId:   &s.queryId,
-	}
-
-	status, err := s.client.CloseOperation(context.Background(), closeRequest)
-	if err == nil {
-		err = VerifySuccess(status)
+		status, err := s.client.CloseOperation(context.Background(), closeRequest)
+		if err == nil {
+			err = VerifySuccess(status)
+		}
 	}
 
 	s.columnCount = 0

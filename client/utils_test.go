@@ -185,7 +185,7 @@ func Test_verifySuccess(t *testing.T) {
 	type args struct {
 		status *rpc.TSStatus
 	}
-	var errMsg string = "Server ShutDown"
+	var errMsg string = "error occurred"
 	tests := []struct {
 		name    string
 		args    args
@@ -196,7 +196,7 @@ func Test_verifySuccess(t *testing.T) {
 			args: args{
 				status: &rpc.TSStatus{
 					Code:      NeedRedirection,
-					Message:   nil,
+					Message:   &errMsg,
 					SubStatus: []*rpc.TSStatus{},
 				},
 			},
@@ -206,7 +206,7 @@ func Test_verifySuccess(t *testing.T) {
 			args: args{
 				status: &rpc.TSStatus{
 					Code:      SuccessStatus,
-					Message:   nil,
+					Message:   &errMsg,
 					SubStatus: []*rpc.TSStatus{},
 				},
 			},
@@ -216,13 +216,23 @@ func Test_verifySuccess(t *testing.T) {
 			args: args{
 				status: &rpc.TSStatus{
 					Code:    MultipleError,
-					Message: nil,
+					Message: &errMsg,
 					SubStatus: []*rpc.TSStatus{
 						&rpc.TSStatus{
 							Code:    ShutDownError,
 							Message: &errMsg,
 						},
 					},
+				},
+			},
+			wantErr: true,
+		}, {
+			name: "CloseOperationError",
+			args: args{
+				status: &rpc.TSStatus{
+					Code:      CloseOperationError,
+					Message:   &errMsg,
+					SubStatus: []*rpc.TSStatus{},
 				},
 			},
 			wantErr: true,
