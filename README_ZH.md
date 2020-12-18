@@ -32,3 +32,12 @@ Apache IoTDB Github: https://github.com/apache/iotdb
 # 如何编译
 
 # 如何使用 (快速上手)
+```
+*创建项目 例：session
+
+*进入项目的文件夹 例：cd session
+
+*下载依赖 : go get github.com/apache/iotdb-client-go
+
+*示例 :https://github.com/apache/iotdb-client-go/example/session_example.go
+```

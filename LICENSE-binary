@@ -213,4 +213,7 @@ conditions of the following licenses.
 The binary distribution of this product bundles these dependencies under the
 following license. See licenses/ for text of these licenses.
 
+Apache Software Foundation License 2.0
+--------------------------------------
+github.com/apache/thrift@v0.13.0
 

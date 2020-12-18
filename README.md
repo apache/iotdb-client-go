@@ -34,4 +34,12 @@ Apache IoTDB Github: https://github.com/apache/iotdb
 # How to Compile the Client
 
 # How to Use the Client (Quick Start)
+```
+Create project eg:session
 
+*Enter project directory eg:cd session
+
+*Download dependency : go get github.com/apache/iotdb-client-go
+
+*eg:https://github.com/apache/iotdb-client-go/example/session_example.go
+```
