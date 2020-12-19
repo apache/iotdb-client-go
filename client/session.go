@@ -355,6 +355,31 @@ func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes
 	return r, err
 }
 
+func (s *Session) InsertTablet(tablet *Tablet) (r *rpc.TSStatus, err error) {
+	request, err := s.genTSInsertTabletReq(tablet)
+	if err != nil {
+		return nil, err
+	}
+	return s.client.InsertTablet(context.Background(), request)
+}
+
+func (s *Session) genTSInsertTabletReq(tablet *Tablet) (request *rpc.TSInsertTabletReq, err error) {
+	values, err := tablet.GetValuesBytes()
+	if err != nil {
+		return nil, err
+	}
+	request = &rpc.TSInsertTabletReq{
+		SessionId:    s.sessionId,
+		DeviceId:     tablet.deviceId,
+		Measurements: tablet.getMeasurements(),
+		Values:       values,
+		Timestamps:   tablet.GetTimestampBytes(),
+		Types:        tablet.getDataTypes(),
+		Size:         tablet.RowSize,
+	}
+	return request, nil
+}
+
 func (s *Session) GetSessionId() int64 {
 	return s.sessionId
 }

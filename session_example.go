@@ -57,6 +57,7 @@ func main() {
 	deleteData()
 	deleteTimeseries()
 	insertStringRecord()
+	insertTablet()
 	setTimeZone()
 	if tz, err := getTimeZone(); err == nil {
 		fmt.Printf("TimeZone: %s\n", tz)
@@ -235,6 +236,60 @@ func printDevice1(sds *client.SessionDataSet) {
 
 		fmt.Println()
 	}
+}
+
+func insertTablet() {
+	tablet, err := client.NewTablet("root.ln.device5", []*client.MeasurementSchema{
+		&client.MeasurementSchema{
+			Measurement: "restart_count",
+			DataType:    client.INT32,
+			Encoding:    client.RLE,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "price",
+			DataType:    client.DOUBLE,
+			Encoding:    client.GORILLA,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "tick_count",
+			DataType:    client.INT64,
+			Encoding:    client.RLE,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "temperature",
+			DataType:    client.FLOAT,
+			Encoding:    client.GORILLA,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "description",
+			DataType:    client.TEXT,
+			Encoding:    client.PLAIN,
+			Compressor:  client.SNAPPY,
+		},
+		&client.MeasurementSchema{
+			Measurement: "status",
+			DataType:    client.BOOLEAN,
+			Encoding:    client.RLE,
+			Compressor:  client.SNAPPY,
+		},
+	}, 100)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ts := time.Now().UTC().UnixNano() / 1000000
+	for row := 0; row < 100; row++ {
+		ts++
+		tablet.SetTimestamp(ts, row)
+		tablet.SetValueAt(rand.Int31(), 0, row)
+		tablet.SetValueAt(rand.Float64(), 1, row)
+		tablet.SetValueAt(rand.Int63(), 2, row)
+		tablet.SetValueAt(rand.Float32(), 3, row)
+		tablet.SetValueAt(fmt.Sprintf("Test Device %d", row+1), 4, row)
+		tablet.SetValueAt(bool(ts%2 == 0), 5, row)
+	}
+
+	status, err := session.InsertTablet(tablet)
+	checkError(status, err)
 }
 
 func setStorageGroup() {
