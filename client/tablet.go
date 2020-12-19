@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -23,139 +23,173 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"sort"
-	"strconv"
+	"fmt"
+	"reflect"
 )
 
+type MeasurementSchema struct {
+	Measurement string
+	DataType    TSDataType
+	Encoding    TSEncoding
+	Compressor  TSCompressionType
+	Properties  map[string]string
+}
+
 type Tablet struct {
-	DeviceId     string
-	Measurements []string
-	Values       []interface{}
-	Timestamps   []int64
-	Types        []int32
+	deviceId   string
+	Schemas    []*MeasurementSchema
+	timestamps []int64
+	values     []interface{}
+	RowSize    int
 }
 
-func (t *Tablet) GetRowNumber() int32 {
-	return (int32)(len(t.Timestamps))
+func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
+	t.timestamps[rowIndex] = timestamp
 }
 
-func (t *Tablet) GetDeviceId() string {
-	return t.DeviceId
+func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error {
+	if value == nil {
+		return errors.New("Illegal argument value can't be nil")
+	}
+
+	if columnIndex < 0 || columnIndex > len(t.Schemas) {
+		return fmt.Errorf("Illegal argument columnIndex %d", columnIndex)
+	}
+
+	if rowIndex < 0 || rowIndex > int(t.RowSize) {
+		return fmt.Errorf("Illegal argument rowIndex %d", rowIndex)
+	}
+
+	switch t.Schemas[columnIndex].DataType {
+	case BOOLEAN:
+		values := t.values[columnIndex].([]bool)
+		switch value.(type) {
+		case bool:
+			values[rowIndex] = value.(bool)
+		case *bool:
+			values[rowIndex] = *value.(*bool)
+		default:
+			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
+	case INT32:
+		values := t.values[columnIndex].([]int32)
+		switch value.(type) {
+		case int32:
+			values[rowIndex] = value.(int32)
+		case *int32:
+			values[rowIndex] = *value.(*int32)
+		default:
+			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
+	case INT64:
+		values := t.values[columnIndex].([]int64)
+		switch value.(type) {
+		case int64:
+			values[rowIndex] = value.(int64)
+		case *int64:
+			values[rowIndex] = *value.(*int64)
+		default:
+			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
+	case FLOAT:
+		values := t.values[columnIndex].([]float32)
+		switch value.(type) {
+		case float32:
+			values[rowIndex] = value.(float32)
+		case *float32:
+			values[rowIndex] = *value.(*float32)
+		default:
+			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
+	case DOUBLE:
+		values := t.values[columnIndex].([]float64)
+		switch value.(type) {
+		case float64:
+			values[rowIndex] = value.(float64)
+		case *float64:
+			values[rowIndex] = *value.(*float64)
+		default:
+			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
+	}
+	return nil
+}
+
+func (t *Tablet) GetTimestampBytes() []byte {
+	buff := &bytes.Buffer{}
+	for _, v := range t.timestamps {
+		binary.Write(buff, binary.BigEndian, v)
+	}
+	return buff.Bytes()
 }
 
 func (t *Tablet) GetMeasurements() []string {
-	return t.Measurements
-}
-
-func (t *Tablet) GetBinaryTimestamps() []byte {
-	buf := bytes.NewBuffer([]byte{})
-	for i := 0; i < len(t.Timestamps); i++ {
-		binary.Write(buf, binary.BigEndian, t.Timestamps[i])
+	measurements := make([]string, len(t.Schemas))
+	for i, s := range t.Schemas {
+		measurements[i] = s.Measurement
 	}
-	return buf.Bytes()
+	return measurements
 }
 
-func (t *Tablet) GetBinaryValues() []byte {
-	buf := bytes.NewBuffer([]byte{})
-	for i := 0; i < len(t.Types); i++ {
-		switch t.Types[i] {
-		case 0:
-			binary.Write(buf, binary.BigEndian, t.Values[i].([]bool))
-		case 1:
-			tmp := t.Values[i].([]int32)
-			binary.Write(buf, binary.BigEndian, &tmp)
-		case 2:
-			tmp := t.Values[i].([]int64)
-			binary.Write(buf, binary.BigEndian, &tmp)
-		case 3:
-			tmp := t.Values[i].([]float32)
-			binary.Write(buf, binary.BigEndian, &tmp)
-		case 4:
-			tmp := t.Values[i].([]float64)
-			binary.Write(buf, binary.BigEndian, &tmp)
-		case 5:
-			values := t.Values[i].([]string)
-			for index := range values {
-				tmp := (int32)(len(values[index]))
-				binary.Write(buf, binary.BigEndian, &tmp)
-				buf.WriteString(values[index])
+func (t *Tablet) getDataTypes() []int32 {
+	types := make([]int32, len(t.Schemas))
+	for i, s := range t.Schemas {
+		types[i] = int32(s.DataType)
+	}
+	return types
+}
+
+func (t *Tablet) GetValuesBytes() ([]byte, error) {
+	buff := &bytes.Buffer{}
+	for i, schema := range t.Schemas {
+		switch schema.DataType {
+		case BOOLEAN:
+			binary.Write(buff, binary.BigEndian, t.values[i].([]bool))
+		case INT32:
+			binary.Write(buff, binary.BigEndian, t.values[i].([]int32))
+		case INT64:
+			binary.Write(buff, binary.BigEndian, t.values[i].([]int64))
+		case FLOAT:
+			binary.Write(buff, binary.BigEndian, t.values[i].([]float32))
+		case DOUBLE:
+			binary.Write(buff, binary.BigEndian, t.values[i].([]float64))
+		case TEXT:
+			for _, s := range t.values[i].([]string) {
+				binary.Write(buff, binary.BigEndian, int32(len(s)))
+				binary.Write(buff, binary.BigEndian, []byte(s))
 			}
-
+		default:
+			return nil, fmt.Errorf("Illegal datatype %v", schema.DataType)
 		}
 	}
-	return buf.Bytes()
+	return buff.Bytes(), nil
 }
 
-func (t *Tablet) GetTypes() []int32 {
-	return t.Types
-}
-
-func (t *Tablet) SortTablet() error {
-	var timeIndexs = make(map[int64]int, t.GetRowNumber())
-	for index := range t.Timestamps {
-		timeIndexs[t.Timestamps[index]] = index
+func NewTablet(deviceId string, schemas []*MeasurementSchema, size int) (*Tablet, error) {
+	tablet := &Tablet{
+		deviceId: deviceId,
+		Schemas:  schemas,
+		RowSize:  size,
 	}
-	var keys []int64
-	for timeValue := range timeIndexs {
-		keys = append(keys, timeValue)
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-	t.Timestamps = keys
-	for index := range t.Values {
-		sortValue := sortList(t.Values[index], t.Types[index], timeIndexs, t.Timestamps)
-		if sortValue != nil {
-			t.Values[index] = sortValue
-		} else {
-			return errors.New("unsupported data type " + strconv.Itoa(int(t.Types[index])))
+	tablet.timestamps = make([]int64, size)
+	tablet.values = make([]interface{}, len(schemas))
+	for i, schema := range tablet.Schemas {
+		switch schema.DataType {
+		case BOOLEAN:
+			tablet.values[i] = make([]bool, size)
+		case INT32:
+			tablet.values[i] = make([]int32, size)
+		case INT64:
+			tablet.values[i] = make([]int64, size)
+		case FLOAT:
+			tablet.values[i] = make([]float32, size)
+		case DOUBLE:
+			tablet.values[i] = make([]float64, size)
+		case TEXT:
+			tablet.values[i] = make([]string, size)
+		default:
+			return nil, fmt.Errorf("Illegal datatype %v", schema.DataType)
 		}
 	}
-	return nil
-}
-
-func sortList(valueList interface{}, dataType int32, timeIndexs map[int64]int, timeStamps []int64) interface{} {
-	switch dataType {
-	case 0:
-		boolValues := valueList.([]bool)
-		sortedValues := make([]bool, len(boolValues))
-		for index := range sortedValues {
-			sortedValues[index] = boolValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues
-	case 1:
-		intValues := valueList.([]int32)
-		sortedValues := make([]int32, len(intValues))
-		for index := range sortedValues {
-			sortedValues[index] = intValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues
-	case 2:
-		longValues := valueList.([]int64)
-		sortedValues := make([]int64, len(longValues))
-		for index := range sortedValues {
-			sortedValues[index] = longValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues
-	case 3:
-		floatValues := valueList.([]float32)
-		sortedValues := make([]float32, len(floatValues))
-		for index := range sortedValues {
-			sortedValues[index] = floatValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues
-	case 4:
-		doubleValues := valueList.([]float64)
-		sortedValues := make([]float64, len(doubleValues))
-		for index := range sortedValues {
-			sortedValues[index] = doubleValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues
-	case 5:
-		stringValues := valueList.([]string)
-		sortedValues := make([]string, len(stringValues))
-		for index := range sortedValues {
-			sortedValues[index] = stringValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues
-	}
-	return nil
+	return tablet, nil
 }

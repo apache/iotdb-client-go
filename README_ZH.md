@@ -32,12 +32,34 @@ Apache IoTDB Github: https://github.com/apache/iotdb
 # 如何编译
 
 # 如何使用 (快速上手)
+
+使用go mod
+
+```sh
+export GO111MODULE=on
+export GOPROXY=https://goproxy.io
+
+mkdir session_example && cd session_example
+
+curl -ss -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
+
+go mod init session_example
+go run session_example.go
 ```
-*创建项目 例：session
 
-*进入项目的文件夹 例：cd session
+不使用go mod，采用GOPATH
 
-*下载依赖 : go get github.com/apache/iotdb-client-go
+```sh
+# get thrift 0.13.0
+go get github.com/apache/thrift
+cd $GOPATH/src/github.com/apache/thrift
+git checkout 0.13.0
 
-*示例 :https://github.com/apache/iotdb-client-go/example/session_example.go
+mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
+cd $GOPATH/src/iotdb-client-go-example/session_example
+
+		fmt.Print("Time\t\t\t\t")
+		fmt.Print("Time\t\t\t\t")
+curl -ss -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
+go run session_example.go
 ```
