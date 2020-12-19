@@ -22,7 +22,7 @@ package client
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/apache/iotdb-client-go/rpc"
@@ -95,7 +95,11 @@ func VerifySuccess(status *rpc.TSStatus) error {
 		}
 	}
 	if status.Code != SuccessStatus {
-		return errors.New(*status.Message)
+		if status.Message != nil {
+			return fmt.Errorf("Error Code: %d, Message: %v", status.Code, *status.Message)
+		} else {
+			return fmt.Errorf("Error Code: %d", status.Code)
+		}
 	}
 	return nil
 }

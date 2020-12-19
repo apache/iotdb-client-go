@@ -38,25 +38,57 @@ func (f *Field) GetValue() interface{} {
 }
 
 func (f *Field) GetInt32() int32 {
+	if f.value == nil {
+		return 0
+	}
 	return f.value.(int32)
 }
 
 func (f *Field) GetInt64() int64 {
+	if f.value == nil {
+		return 0
+	}
 	return f.value.(int64)
 }
 
 func (f *Field) GetFloat32() float32 {
+	if f.value == nil {
+		return 0
+	}
 	return f.value.(float32)
 }
 
 func (f *Field) GetFloat64() float64 {
+	if f.value == nil {
+		return 0
+	}
 	return f.value.(float64)
-}
-
-func (f *Field) GetText() string {
-	return f.value.(string)
 }
 
 func (f *Field) GetName() string {
 	return f.name
+}
+
+func (f *Field) GetText() string {
+	if f.value == nil {
+		return ""
+	}
+	switch f.value.(type) {
+	case bool:
+		if f.value.(bool) {
+			return "true"
+		}
+		return "false"
+	case int32:
+		return int32ToString(f.value.(int32))
+	case int64:
+		return int64ToString(f.value.(int64))
+	case float32:
+		return float32ToString(f.value.(float32))
+	case float64:
+		return float64ToString(f.value.(float64))
+	case string:
+		return f.value.(string)
+	}
+	return ""
 }

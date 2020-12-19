@@ -229,13 +229,21 @@ func TestField_GetInt32(t *testing.T) {
 		want   int32
 	}{
 		{
-			name: "GetInt32",
+			name: "GetInt32-01",
 			fields: fields{
 				dataType: INT32,
 				name:     "",
 				value:    int32(65535),
 			},
 			want: 65535,
+		}, {
+			name: "GetInt32-02",
+			fields: fields{
+				dataType: INT32,
+				name:     "restart_count",
+				value:    nil,
+			},
+			want: 0,
 		},
 	}
 	for _, tt := range tests {
@@ -264,13 +272,21 @@ func TestField_GetInt64(t *testing.T) {
 		want   int64
 	}{
 		{
-			name: "GetInt64",
+			name: "GetInt64-01",
 			fields: fields{
 				dataType: INT64,
 				name:     "",
 				value:    int64(65535),
 			},
 			want: 65535,
+		}, {
+			name: "GetInt64-02",
+			fields: fields{
+				dataType: INT64,
+				name:     "tickCount",
+				value:    nil,
+			},
+			want: 0,
 		},
 	}
 	for _, tt := range tests {
@@ -369,13 +385,29 @@ func TestField_GetText(t *testing.T) {
 		want   string
 	}{
 		{
-			name: "GetText",
+			name: "GetText-01",
 			fields: fields{
 				dataType: TEXT,
 				name:     "",
 				value:    "32.768",
 			},
 			want: "32.768",
+		}, {
+			name: "GetText-02",
+			fields: fields{
+				dataType: TEXT,
+				name:     "",
+				value:    nil,
+			},
+			want: "",
+		}, {
+			name: "GetText-03",
+			fields: fields{
+				dataType: INT32,
+				name:     "",
+				value:    int32(1),
+			},
+			want: "1",
 		},
 	}
 	for _, tt := range tests {

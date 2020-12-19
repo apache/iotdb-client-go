@@ -55,7 +55,7 @@ func TestIoTDBRpcDataSet_getColumnType(t *testing.T) {
 
 	ds := createIoTDBRpcDataSet()
 	closedDataSet := createIoTDBRpcDataSet()
-	closedDataSet.closed = true
+	closedDataSet.Close()
 	tests := []struct {
 		name    string
 		dataSet *IoTDBRpcDataSet
@@ -84,6 +84,7 @@ func TestIoTDBRpcDataSet_getColumnType(t *testing.T) {
 			if got := s.getColumnType(tt.args.columnName); got != tt.want {
 				t.Errorf("IoTDBRpcDataSet.getColumnType() = %v, want %v", got, tt.want)
 			}
+			s.Close()
 		})
 	}
 }
@@ -93,7 +94,7 @@ func TestIoTDBRpcDataSet_getColumnIndex(t *testing.T) {
 		columnName string
 	}
 	closedDataSet := createIoTDBRpcDataSet()
-	closedDataSet.closed = true
+	closedDataSet.Close()
 	tests := []struct {
 		name    string
 		dataset *IoTDBRpcDataSet
