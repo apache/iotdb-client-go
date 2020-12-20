@@ -41,7 +41,7 @@ export GOPROXY=https://goproxy.io
 
 mkdir session_example && cd session_example
 
-curl -ss -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
+curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
 
 go mod init session_example
 go run session_example.go
@@ -60,6 +60,6 @@ cd $GOPATH/src/iotdb-client-go-example/session_example
 
 		fmt.Print("Time\t\t\t\t")
 		fmt.Print("Time\t\t\t\t")
-curl -ss -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
+curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
 go run session_example.go
 ```
