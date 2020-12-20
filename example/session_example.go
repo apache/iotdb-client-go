@@ -21,76 +21,259 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
+	"time"
+
 	"github.com/apache/iotdb-client-go/client"
+	"github.com/apache/iotdb-client-go/rpc"
 )
 
 var session *client.Session
 
 func main() {
-	config := client.NewConfig()
-	config.Host = "127.0.0.1"
-	config.Port = "6667"
+	config := &client.Config{
+		Host:     "127.0.0.1",
+		Port:     "6667",
+		UserName: "root",
+		Password: "root",
+	}
 	session = client.NewSession(config)
-	session.Open(false, 0)
-	setStorageGroup()
-	deleteStorageGroup()
-	deleteStorageGroups()
-	createTimeseries()
+	if err := session.Open(false, 0); err != nil {
+		log.Fatal(err)
+	}
+	defer session.Close()
+
+	setStorageGroup("root.ln1")
+	deleteStorageGroup("root.ln1")
+
+	setStorageGroup("root.ln1")
+	setStorageGroup("root.ln2")
+	deleteStorageGroups("root.ln1", "root.ln2")
+
+	createTimeseries("root.sg1.dev1.status")
+	deleteTimeseries("root.sg1.dev1.status")
+
 	createMultiTimeseries()
-	deleteTimeseries()
+	deleteTimeseries("root.sg1.dev1.temperature")
+
 	insertStringRecord()
+	deleteTimeseries("root.ln.wf02.wt02.hardware")
+
 	insertRecord()
+	deleteTimeseries("root.sg1.dev1.status")
+
 	insertRecords()
+	deleteTimeseries("root.sg1.dev1.status")
+
 	insertTablet()
+	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1"); err == nil {
+		printDevice1(ds)
+		ds.Close()
+	} else {
+		log.Fatal(err)
+	}
+	deleteTimeseries("root.ln.device1.restart_count", "root.ln1.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
+
 	insertTablets()
+	deleteTimeseries("root.ln.device1.restart_count", "root.ln.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
+
+	insertRecord()
 	deleteData()
+	deleteTimeseries("root.sg1.dev1.status")
+
 	setTimeZone()
-	fmt.Println(getTimeZone())
+	if tz, err := getTimeZone(); err != nil {
+		fmt.Printf("TimeZone: %s", tz)
+	}
+
 	executeStatement()
 	executeQueryStatement()
 	executeRawDataQuery()
 	executeBatchStatement()
-	session.Close()
+
+	deleteTimeseries("root.ln.wf02.wt02.s5")
 }
 
-func setStorageGroup() {
-	var storageGroupId = "root.ln1"
-	session.SetStorageGroup(storageGroupId)
+func printDevice1(sds *client.SessionDataSet) {
+	showTimestamp := !sds.IsIgnoreTimeStamp()
+	if showTimestamp {
+		fmt.Print("Time\t\t\t\t")
+	}
+
+	for _, columnName := range sds.GetColumnNames() {
+		fmt.Printf("%s\t", columnName)
+	}
+	fmt.Println()
+
+	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
+		if showTimestamp {
+			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
+		}
+
+		var restartCount int32
+		var price float64
+		var tickCount int64
+		var temperature float32
+		var description string
+		var status bool
+
+		// All of iotdb datatypes can be scan into string variables
+		// var restartCount string
+		// var price string
+		// var tickCount string
+		// var temperature string
+		// var description string
+		// var status string
+
+		if err := sds.Scan(&restartCount, &price, &tickCount, &temperature, &description, &status); err != nil {
+			log.Fatal(err)
+		}
+
+		whitespace := "\t\t"
+		fmt.Printf("%v%s", restartCount, whitespace)
+		fmt.Printf("%v%s", price, whitespace)
+		fmt.Printf("%v%s", tickCount, whitespace)
+		fmt.Printf("%v%s", temperature, whitespace)
+		fmt.Printf("%v%s", description, whitespace)
+		fmt.Printf("%v%s", status, whitespace)
+
+		fmt.Println()
+	}
 }
 
-func deleteStorageGroup() {
-	var storageGroupId = "root.ln1"
-	session.DeleteStorageGroup(storageGroupId)
+func printDataSet0(sessionDataSet *client.SessionDataSet) {
+	showTimestamp := !sessionDataSet.IsIgnoreTimeStamp()
+	if showTimestamp {
+		fmt.Print("Time\t\t\t\t")
+	}
+
+	for i := 0; i < sessionDataSet.GetColumnCount(); i++ {
+		fmt.Printf("%s\t", sessionDataSet.GetColumnName(i))
+	}
+	fmt.Println()
+
+	for next, err := sessionDataSet.Next(); err == nil && next; next, err = sessionDataSet.Next() {
+		if showTimestamp {
+			fmt.Printf("%s\t", sessionDataSet.GetText(client.TimestampColumnName))
+		}
+		for i := 0; i < sessionDataSet.GetColumnCount(); i++ {
+			columnName := sessionDataSet.GetColumnName(i)
+			switch sessionDataSet.GetColumnDataType(i) {
+			case client.BOOLEAN:
+				fmt.Print(sessionDataSet.GetBool(columnName))
+				break
+			case client.INT32:
+				fmt.Print(sessionDataSet.GetInt32(columnName))
+				break
+			case client.INT64:
+				fmt.Print(sessionDataSet.GetInt64(columnName))
+				break
+			case client.FLOAT:
+				fmt.Print(sessionDataSet.GetFloat(columnName))
+				break
+			case client.DOUBLE:
+				fmt.Print(sessionDataSet.GetDouble(columnName))
+				break
+			case client.TEXT:
+				fmt.Print(sessionDataSet.GetText(columnName))
+			default:
+			}
+			fmt.Print("\t\t")
+		}
+		fmt.Println()
+	}
 }
 
-func deleteStorageGroups() {
-	var storageGroupId = []string{"root.ln1"}
-	session.DeleteStorageGroups(storageGroupId)
+func printDataSet1(sds *client.SessionDataSet) {
+	showTimestamp := !sds.IsIgnoreTimeStamp()
+	if showTimestamp {
+		fmt.Print("Time\t\t\t\t")
+	}
+
+	for i := 0; i < sds.GetColumnCount(); i++ {
+		fmt.Printf("%s\t", sds.GetColumnName(i))
+	}
+	fmt.Println()
+
+	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
+		if showTimestamp {
+			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
+		}
+		for i := 0; i < sds.GetColumnCount(); i++ {
+			columnName := sds.GetColumnName(i)
+			v := sds.GetValue(columnName)
+			if v == nil {
+				v = "null"
+			}
+			fmt.Printf("%v\t\t", v)
+		}
+		fmt.Println()
+	}
 }
 
-func createTimeseries() {
+func printDataSet2(sds *client.SessionDataSet) {
+	showTimestamp := !sds.IsIgnoreTimeStamp()
+	if showTimestamp {
+		fmt.Print("Time\t\t\t\t")
+	}
+
+	for i := 0; i < sds.GetColumnCount(); i++ {
+		fmt.Printf("%s\t", sds.GetColumnName(i))
+	}
+	fmt.Println()
+
+	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
+		if showTimestamp {
+			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
+		}
+
+		if record, err := sds.GetRowRecord(); err == nil {
+			for _, field := range record.GetFields() {
+				v := field.GetValue()
+				if field.IsNull() {
+					v = "null"
+				}
+				fmt.Printf("%v\t\t", v)
+			}
+			fmt.Println()
+		}
+	}
+}
+
+func setStorageGroup(sg string) {
+	checkError(session.SetStorageGroup(sg))
+}
+
+func deleteStorageGroup(sg string) {
+	checkError(session.DeleteStorageGroup(sg))
+}
+
+func deleteStorageGroups(sgs ...string) {
+	checkError(session.DeleteStorageGroups(sgs...))
+}
+
+func createTimeseries(path string) {
 	var (
-		path       = "root.sg1.dev1.status"
 		dataType   = client.FLOAT
 		encoding   = client.PLAIN
 		compressor = client.SNAPPY
 	)
-	session.CreateTimeseries(path, dataType, encoding, compressor)
+	checkError(session.CreateTimeseries(path, dataType, encoding, compressor, nil, nil))
 }
 
 func createMultiTimeseries() {
 	var (
 		paths       = []string{"root.sg1.dev1.temperature"}
-		dataTypes   = []int32{client.TEXT}
-		encodings   = []int32{client.PLAIN}
-		compressors = []int32{client.SNAPPY}
+		dataTypes   = []client.TSDataType{client.TEXT}
+		encodings   = []client.TSEncoding{client.PLAIN}
+		compressors = []client.TSCompressionType{client.SNAPPY}
 	)
-	session.CreateMultiTimeseries(paths, dataTypes, encodings, compressors)
+	checkError(session.CreateMultiTimeseries(paths, dataTypes, encodings, compressors))
 }
 
-func deleteTimeseries() {
-	var paths = []string{"root.sg1.dev1.status"}
-	session.DeleteTimeseries(paths)
+func deleteTimeseries(paths ...string) {
+	checkError(session.DeleteTimeseries(paths))
 }
 
 func insertStringRecord() {
@@ -100,7 +283,7 @@ func insertStringRecord() {
 		values             = []string{"123"}
 		timestamp    int64 = 12
 	)
-	session.InsertStringRecord(deviceId, measurements, values, timestamp)
+	checkError(session.InsertStringRecord(deviceId, measurements, values, timestamp))
 }
 
 func insertRecord() {
@@ -108,21 +291,21 @@ func insertRecord() {
 		deviceId           = "root.sg1.dev1"
 		measurements       = []string{"status"}
 		values             = []interface{}{"123"}
-		dataTypes          = []int32{client.TEXT}
+		dataTypes          = []client.TSDataType{client.TEXT}
 		timestamp    int64 = 12
 	)
-	session.InsertRecord(deviceId, measurements, dataTypes, values, timestamp)
+	checkError(session.InsertRecord(deviceId, measurements, dataTypes, values, timestamp))
 }
 
 func insertRecords() {
 	var (
 		deviceId     = []string{"root.sg1.dev1"}
 		measurements = [][]string{{"status"}}
-		dataTypes    = [][]int32{{client.TEXT}}
+		dataTypes    = [][]client.TSDataType{{client.TEXT}}
 		values       = [][]interface{}{{"123"}}
 		timestamp    = []int64{12}
 	)
-	session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp)
+	checkError(session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp))
 }
 
 func deleteData() {
@@ -131,64 +314,83 @@ func deleteData() {
 		startTime int64 = 0
 		endTime   int64 = 12
 	)
-	session.DeleteData(paths, startTime, endTime)
+	checkError(session.DeleteData(paths, startTime, endTime))
 }
 
 func insertTablet() {
-	var (
-		deviceId     = "root.sg1.dev1"
-		measurements = []string{"status", "tem"}
-		dataTypes    = []int32{client.INT32, client.INT32}
-		values       = make([]interface{}, 2)
-		timestamp    = []int64{154, 123}
-	)
-	values[0] = []int32{777, 6666}
-	values[1] = []int32{888, 999}
-	var tablet = client.Tablet{
-		DeviceId:     deviceId,
-		Measurements: measurements,
-		Values:       values,
-		Timestamps:   timestamp,
-		Types:        dataTypes,
+	if tablet, err := createTablet(12); err == nil {
+		status, err := session.InsertTablet(tablet)
+		checkError(status, err)
+	} else {
+		log.Fatal(err)
 	}
-	session.InsertTablet(tablet)
+}
+
+func createTablet(rowCount int) (*client.Tablet, error) {
+	tablet, err := client.NewTablet("root.ln.device1", []*client.MeasurementSchema{
+		&client.MeasurementSchema{
+			Measurement: "restart_count",
+			DataType:    client.INT32,
+			Encoding:    client.RLE,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "price",
+			DataType:    client.DOUBLE,
+			Encoding:    client.GORILLA,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "tick_count",
+			DataType:    client.INT64,
+			Encoding:    client.RLE,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "temperature",
+			DataType:    client.FLOAT,
+			Encoding:    client.GORILLA,
+			Compressor:  client.SNAPPY,
+		}, &client.MeasurementSchema{
+			Measurement: "description",
+			DataType:    client.TEXT,
+			Encoding:    client.PLAIN,
+			Compressor:  client.SNAPPY,
+		},
+		&client.MeasurementSchema{
+			Measurement: "status",
+			DataType:    client.BOOLEAN,
+			Encoding:    client.RLE,
+			Compressor:  client.SNAPPY,
+		},
+	}, rowCount)
+
+	if err != nil {
+		return nil, err
+	}
+	ts := time.Now().UTC().UnixNano() / 1000000
+	for row := 0; row < int(rowCount); row++ {
+		ts++
+		tablet.SetTimestamp(ts, row)
+		tablet.SetValueAt(rand.Int31(), 0, row)
+		tablet.SetValueAt(rand.Float64(), 1, row)
+		tablet.SetValueAt(rand.Int63(), 2, row)
+		tablet.SetValueAt(rand.Float32(), 3, row)
+		tablet.SetValueAt(fmt.Sprintf("Test Device %d", row+1), 4, row)
+		tablet.SetValueAt(bool(ts%2 == 0), 5, row)
+	}
+	return tablet, nil
 }
 
 func insertTablets() {
-	var (
-		deviceId1     = "root.sg1.dev1"
-		measurements1 = []string{"status", "tem"}
-		dataTypes1    = []int32{client.INT32, client.INT32}
-		values1       = make([]interface{}, 2)
-		timestamp1    = []int64{154, 123}
-	)
-	values1[0] = []int32{777, 6666}
-	values1[1] = []int32{888, 999}
-	var tablet1 = client.Tablet{
-		DeviceId:     deviceId1,
-		Measurements: measurements1,
-		Values:       values1,
-		Timestamps:   timestamp1,
-		Types:        dataTypes1,
+	tablet1, err := createTablet(8)
+	if err != nil {
+		log.Fatal(err)
 	}
-	var (
-		deviceId2     = "root.sg1.dev2"
-		measurements2 = []string{"status", "tem"}
-		dataTypes2    = []int32{client.INT32, client.INT32}
-		values2       = make([]interface{}, 2)
-		timestamp2    = []int64{154, 123}
-	)
-	values2[0] = []int32{777, 6666}
-	values2[1] = []int32{888, 999}
-	var tablet2 = client.Tablet{
-		DeviceId:     deviceId2,
-		Measurements: measurements2,
-		Values:       values2,
-		Timestamps:   timestamp2,
-		Types:        dataTypes2,
+	tablet2, err := createTablet(4)
+	if err != nil {
+		log.Fatal(err)
 	}
-	tablets := []client.Tablet{tablet1, tablet2}
-	session.InsertTablets(tablets)
+
+	tablets := []*client.Tablet{tablet1, tablet2}
+	checkError(session.InsertTablets(tablets))
 }
 
 func setTimeZone() {
@@ -203,48 +405,22 @@ func getTimeZone() (string, error) {
 func executeStatement() {
 	var sql = "show storage group"
 	sessionDataSet, err := session.ExecuteStatement(sql)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for i := 0; i < len(sessionDataSet.GetColumnNames()); i++ {
-		println(sessionDataSet.GetColumnNames()[i])
-	}
-	for {
-		if sessionDataSet.HasNext() {
-			record, err := sessionDataSet.Next()
-			if err != nil {
-				fmt.Println(err)
-			}
-			for i := 0; i < len(record.Fields); i++ {
-				println(record.Fields[i].GetStringValue())
-			}
-		} else {
-			break
-		}
+	if err == nil {
+		printDataSet0(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
 	}
 }
 
 func executeQueryStatement() {
 	var sql = "select count(s3) from root.sg1.dev1"
 	sessionDataSet, err := session.ExecuteQueryStatement(sql)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for i := 0; i < len(sessionDataSet.GetColumnNames()); i++ {
-		println(sessionDataSet.GetColumnNames()[i])
-	}
-	for {
-		if sessionDataSet.HasNext() {
-			record, err := sessionDataSet.Next()
-			if err != nil {
-				fmt.Println(err)
-			}
-			for i := 0; i < len(record.Fields); i++ {
-				println(record.Fields[i].GetLongV())
-			}
-		} else {
-			break
-		}
+	if err == nil {
+		printDataSet1(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
 	}
 }
 
@@ -256,50 +432,28 @@ func executeRawDataQuery() {
 		endTime   int64    = 200
 	)
 	sessionDataSet, err := session.ExecuteRawDataQuery(paths, startTime, endTime)
-	if err != nil {
-		fmt.Println(err)
-	}
-	for i := 0; i < len(sessionDataSet.GetColumnNames()); i++ {
-		println(sessionDataSet.GetColumnNames()[i])
-	}
-	for {
-		if sessionDataSet.HasNext() {
-			record, err := sessionDataSet.Next()
-			if err != nil {
-				fmt.Println(err)
-			}
-			println(record.Timestamp)
-			for i := 0; i < len(record.Fields); i++ {
-				switch record.Fields[i].DataType {
-				case "BOOLEAN":
-					println(record.Fields[i].GetBoolV())
-					break
-				case "INT32":
-					println(record.Fields[i].GetIntV())
-					break
-				case "INT64":
-					println(record.Fields[i].GetLongV())
-					break
-				case "FLOAT":
-					println(record.Fields[i].GetFloatV())
-					break
-				case "DOUBLE":
-					println(record.Fields[i].GetDoubleV())
-					break
-				case "TEXT":
-					println(string(record.Fields[i].GetBinaryV()))
-					break
-				}
-
-			}
-		} else {
-			break
-		}
+	if err == nil {
+		printDataSet2(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
 	}
 }
 
 func executeBatchStatement() {
 	var sqls = []string{"insert into root.ln.wf02.wt02(time,s5) values(1,true)",
 		"insert into root.ln.wf02.wt02(time,s5) values(2,true)"}
-	session.ExecuteBatchStatement(sqls)
+	checkError(session.ExecuteBatchStatement(sqls))
+}
+
+func checkError(status *rpc.TSStatus, err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if status != nil {
+		if err = client.VerifySuccess(status); err != nil {
+			log.Println(err)
+		}
+	}
 }

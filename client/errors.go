@@ -19,15 +19,30 @@
 
 package client
 
-type RowRecord struct {
-	timestamp int64
-	fields    []*Field
+import (
+	"bytes"
+
+	"github.com/apache/iotdb-client-go/rpc"
+)
+
+type BatchError struct {
+	statuses []*rpc.TSStatus
 }
 
-func (r *RowRecord) GetFields() []*Field {
-	return r.fields
+func (e *BatchError) Error() string {
+	buff := bytes.Buffer{}
+	for _, status := range e.statuses {
+		buff.WriteString(*status.Message + ";")
+	}
+	return buff.String()
 }
 
-func (r *RowRecord) GetTimestamp() int64 {
-	return r.timestamp
+func (e *BatchError) GetStatuses() []*rpc.TSStatus {
+	return e.statuses
+}
+
+func NewBatchError(statuses []*rpc.TSStatus) *BatchError {
+	return &BatchError{
+		statuses: statuses,
+	}
 }
