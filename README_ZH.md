@@ -57,9 +57,6 @@ git checkout 0.13.0
 
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
 cd $GOPATH/src/iotdb-client-go-example/session_example
-
-		fmt.Print("Time\t\t\t\t")
-		fmt.Print("Time\t\t\t\t")
 curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
 go run session_example.go
 ```

@@ -80,7 +80,6 @@ func main() {
 
 	insertRecord()
 	deleteData()
-	deleteTimeseries("root.sg1.dev1.status")
 
 	setTimeZone()
 	if tz, err := getTimeZone(); err != nil {
@@ -88,10 +87,11 @@ func main() {
 	}
 
 	executeStatement()
-	executeQueryStatement()
+	executeQueryStatement("select count(s3) from root.sg1.dev1")
 	executeRawDataQuery()
 	executeBatchStatement()
 
+	deleteTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.ln.wf02.wt02.s5")
 }
 
@@ -413,8 +413,7 @@ func executeStatement() {
 	}
 }
 
-func executeQueryStatement() {
-	var sql = "select count(s3) from root.sg1.dev1"
+func executeQueryStatement(sql string) {
 	sessionDataSet, err := session.ExecuteQueryStatement(sql)
 	if err == nil {
 		printDataSet1(sessionDataSet)
