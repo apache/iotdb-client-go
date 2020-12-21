@@ -36,11 +36,11 @@ type MeasurementSchema struct {
 }
 
 type Tablet struct {
-	deviceId   string
-	Schemas    []*MeasurementSchema
-	timestamps []int64
-	values     []interface{}
-	RowSize    int
+	deviceId           string
+	measurementSchemas []*MeasurementSchema
+	timestamps         []int64
+	values             []interface{}
+	rowCount           int
 }
 
 func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
@@ -52,15 +52,15 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		return errors.New("Illegal argument value can't be nil")
 	}
 
-	if columnIndex < 0 || columnIndex > len(t.Schemas) {
+	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
 		return fmt.Errorf("Illegal argument columnIndex %d", columnIndex)
 	}
 
-	if rowIndex < 0 || rowIndex > int(t.RowSize) {
+	if rowIndex < 0 || rowIndex > int(t.rowCount) {
 		return fmt.Errorf("Illegal argument rowIndex %d", rowIndex)
 	}
 
-	switch t.Schemas[columnIndex].DataType {
+	switch t.measurementSchemas[columnIndex].DataType {
 	case BOOLEAN:
 		values := t.values[columnIndex].([]bool)
 		switch value.(type) {
@@ -124,24 +124,24 @@ func (t *Tablet) GetTimestampBytes() []byte {
 }
 
 func (t *Tablet) GetMeasurements() []string {
-	measurements := make([]string, len(t.Schemas))
-	for i, s := range t.Schemas {
+	measurements := make([]string, len(t.measurementSchemas))
+	for i, s := range t.measurementSchemas {
 		measurements[i] = s.Measurement
 	}
 	return measurements
 }
 
 func (t *Tablet) getDataTypes() []int32 {
-	types := make([]int32, len(t.Schemas))
-	for i, s := range t.Schemas {
+	types := make([]int32, len(t.measurementSchemas))
+	for i, s := range t.measurementSchemas {
 		types[i] = int32(s.DataType)
 	}
 	return types
 }
 
-func (t *Tablet) GetValuesBytes() ([]byte, error) {
+func (t *Tablet) getValuesBytes() ([]byte, error) {
 	buff := &bytes.Buffer{}
-	for i, schema := range t.Schemas {
+	for i, schema := range t.measurementSchemas {
 		switch schema.DataType {
 		case BOOLEAN:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]bool))
@@ -165,28 +165,28 @@ func (t *Tablet) GetValuesBytes() ([]byte, error) {
 	return buff.Bytes(), nil
 }
 
-func NewTablet(deviceId string, schemas []*MeasurementSchema, size int) (*Tablet, error) {
+func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, rowCount int) (*Tablet, error) {
 	tablet := &Tablet{
-		deviceId: deviceId,
-		Schemas:  schemas,
-		RowSize:  size,
+		deviceId:           deviceId,
+		measurementSchemas: measurementSchemas,
+		rowCount:           rowCount,
 	}
-	tablet.timestamps = make([]int64, size)
-	tablet.values = make([]interface{}, len(schemas))
-	for i, schema := range tablet.Schemas {
+	tablet.timestamps = make([]int64, rowCount)
+	tablet.values = make([]interface{}, len(measurementSchemas))
+	for i, schema := range tablet.measurementSchemas {
 		switch schema.DataType {
 		case BOOLEAN:
-			tablet.values[i] = make([]bool, size)
+			tablet.values[i] = make([]bool, rowCount)
 		case INT32:
-			tablet.values[i] = make([]int32, size)
+			tablet.values[i] = make([]int32, rowCount)
 		case INT64:
-			tablet.values[i] = make([]int64, size)
+			tablet.values[i] = make([]int64, rowCount)
 		case FLOAT:
-			tablet.values[i] = make([]float32, size)
+			tablet.values[i] = make([]float32, rowCount)
 		case DOUBLE:
-			tablet.values[i] = make([]float64, size)
+			tablet.values[i] = make([]float64, rowCount)
 		case TEXT:
-			tablet.values[i] = make([]string, size)
+			tablet.values[i] = make([]string, rowCount)
 		default:
 			return nil, fmt.Errorf("Illegal datatype %v", schema.DataType)
 		}

@@ -395,7 +395,7 @@ func (s *Session) genInsertTabletsReq(tablets []*Tablet) (*rpc.TSInsertTabletsRe
 		deviceIds[index] = tablet.deviceId
 		measurementsList[index] = tablet.GetMeasurements()
 
-		values, err := tablet.GetValuesBytes()
+		values, err := tablet.getValuesBytes()
 		if err != nil {
 			return nil, err
 		}
@@ -403,7 +403,7 @@ func (s *Session) genInsertTabletsReq(tablets []*Tablet) (*rpc.TSInsertTabletsRe
 		valuesList[index] = values
 		timestampsList[index] = tablet.GetTimestampBytes()
 		typesList[index] = tablet.getDataTypes()
-		sizeList[index] = int32(tablet.RowSize)
+		sizeList[index] = int32(tablet.rowCount)
 	}
 	request := rpc.TSInsertTabletsReq{
 		SessionId:        s.sessionId,
@@ -511,21 +511,21 @@ func (s *Session) InsertTablet(tablet *Tablet) (r *rpc.TSStatus, err error) {
 	return s.client.InsertTablet(context.Background(), request)
 }
 
-func (s *Session) genTSInsertTabletReq(tablet *Tablet) (request *rpc.TSInsertTabletReq, err error) {
-	values, err := tablet.GetValuesBytes()
-	if err != nil {
+func (s *Session) genTSInsertTabletReq(tablet *Tablet) (*rpc.TSInsertTabletReq, error) {
+	if values, err := tablet.getValuesBytes(); err == nil {
+		request := &rpc.TSInsertTabletReq{
+			SessionId:    s.sessionId,
+			DeviceId:     tablet.deviceId,
+			Measurements: tablet.GetMeasurements(),
+			Values:       values,
+			Timestamps:   tablet.GetTimestampBytes(),
+			Types:        tablet.getDataTypes(),
+			Size:         int32(tablet.rowCount),
+		}
+		return request, nil
+	} else {
 		return nil, err
 	}
-	request = &rpc.TSInsertTabletReq{
-		SessionId:    s.sessionId,
-		DeviceId:     tablet.deviceId,
-		Measurements: tablet.GetMeasurements(),
-		Values:       values,
-		Timestamps:   tablet.GetTimestampBytes(),
-		Types:        tablet.getDataTypes(),
-		Size:         int32(tablet.RowSize),
-	}
-	return request, nil
 }
 
 func (s *Session) GetSessionId() int64 {

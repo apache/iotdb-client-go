@@ -76,11 +76,11 @@ func createTablet(size int) (*Tablet, error) {
 
 func TestTablet_getDataTypes(t *testing.T) {
 	type fields struct {
-		deviceId   string
-		Schemas    []*MeasurementSchema
-		timestamps []int64
-		values     []interface{}
-		RowSize    int
+		deviceId           string
+		measurementSchemas []*MeasurementSchema
+		timestamps         []int64
+		values             []interface{}
+		rowCount           int
 	}
 	tests := []struct {
 		name   string
@@ -91,7 +91,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 			name: "",
 			fields: fields{
 				deviceId: "root.ln.device5",
-				Schemas: []*MeasurementSchema{
+				measurementSchemas: []*MeasurementSchema{
 					&MeasurementSchema{
 						Measurement: "restart_count",
 						DataType:    INT32,
@@ -139,7 +139,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 				},
 				timestamps: []int64{},
 				values:     []interface{}{},
-				RowSize:    0,
+				rowCount:   0,
 			},
 			want: []int32{int32(INT32), int32(DOUBLE), int32(INT64), int32(FLOAT), int32(TEXT), int32(BOOLEAN)},
 		},
@@ -147,11 +147,11 @@ func TestTablet_getDataTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tablet := &Tablet{
-				deviceId:   tt.fields.deviceId,
-				Schemas:    tt.fields.Schemas,
-				timestamps: tt.fields.timestamps,
-				values:     tt.fields.values,
-				RowSize:    tt.fields.RowSize,
+				deviceId:           tt.fields.deviceId,
+				measurementSchemas: tt.fields.measurementSchemas,
+				timestamps:         tt.fields.timestamps,
+				values:             tt.fields.values,
+				rowCount:           tt.fields.rowCount,
 			}
 			if got := tablet.getDataTypes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Tablet.getDataTypes() = %v, want %v", got, tt.want)
