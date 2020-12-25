@@ -111,6 +111,16 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		default:
 			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
+	case TEXT:
+		values := t.values[columnIndex].([]string)
+		switch value.(type) {
+		case string:
+			values[rowIndex] = value.(string)
+		case []byte:
+			values[rowIndex] = string(value.([]byte))
+		default:
+			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
 	}
 	return nil
 }

@@ -29,10 +29,17 @@ type SessionDataSet struct {
 	ioTDBRpcDataSet *IoTDBRpcDataSet
 }
 
+// Next prepares the next result row for reading,
+// returns true on success, or false if there is no next result row or an error
+// appened while preparing it.
+// consulted Err should be consulted to distinguish between the two cases.
+// This is not goroutine safe
 func (s *SessionDataSet) Next() (bool, error) {
 	return s.ioTDBRpcDataSet.next()
 }
 
+// GetText returns string value of column value on row.
+// This is not goroutine safe
 func (s *SessionDataSet) GetText(columnName string) string {
 	return s.ioTDBRpcDataSet.getText(columnName)
 }
