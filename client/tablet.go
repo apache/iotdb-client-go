@@ -125,6 +125,34 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 	return nil
 }
 
+func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
+	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
+		return nil, fmt.Errorf("Illegal argument columnIndex %d", columnIndex)
+	}
+
+	if rowIndex < 0 || rowIndex > int(t.rowCount) {
+		return nil, fmt.Errorf("Illegal argument rowIndex %d", rowIndex)
+	}
+
+	schema := t.measurementSchemas[columnIndex]
+	switch schema.DataType {
+	case BOOLEAN:
+		return t.values[columnIndex].([]bool)[rowIndex], nil
+	case INT32:
+		return t.values[columnIndex].([]int32)[rowIndex], nil
+	case INT64:
+		return t.values[columnIndex].([]int64)[rowIndex], nil
+	case FLOAT:
+		return t.values[columnIndex].([]float32)[rowIndex], nil
+	case DOUBLE:
+		return t.values[columnIndex].([]float64)[rowIndex], nil
+	case TEXT:
+		return t.values[columnIndex].([]string)[rowIndex], nil
+	default:
+		return nil, fmt.Errorf("Illegal datatype %v", schema.DataType)
+	}
+}
+
 func (t *Tablet) GetTimestampBytes() []byte {
 	buff := &bytes.Buffer{}
 	for _, v := range t.timestamps {

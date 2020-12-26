@@ -306,3 +306,86 @@ func TestTablet_SetValueAt(t *testing.T) {
 		})
 	}
 }
+
+func TestTablet_GetValueAt(t *testing.T) {
+	type args struct {
+		columnIndex int
+		rowIndex    int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    interface{}
+		wantErr bool
+	}{
+		{
+			name: "INT32",
+			args: args{
+				columnIndex: 0,
+				rowIndex:    0,
+			},
+			want:    int32(256),
+			wantErr: false,
+		}, {
+			name: "FLOAT64",
+			args: args{
+				columnIndex: 1,
+				rowIndex:    0,
+			},
+			want:    float64(32.768),
+			wantErr: false,
+		}, {
+			name: "INT64",
+			args: args{
+				columnIndex: 2,
+				rowIndex:    0,
+			},
+			want:    int64(65535),
+			wantErr: false,
+		}, {
+			name: "FLOAT32",
+			args: args{
+				columnIndex: 3,
+				rowIndex:    0,
+			},
+			want:    float32(36.5),
+			wantErr: false,
+		}, {
+			name: "STRING",
+			args: args{
+				columnIndex: 4,
+				rowIndex:    0,
+			},
+			want:    "Hello World!",
+			wantErr: false,
+		}, {
+			name: "BOOLEAN",
+			args: args{
+				columnIndex: 5,
+				rowIndex:    0,
+			},
+			want:    true,
+			wantErr: false,
+		},
+	}
+	if tablet, err := createTablet(1); err == nil {
+		tablet.SetValueAt(int32(256), 0, 0)
+		tablet.SetValueAt(float64(32.768), 1, 0)
+		tablet.SetValueAt(int64(65535), 2, 0)
+		tablet.SetValueAt(float32(36.5), 3, 0)
+		tablet.SetValueAt("Hello World!", 4, 0)
+		tablet.SetValueAt(true, 5, 0)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				got, err := tablet.GetValueAt(tt.args.columnIndex, tt.args.rowIndex)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("Tablet.GetValueAt() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("Tablet.GetValueAt() = %v, want %v", got, tt.want)
+				}
+			})
+		}
+	}
+}
