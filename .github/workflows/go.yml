@@ -6,8 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
-jobs:
+env:
+  TZ: Asia/Shanghai
 
+jobs:
   build:
     name: Build
     runs-on: ${{ matrix.os }}
@@ -15,13 +17,6 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
     steps:
-
-    - name: Setup timezone
-      uses: szenius/set-timezone@v1.0
-      with:
-        timezoneLinux: "Asia/Shanghai"
-        timezoneMacos: "Asia/Shanghai"
-        timezoneWindows: "China Standard Time"
 
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
@@ -34,13 +29,17 @@ jobs:
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
-        # if [ -f Gopkg.toml ]; then
-        #     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-        #     dep ensure
-        # fi
 
     - name: Build
       run: go build -v ./...
+
+    - name: Set timezone
+      if : matrix.os == 'windows-latest'
+      run: |
+        tzutil /g
+        tzutil /s "China Standard Time"
+        tzutil /g
+      shell: cmd
 
     - name: Test
       run: go test -v ./...
