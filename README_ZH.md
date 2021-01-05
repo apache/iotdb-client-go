@@ -31,6 +31,10 @@ Apache IoTDB Github: https://github.com/apache/iotdb
 
 # 如何编译
 
+# 环境准备
+
+    golang >= 1.13
+
 # 如何使用 (快速上手)
 
 使用go mod

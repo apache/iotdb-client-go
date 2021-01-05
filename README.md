@@ -33,6 +33,10 @@ Apache IoTDB Github: https://github.com/apache/iotdb
 
 # How to Compile the Client
 
+# Prerequisites
+
+    golang >= 1.13
+
 # How to Use the Client (Quick Start)
 
 With go mod
