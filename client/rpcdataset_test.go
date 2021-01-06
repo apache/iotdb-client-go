@@ -22,6 +22,7 @@ package client
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/apache/iotdb-client-go/rpc"
 )
@@ -367,7 +368,7 @@ func TestIoTDBRpcDataSet_getText(t *testing.T) {
 			args: args{
 				columnName: TimestampColumnName,
 			},
-			want: "2020-12-10T18:30:45+08:00",
+			want: time.Unix(0, 1607596245228000000).Format(time.RFC3339),
 		},
 	}
 	for _, tt := range tests {
