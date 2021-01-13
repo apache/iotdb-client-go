@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 )
 
 type MeasurementSchema struct {
@@ -125,6 +126,10 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 	return nil
 }
 
+func (t *Tablet) GetRowCount() int {
+	return t.rowCount
+}
+
 func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
 		return nil, fmt.Errorf("Illegal argument columnIndex %d", columnIndex)
@@ -201,6 +206,32 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 		}
 	}
 	return buff.Bytes(), nil
+}
+
+func (t *Tablet) Sort() error {
+	sortFunc := func(i int, j int) bool {
+		return t.timestamps[i] < t.timestamps[j]
+	}
+	for i, schema := range t.measurementSchemas {
+		switch schema.DataType {
+		case BOOLEAN:
+			sort.Slice(t.values[i].([]bool), sortFunc)
+		case INT32:
+			sort.Slice(t.values[i].([]int32), sortFunc)
+		case INT64:
+			sort.Slice(t.values[i].([]int64), sortFunc)
+		case FLOAT:
+			sort.Slice(t.values[i].([]float32), sortFunc)
+		case DOUBLE:
+			sort.Slice(t.values[i].([]float64), sortFunc)
+		case TEXT:
+			sort.Slice(t.values[i].([]string), sortFunc)
+		default:
+			return fmt.Errorf("Illegal datatype %v", schema.DataType)
+		}
+	}
+	sort.Slice(t.timestamps, sortFunc)
+	return nil
 }
 
 func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, rowCount int) (*Tablet, error) {

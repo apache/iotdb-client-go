@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"sort"
 	"time"
 
 	"github.com/apache/iotdb-client-go/rpc"
@@ -245,15 +246,11 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
 }
 
 func (s *Session) GetTimeZone() (string, error) {
-	if s.config.TimeZone != "" {
-		return s.config.TimeZone, nil
-	} else {
-		resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
-		if err != nil {
-			return "", err
-		}
-		return resp.TimeZone, nil
+	resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
+	if err != nil {
+		return "", err
 	}
+	return resp.TimeZone, nil
 }
 
 func (s *Session) SetTimeZone(timeZone string) (r *rpc.TSStatus, err error) {
@@ -277,8 +274,11 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 func (s *Session) ExecuteQueryStatement(sql string) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.config.FetchSize}
-	resp, err := s.client.ExecuteQueryStatement(context.Background(), &request)
-	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize), err
+	if resp, err := s.client.ExecuteQueryStatement(context.Background(), &request); err == nil {
+		return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize), err
+	} else {
+		return nil, err
+	}
 }
 
 func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
@@ -308,6 +308,43 @@ func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes
 	return r, err
 }
 
+// InsertRecordsOfOneDevice Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
+// executeBatch, we pack some insert request in batch and send them to server. If you want improve
+// your performance, please see insertTablet method
+// Each row is independent, which could have different deviceId, time, number of measurements
+func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, measurementsSlice [][]string, dataTypesSlice [][]TSDataType, valuesSlice [][]interface{}, sorted bool) (r *rpc.TSStatus, err error) {
+	length := len(timestamps)
+	if len(measurementsSlice) != length || len(dataTypesSlice) != length || len(valuesSlice) != length {
+		return nil, errors.New("timestamps, measurementsSlice and valuesSlice's size should be equal")
+	}
+
+	if !sorted {
+		sortFunc := func(i, j int) bool {
+			return timestamps[i] < timestamps[j]
+		}
+		sort.Slice(measurementsSlice, sortFunc)
+		sort.Slice(dataTypesSlice, sortFunc)
+		sort.Slice(valuesSlice, sortFunc)
+		sort.Slice(timestamps, sortFunc)
+	}
+
+	valuesList := make([][]byte, length)
+	for i := 0; i < length; i++ {
+		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i]); err != nil {
+			return nil, err
+		}
+	}
+
+	request := &rpc.TSInsertRecordsOfOneDeviceReq{
+		SessionId:        s.sessionId,
+		DeviceId:         deviceId,
+		Timestamps:       timestamps,
+		MeasurementsList: measurementsSlice,
+		ValuesList:       valuesList,
+	}
+	return s.client.InsertRecordsOfOneDevice(context.Background(), request)
+}
+
 /*
  *insert multiple rows of data, records are independent to each other, in other words, there's no relationship
  *between those records
@@ -331,13 +368,18 @@ func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dat
 }
 
 /*
- *insert multiple tablets, tablets are independent to each other
- *
+ * InsertTablets insert multiple tablets, tablets are independent to each other
  *params
- *tablets: []utils.Tablet, list of tablets
- *
+ *tablets: []*client.Tablet, list of tablets
  */
-func (s *Session) InsertTablets(tablets []*Tablet) (r *rpc.TSStatus, err error) {
+func (s *Session) InsertTablets(tablets []*Tablet, sorted bool) (r *rpc.TSStatus, err error) {
+	if !sorted {
+		for _, t := range tablets {
+			if err := t.Sort(); err != nil {
+				return nil, err
+			}
+		}
+	}
 	request, err := s.genInsertTabletsReq(tablets)
 	if err != nil {
 		return nil, err
@@ -503,7 +545,12 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 	return buff.Bytes(), nil
 }
 
-func (s *Session) InsertTablet(tablet *Tablet) (r *rpc.TSStatus, err error) {
+func (s *Session) InsertTablet(tablet *Tablet, sorted bool) (r *rpc.TSStatus, err error) {
+	if !sorted {
+		if err := tablet.Sort(); err != nil {
+			return nil, err
+		}
+	}
 	request, err := s.genTSInsertTabletReq(tablet)
 	if err != nil {
 		return nil, err
