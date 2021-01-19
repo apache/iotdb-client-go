@@ -6,10 +6,8 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  TZ: Asia/Shanghai
-
 jobs:
+
   build:
     name: Build
     runs-on: ${{ matrix.os }}
@@ -32,14 +30,6 @@ jobs:
 
     - name: Build
       run: go build -v ./...
-
-    - name: Set timezone
-      if : matrix.os == 'windows-latest'
-      run: |
-        tzutil /g
-        tzutil /s "China Standard Time"
-        tzutil /g
-      shell: cmd
 
     - name: Test
       run: go test -v ./...

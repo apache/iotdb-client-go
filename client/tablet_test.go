@@ -389,3 +389,55 @@ func TestTablet_GetValueAt(t *testing.T) {
 		}
 	}
 }
+
+func TestTablet_Sort(t *testing.T) {
+
+	tests := []struct {
+		name    string
+		want    [][]interface{}
+		wantErr bool
+	}{
+		{
+			name: "item-1",
+			want: [][]interface{}{
+				{int32(2), float64(2.0), int64(2), float32(2.0), "2", true},
+				{int32(1), float64(1.0), int64(1), float32(1.0), "1", true},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tablet, _ := createTablet(2)
+
+			tablet.SetValueAt(int32(1), 0, 0)
+			tablet.SetValueAt(float64(1.0), 1, 0)
+			tablet.SetValueAt(int64(1), 2, 0)
+			tablet.SetValueAt(float32(1.0), 3, 0)
+			tablet.SetValueAt("1", 4, 0)
+			tablet.SetValueAt(true, 5, 0)
+			tablet.SetTimestamp(1, 0)
+
+			tablet.SetValueAt(int32(2), 0, 1)
+			tablet.SetValueAt(float64(2.0), 1, 1)
+			tablet.SetValueAt(int64(2), 2, 1)
+			tablet.SetValueAt(float32(2.0), 3, 1)
+			tablet.SetValueAt("2", 4, 1)
+			tablet.SetValueAt(true, 5, 1)
+			tablet.SetTimestamp(0, 1)
+
+			if err := tablet.Sort(); (err != nil) != tt.wantErr {
+				t.Errorf("Tablet.Sort() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			for rowIndex, row := range tt.want {
+				for columnIndex, wantValue := range row {
+					value, _ := tablet.GetValueAt(columnIndex, rowIndex)
+					if !reflect.DeepEqual(value, wantValue) {
+						t.Errorf("Tablet.Sort() colum: %d, row: %d, value: %v != %v", columnIndex, rowIndex, value, wantValue)
+					}
+				}
+			}
+		})
+	}
+}

@@ -20,6 +20,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -73,7 +74,6 @@ func main() {
 	} else {
 		log.Fatal(err)
 	}
-	deleteTimeseries("root.ln.device1.restart_count", "root.ln1.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
 
 	insertTablets()
 	deleteTimeseries("root.ln.device1.restart_count", "root.ln.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
@@ -93,6 +93,10 @@ func main() {
 
 	deleteTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.ln.wf02.wt02.s5")
+
+	//0.12.x and newer
+	// insertRecordsOfOneDevice()
+	// deleteTimeseries("root.sg1.dev0.*")
 }
 
 func printDevice1(sds *client.SessionDataSet) {
@@ -308,6 +312,27 @@ func insertRecords() {
 	checkError(session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp))
 }
 
+func insertRecordsOfOneDevice() {
+	ts := time.Now().UTC().UnixNano() / 1000000
+	var (
+		deviceId          = "root.sg1.dev0"
+		measurementsSlice = [][]string{
+			{"restart_count", "tick_count", "price"},
+			{"temperature", "description", "status"},
+		}
+		dataTypes = [][]client.TSDataType{
+			{client.INT32, client.INT64, client.DOUBLE},
+			{client.FLOAT, client.TEXT, client.BOOLEAN},
+		}
+		values = [][]interface{}{
+			{int32(1), int64(2018), float64(1988.1)},
+			{float32(12.1), "Test Device 1", false},
+		}
+		timestamps = []int64{ts, ts - 1}
+	)
+	checkError(session.InsertRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, true))
+}
+
 func deleteData() {
 	var (
 		paths           = []string{"root.sg1.dev1.status"}
@@ -319,7 +344,7 @@ func deleteData() {
 
 func insertTablet() {
 	if tablet, err := createTablet(12); err == nil {
-		status, err := session.InsertTablet(tablet)
+		status, err := session.InsertTablet(tablet, false)
 		checkError(status, err)
 	} else {
 		log.Fatal(err)
@@ -390,7 +415,7 @@ func insertTablets() {
 	}
 
 	tablets := []*client.Tablet{tablet1, tablet2}
-	checkError(session.InsertTablets(tablets))
+	checkError(session.InsertTablets(tablets, false))
 }
 
 func setTimeZone() {
@@ -455,4 +480,17 @@ func checkError(status *rpc.TSStatus, err error) {
 			log.Println(err)
 		}
 	}
+}
+
+func validate(tablet *client.Tablet) (err error) {
+	temperatureColumn := 2
+	for i := 0; i < tablet.GetRowCount(); i++ {
+		if v, err := tablet.GetValueAt(temperatureColumn, i); err == nil {
+			temperature := v.(float32)
+			if temperature > 42.5 || temperature < 35.1 {
+				return errors.New("The temperature must be in [35..42]")
+			}
+		}
+	}
+	return err
 }
