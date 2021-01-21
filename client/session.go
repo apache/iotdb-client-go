@@ -486,7 +486,7 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error) {
 	buff := &bytes.Buffer{}
 	for i, t := range dataTypes {
-		binary.Write(buff, binary.BigEndian, int16(t))
+		binary.Write(buff, binary.BigEndian, byte(t))
 		v := values[i]
 		if v == nil {
 			return nil, fmt.Errorf("values[%d] can't be nil", i)
