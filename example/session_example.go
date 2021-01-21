@@ -68,7 +68,7 @@ func main() {
 	deleteTimeseries("root.sg1.dev1.status")
 
 	insertTablet()
-	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1"); err == nil {
+	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1", 1000); err == nil {
 		printDevice1(ds)
 		ds.Close()
 	} else {
@@ -439,7 +439,7 @@ func executeStatement() {
 }
 
 func executeQueryStatement(sql string) {
-	sessionDataSet, err := session.ExecuteQueryStatement(sql)
+	sessionDataSet, err := session.ExecuteQueryStatement(sql, 1000)
 	if err == nil {
 		printDataSet1(sessionDataSet)
 		sessionDataSet.Close()
