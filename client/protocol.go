@@ -21,9 +21,9 @@ package client
 
 type TSDataType int8
 
-type TSEncoding int8
+type TSEncoding uint8
 
-type TSCompressionType int8
+type TSCompressionType uint8
 
 const (
 	UNKNOW  TSDataType = -1
