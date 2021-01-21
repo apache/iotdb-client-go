@@ -46,7 +46,7 @@ func createIoTDBRpcDataSet() *IoTDBRpcDataSet {
 		ValueList:  [][]byte{{0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49}, {64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205}, {0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1}, {1, 1, 1, 1, 1}, {65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154}, {0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213}},
 		BitmapList: [][]byte{{248}, {248}, {248}, {248}, {248}, {248}},
 	}
-	return NewIoTDBRpcDataSet("select * from root.ln.device1", columns, dataTypes, columnNameIndex, queyrId, client, sessionId, &queryDataSet, false, DefaultFetchSize)
+	return NewIoTDBRpcDataSet("select * from root.ln.device1", columns, dataTypes, columnNameIndex, queyrId, client, sessionId, &queryDataSet, false, DefaultFetchSize, 0)
 }
 
 func TestIoTDBRpcDataSet_getColumnType(t *testing.T) {
