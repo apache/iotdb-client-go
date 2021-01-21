@@ -111,12 +111,12 @@ func (s *SessionDataSet) Close() error {
 func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string,
 	columnNameIndex map[string]int32,
 	queryId int64, client *rpc.TSIServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
-	ignoreTimeStamp bool, fetchSize int32) *SessionDataSet {
+	ignoreTimeStamp bool, fetchSize int32, timeoutMs int64) *SessionDataSet {
 
 	return &SessionDataSet{
 		ioTDBRpcDataSet: NewIoTDBRpcDataSet(sql, columnNameList, columnTypeList,
 			columnNameIndex,
 			queryId, client, sessionId, queryDataSet,
-			ignoreTimeStamp, fetchSize),
+			ignoreTimeStamp, fetchSize, timeoutMs),
 	}
 }

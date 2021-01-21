@@ -67,6 +67,7 @@ type IoTDBRpcDataSet struct {
 	emptyResultSet             bool
 	ignoreTimeStamp            bool
 	closed                     bool
+	timeoutMs                    int64
 }
 
 func (s *IoTDBRpcDataSet) getColumnIndex(columnName string) int32 {
@@ -444,7 +445,7 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 		return false, errClosed
 	}
 	s.rowsIndex = 0
-	req := rpc.TSFetchResultsReq{s.sessionId, s.sql, s.fetchSize, s.queryId, true}
+	req := rpc.TSFetchResultsReq{s.sessionId, s.sql, s.fetchSize, s.queryId, true, s.timeoutMs}
 	resp, err := s.client.FetchResults(context.Background(), &req)
 
 	if err != nil {
@@ -506,7 +507,7 @@ func (s *IoTDBRpcDataSet) Close() (err error) {
 func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []string,
 	columnNameIndex map[string]int32,
 	queryId int64, client *rpc.TSIServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
-	ignoreTimeStamp bool, fetchSize int32) *IoTDBRpcDataSet {
+	ignoreTimeStamp bool, fetchSize int32, timeoutMs int64) *IoTDBRpcDataSet {
 
 	ds := &IoTDBRpcDataSet{
 		sql:             sql,
@@ -521,6 +522,7 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []strin
 		values:          make([][]byte, len(columnTypes)),
 		columnCount:     len(columnNameList),
 		closed:          false,
+		timeoutMs:       timeoutMs,
 	}
 
 	ds.columnTypeList = make([]TSDataType, 0)
