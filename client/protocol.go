@@ -19,11 +19,11 @@
 
 package client
 
-type TSDataType int16
+type TSDataType int8
 
-type TSEncoding int16
+type TSEncoding uint8
 
-type TSCompressionType int16
+type TSCompressionType uint8
 
 const (
 	UNKNOW  TSDataType = -1
@@ -96,7 +96,7 @@ const (
 	LogicalOperatorError     int32 = 407
 	LogicalOptimizeError     int32 = 408
 	UnsupportedFillTypeError int32 = 409
-	PathErroRint32                 = 410
+	PathErroRint32           int32 = 410
 	QueryProcessError        int32 = 411
 	WriteProcessError        int32 = 412
 	WriteProcessReject       int32 = 413
