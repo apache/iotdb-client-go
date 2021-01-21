@@ -439,7 +439,7 @@ func executeStatement() {
 }
 
 func executeQueryStatement(sql string) {
-	sessionDataSet, err := session.ExecuteQueryStatement(sql,1000)
+	sessionDataSet, err := session.ExecuteQueryStatement(sql, 1000)
 	if err == nil {
 		printDataSet1(sessionDataSet)
 		sessionDataSet.Close()

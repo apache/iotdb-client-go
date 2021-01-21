@@ -67,7 +67,7 @@ type IoTDBRpcDataSet struct {
 	emptyResultSet             bool
 	ignoreTimeStamp            bool
 	closed                     bool
-	timeoutMs                    int64
+	timeoutMs                  int64
 }
 
 func (s *IoTDBRpcDataSet) getColumnIndex(columnName string) int32 {
