@@ -1,0 +1,24 @@
+version: "3.1"
+
+services:
+  iotdb:
+    build:
+      context: ../..
+      dockerfile: test/e2e/Dockerfile-iotdb-server
+    ports:
+      - 6667:6667
+    healthcheck:
+      test: ["CMD", "ls", "/usr/local/iotdb/data"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 30s
+    volumes:
+    - /tmp/repository:/root/.m2/repository/
+  iotdb_client_go:
+    build:
+      context: ../..
+      dockerfile: test/e2e/Dockerfile.iotdb-client-go
+    depends_on:
+      iotdb:
+        condition: service_healthy

@@ -1,0 +1,4 @@
+FROM golang:1.13-alpine
+COPY . /go/src/github.com/apache/iotdb-client-go/
+WORKDIR /go/src/github.com/apache/iotdb-client-go
+CMD [ "go", "run", "example/session_example.go", "--host", "iotdb" ]

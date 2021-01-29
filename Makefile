@@ -23,3 +23,9 @@ generate:
 	@rm -rf rpc/t_s_i_service-remote rpc.thrift
 
 .PHONY: generate all
+
+e2e_test:
+	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
+
+e2e_test_clean:
+	docker-compose -f test/e2e/docker-compose.yml down

@@ -1,0 +1,6 @@
+FROM maven:3.6-openjdk-8
+WORKDIR /usr/local
+EXPOSE 6667
+WORKDIR /usr/local/
+# VOLUME /root/.m2/repository
+CMD [ "/bin/bash", "-c", "git clone https://github.com/apache/iotdb.git && cd iotdb && mvn compile exec:java -pl server -Dexec.mainClass=org.apache.iotdb.db.service.IoTDB" ]
