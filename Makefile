@@ -22,7 +22,10 @@ generate:
 	@thrift -out . -gen go rpc.thrift
 	@rm -rf rpc/t_s_i_service-remote rpc.thrift
 
-.PHONY: generate all
+.PHONY: generate all test e2e_test e2e_test_clean
+
+test:
+	go test -v ./client/...
 
 e2e_test:
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
