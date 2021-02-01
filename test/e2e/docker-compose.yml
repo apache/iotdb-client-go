@@ -23,7 +23,7 @@ services:
   iotdb:
     build:
       context: ../..
-      dockerfile: test/e2e/Dockerfile-iotdb-server
+      dockerfile: test/e2e/Dockerfile.iotdb-server
     ports:
       - 6667:6667
     healthcheck:
