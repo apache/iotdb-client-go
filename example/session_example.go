@@ -32,20 +32,24 @@ import (
 )
 
 var (
-	host string
-	port string
+	host     string
+	port     string
+	user     string
+	password string
 )
 var session *client.Session
 
 func main() {
 	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
 	flag.StringVar(&port, "port", "6667", "--port=6667")
+	flag.StringVar(&user, "user", "root", "--user=root")
+	flag.StringVar(&password, "password", "root", "--password=root")
 	flag.Parse()
 	config := &client.Config{
 		Host:     host,
 		Port:     port,
-		UserName: "root",
-		Password: "root",
+		UserName: user,
+		Password: password,
 	}
 	session = client.NewSession(config)
 	if err := session.Open(false, 0); err != nil {

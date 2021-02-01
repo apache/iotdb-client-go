@@ -22,10 +22,17 @@ generate:
 	@thrift -out . -gen go rpc.thrift
 	@rm -rf rpc/t_s_i_service-remote rpc.thrift
 
-.PHONY: generate all
+.PHONY: generate all test e2e_test e2e_test_clean
+
+test:
+	go test -v ./client/...
 
 e2e_test:
+	sh -c "cd /tmp/ && rm -rf iotdb && git clone https://github.com/apache/iotdb.git && cd iotdb && mvn -Dmaven.test.skip=true package -am -pl server"
+	mkdir -p docker-context/iotdb
+	unzip -o -q /tmp/iotdb/server/target/iotdb-server-*.zip -d docker-context/iotdb
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean:
+	rm -rf iotdb docker-context
 	docker-compose -f test/e2e/docker-compose.yml down
