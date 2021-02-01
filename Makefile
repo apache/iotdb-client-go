@@ -34,5 +34,5 @@ e2e_test:
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean:
-	rm -rf iotdb docker-context
+	rm -rf /tmp/iotdb docker-context
 	docker-compose -f test/e2e/docker-compose.yml down
