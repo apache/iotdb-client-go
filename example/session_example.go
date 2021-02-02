@@ -21,6 +21,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -30,14 +31,25 @@ import (
 	"github.com/apache/iotdb-client-go/rpc"
 )
 
+var (
+	host     string
+	port     string
+	user     string
+	password string
+)
 var session *client.Session
 
 func main() {
+	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
+	flag.StringVar(&port, "port", "6667", "--port=6667")
+	flag.StringVar(&user, "user", "root", "--user=root")
+	flag.StringVar(&password, "password", "root", "--password=root")
+	flag.Parse()
 	config := &client.Config{
-		Host:     "127.0.0.1",
-		Port:     "6667",
-		UserName: "root",
-		Password: "root",
+		Host:     host,
+		Port:     port,
+		UserName: user,
+		Password: password,
 	}
 	session = client.NewSession(config)
 	if err := session.Open(false, 0); err != nil {
@@ -95,8 +107,8 @@ func main() {
 	deleteTimeseries("root.ln.wf02.wt02.s5")
 
 	//0.12.x and newer
-	// insertRecordsOfOneDevice()
-	// deleteTimeseries("root.sg1.dev0.*")
+	insertRecordsOfOneDevice()
+	deleteTimeseries("root.sg1.dev0.*")
 }
 
 func printDevice1(sds *client.SessionDataSet) {
