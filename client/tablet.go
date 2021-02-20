@@ -209,30 +209,76 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 }
 
 func (t *Tablet) Sort() error {
-	sortFunc := func(i int, j int) bool {
-		return t.timestamps[i] < t.timestamps[j]
+	var timeIndexs = make(map[int64]int, t.rowCount)
+	for index := range t.timestamps {
+		timeIndexs[t.timestamps[index]] = index
 	}
-	for i, schema := range t.measurementSchemas {
-		switch schema.DataType {
-		case BOOLEAN:
-			sort.Slice(t.values[i].([]bool), sortFunc)
-		case INT32:
-			sort.Slice(t.values[i].([]int32), sortFunc)
-		case INT64:
-			sort.Slice(t.values[i].([]int64), sortFunc)
-		case FLOAT:
-			sort.Slice(t.values[i].([]float32), sortFunc)
-		case DOUBLE:
-			sort.Slice(t.values[i].([]float64), sortFunc)
-		case TEXT:
-			sort.Slice(t.values[i].([]string), sortFunc)
-		default:
-			return fmt.Errorf("Illegal datatype %v", schema.DataType)
+	var keys []int64
+	for timeValue := range timeIndexs {
+		keys = append(keys, timeValue)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	t.timestamps = keys
+	for index := range t.values {
+		sortValue, _ := sortList(t.values[index], t.getDataTypes()[index], timeIndexs, t.timestamps)
+		if sortValue != nil {
+			t.values[index] = sortValue
+		} else {
+			return fmt.Errorf("Illegal datatype %v", t.getDataTypes()[index])
 		}
 	}
-	sort.Slice(t.timestamps, sortFunc)
 	return nil
 }
+
+func sortList(valueList interface{}, dataType int32, timeIndexs map[int64]int, timeStamps []int64) (interface{}, error){
+	switch dataType {
+	case 0:
+		boolValues := valueList.([]bool)
+		sortedValues := make([]bool, len(boolValues))
+		for index := range sortedValues {
+			sortedValues[index] = boolValues[timeIndexs[timeStamps[index]]]
+		}
+		return sortedValues, nil
+	case 1:
+		intValues := valueList.([]int32)
+		sortedValues := make([]int32, len(intValues))
+		for index := range sortedValues {
+			sortedValues[index] = intValues[timeIndexs[timeStamps[index]]]
+		}
+		return sortedValues, nil
+	case 2:
+		longValues := valueList.([]int64)
+		sortedValues := make([]int64, len(longValues))
+		for index := range sortedValues {
+			sortedValues[index] = longValues[timeIndexs[timeStamps[index]]]
+		}
+		return sortedValues, nil
+	case 3:
+		floatValues := valueList.([]float32)
+		sortedValues := make([]float32, len(floatValues))
+		for index := range sortedValues {
+			sortedValues[index] = floatValues[timeIndexs[timeStamps[index]]]
+		}
+		return sortedValues, nil
+	case 4:
+		doubleValues := valueList.([]float64)
+		sortedValues := make([]float64, len(doubleValues))
+		for index := range sortedValues {
+			sortedValues[index] = doubleValues[timeIndexs[timeStamps[index]]]
+		}
+		return sortedValues, nil
+	case 5:
+		stringValues := valueList.([]string)
+		sortedValues := make([]string, len(stringValues))
+		for index := range sortedValues {
+			sortedValues[index] = stringValues[timeIndexs[timeStamps[index]]]
+		}
+		return sortedValues,nil
+	default:
+		return nil, fmt.Errorf("Illegal datatype %v", dataType)
+	}
+}
+
 
 func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, rowCount int) (*Tablet, error) {
 	tablet := &Tablet{
