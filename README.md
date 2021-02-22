@@ -22,7 +22,7 @@
 
 # Apache IoTDB Client for Go
 
-# Overview
+## Overview
 
 This is the GoLang client of Apache IoTDB.
 
@@ -31,13 +31,13 @@ This is the GoLang client of Apache IoTDB.
 Apache IoTDB website: https://iotdb.apache.org
 Apache IoTDB Github: https://github.com/apache/iotdb
 
-# How to Compile the Client
+## How to Compile the Client
 
-# Prerequisites
+## Prerequisites
 
     golang >= 1.13
 
-# How to Use the Client (Quick Start)
+## How to Use the Client (Quick Start)
 
 With go mod
 
@@ -67,3 +67,17 @@ cd $GOPATH/src/iotdb-client-go-example/session_example
 curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
 go run session_example.go
 ```
+
+## Developer environment requirements for iotdb-client-go
+
+### OS
+
+* Linux, Macos or other unix-like OS
+* Windows+bash(WSL, cygwin, Git Bash)
+
+### Command Line Tools
+
+* golang >= 1.13
+* make >= 3.0
+* curl >= 7.1.1
+* thrift 0.13.x

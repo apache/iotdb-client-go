@@ -18,9 +18,29 @@
 all: generate
 
 generate:
-	@curl -o rpc.thrift https://raw.githubusercontent.com/apache/iotdb/master/thrift/src/main/thrift/rpc.thrift
-	@thrift -out . -gen go rpc.thrift
-	@rm -rf rpc/t_s_i_service-remote rpc.thrift
+	@if ! command -v curl &> /dev/null; then \
+		echo "curl could not be found, please install curl."; \
+		exit 1; \
+	fi
+
+	@if ! command -v thrift &> /dev/null; then \
+		echo "thrift could not be found, please install thrift 0.13.x"; \
+		exit 1; \
+	fi
+
+	@if [[ "`thrift --version|grep -o '0.13.\d'`" == "" ]]; then \
+		echo "please install thrift 0.13.x"; \
+		exit 1; \
+	fi
+
+	@if [ -f "../thrift/src/main/thrift/rpc.thrift" ]; then \
+		thrift -out . -gen go ../thrift/src/main/thrift/rpc.thrift; \
+	else \
+		curl -o rpc.thrift https://raw.githubusercontent.com/apache/iotdb/master/thrift/src/main/thrift/rpc.thrift; \
+		thrift -out . -gen go rpc.thrift; \
+		rm -f rpc.thrift; \
+	fi
+	@rm -rf rpc/t_s_i_service-remote
 
 .PHONY: generate all test e2e_test e2e_test_clean
 
