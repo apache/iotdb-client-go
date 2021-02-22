@@ -44,6 +44,47 @@ type Tablet struct {
 	rowCount           int
 }
 
+type SortedSlices struct {
+	dataType TSDataType
+	length  int
+	mainSlice interface{}
+	otherSlice  []int64
+}
+
+type SortByOther SortedSlices
+
+func (sbo SortByOther) Len() int {
+	return sbo.length
+}
+
+func (sbo SortByOther) Swap(i, j int) {
+	switch sbo.dataType {
+	case BOOLEAN:
+		sortedSlice := sbo.mainSlice.([]bool)
+		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+	case INT32:
+		sortedSlice := sbo.mainSlice.([]int32)
+		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+	case INT64:
+		sortedSlice := sbo.mainSlice.([]int64)
+		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+	case FLOAT:
+		sortedSlice := sbo.mainSlice.([]float32)
+		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+	case DOUBLE:
+		sortedSlice := sbo.mainSlice.([]float64)
+		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+	case TEXT:
+		sortedSlice := sbo.mainSlice.([]string)
+		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+	}
+	sbo.otherSlice[i], sbo.otherSlice[j] = sbo.otherSlice[j], sbo.otherSlice[i]
+}
+
+func (sbo SortByOther) Less(i, j int) bool {
+	return sbo.otherSlice[i] < sbo.otherSlice[j]
+}
+
 func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
 	t.timestamps[rowIndex] = timestamp
 }
@@ -209,76 +250,19 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 }
 
 func (t *Tablet) Sort() error {
-	var timeIndexs = make(map[int64]int, t.rowCount)
-	for index := range t.timestamps {
-		timeIndexs[t.timestamps[index]] = index
-	}
-	var keys []int64
-	for timeValue := range timeIndexs {
-		keys = append(keys, timeValue)
-	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
-	t.timestamps = keys
-	for index := range t.values {
-		sortValue, _ := sortList(t.values[index], t.getDataTypes()[index], timeIndexs, t.timestamps)
-		if sortValue != nil {
-			t.values[index] = sortValue
-		} else {
-			return fmt.Errorf("Illegal datatype %v", t.getDataTypes()[index])
+	var otherSlice = make([]int64, len(t.timestamps))
+	for i, schema := range t.measurementSchemas {
+		copy(otherSlice, t.timestamps)
+		sortedSlice := SortedSlices{
+			dataType: schema.DataType,
+			length: t.rowCount,
+			mainSlice:  t.values[i],
+			otherSlice: otherSlice,
 		}
+		sort.Sort(SortByOther(sortedSlice))
 	}
 	return nil
 }
-
-func sortList(valueList interface{}, dataType int32, timeIndexs map[int64]int, timeStamps []int64) (interface{}, error){
-	switch dataType {
-	case 0:
-		boolValues := valueList.([]bool)
-		sortedValues := make([]bool, len(boolValues))
-		for index := range sortedValues {
-			sortedValues[index] = boolValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues, nil
-	case 1:
-		intValues := valueList.([]int32)
-		sortedValues := make([]int32, len(intValues))
-		for index := range sortedValues {
-			sortedValues[index] = intValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues, nil
-	case 2:
-		longValues := valueList.([]int64)
-		sortedValues := make([]int64, len(longValues))
-		for index := range sortedValues {
-			sortedValues[index] = longValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues, nil
-	case 3:
-		floatValues := valueList.([]float32)
-		sortedValues := make([]float32, len(floatValues))
-		for index := range sortedValues {
-			sortedValues[index] = floatValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues, nil
-	case 4:
-		doubleValues := valueList.([]float64)
-		sortedValues := make([]float64, len(doubleValues))
-		for index := range sortedValues {
-			sortedValues[index] = doubleValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues, nil
-	case 5:
-		stringValues := valueList.([]string)
-		sortedValues := make([]string, len(stringValues))
-		for index := range sortedValues {
-			sortedValues[index] = stringValues[timeIndexs[timeStamps[index]]]
-		}
-		return sortedValues,nil
-	default:
-		return nil, fmt.Errorf("Illegal datatype %v", dataType)
-	}
-}
-
 
 func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, rowCount int) (*Tablet, error) {
 	tablet := &Tablet{
