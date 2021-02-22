@@ -22,20 +22,20 @@
 
 # Apache IoTDB Go语言客户端
 
-# 概览
+## 概览
 
 本仓库是Apache IoTDB的Go语言客户端.
 
 Apache IoTDB website: https://iotdb.apache.org
 Apache IoTDB Github: https://github.com/apache/iotdb
 
-# 如何编译
+## 如何编译
 
-# 环境准备
+## 环境准备
 
     golang >= 1.13
 
-# 如何使用 (快速上手)
+## 如何使用 (快速上手)
 
 使用go mod
 
@@ -64,3 +64,17 @@ cd $GOPATH/src/iotdb-client-go-example/session_example
 curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main/example/session_example.go
 go run session_example.go
 ```
+
+## iotdb-client-go的开发者环境要求
+
+### 操作系统
+
+* Linux、Macos或其他类unix系统
+* Windows+bash(WSL、cygwin、Git Bash)
+
+### 命令行工具
+
+* golang >= 1.13
+* make   >= 3.0
+* curl   >= 7.1.1
+* thrift 0.13.x
