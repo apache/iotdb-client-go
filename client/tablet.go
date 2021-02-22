@@ -44,45 +44,38 @@ type Tablet struct {
 	rowCount           int
 }
 
-type SortedSlices struct {
-	dataType TSDataType
-	length  int
-	mainSlice interface{}
-	otherSlice  []int64
+func (t *Tablet) Len() int {
+	return t.GetRowCount()
 }
 
-type SortByOther SortedSlices
-
-func (sbo SortByOther) Len() int {
-	return sbo.length
-}
-
-func (sbo SortByOther) Swap(i, j int) {
-	switch sbo.dataType {
-	case BOOLEAN:
-		sortedSlice := sbo.mainSlice.([]bool)
-		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-	case INT32:
-		sortedSlice := sbo.mainSlice.([]int32)
-		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-	case INT64:
-		sortedSlice := sbo.mainSlice.([]int64)
-		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-	case FLOAT:
-		sortedSlice := sbo.mainSlice.([]float32)
-		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-	case DOUBLE:
-		sortedSlice := sbo.mainSlice.([]float64)
-		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-	case TEXT:
-		sortedSlice := sbo.mainSlice.([]string)
-		sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+func (t *Tablet) Swap(i, j int) {
+	for index, schema := range t.measurementSchemas {
+		switch schema.DataType {
+		case BOOLEAN:
+			sortedSlice := t.values[index].([]bool)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case INT32:
+			sortedSlice := t.values[index].([]int32)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case INT64:
+			sortedSlice := t.values[index].([]int64)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case FLOAT:
+			sortedSlice := t.values[index].([]float32)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case DOUBLE:
+			sortedSlice := t.values[index].([]float64)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case TEXT:
+			sortedSlice := t.values[index].([]string)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		}
 	}
-	sbo.otherSlice[i], sbo.otherSlice[j] = sbo.otherSlice[j], sbo.otherSlice[i]
+	t.timestamps[i], t.timestamps[j] = t.timestamps[j], t.timestamps[i]
 }
 
-func (sbo SortByOther) Less(i, j int) bool {
-	return sbo.otherSlice[i] < sbo.otherSlice[j]
+func (t *Tablet) Less(i, j int) bool {
+	return t.timestamps[i] < t.timestamps[j]
 }
 
 func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
@@ -250,17 +243,7 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 }
 
 func (t *Tablet) Sort() error {
-	var otherSlice = make([]int64, len(t.timestamps))
-	for i, schema := range t.measurementSchemas {
-		copy(otherSlice, t.timestamps)
-		sortedSlice := SortedSlices{
-			dataType: schema.DataType,
-			length: t.rowCount,
-			mainSlice:  t.values[i],
-			otherSlice: otherSlice,
-		}
-		sort.Sort(SortByOther(sortedSlice))
-	}
+	sort.Sort(t)
 	return nil
 }
 
