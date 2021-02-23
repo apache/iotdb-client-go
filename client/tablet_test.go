@@ -400,23 +400,24 @@ func TestTablet_Sort(t *testing.T) {
 		{
 			name: "item-1",
 			want: [][]interface{}{
-				{int32(2), float64(2.0), int64(2), float32(2.0), "2", true},
+				{int32(3), float64(3.0), int64(3), float32(3.0), "3", true},
+				{int32(4), float64(4.0), int64(4), float32(4.0), "4", true},
 				{int32(1), float64(1.0), int64(1), float32(1.0), "1", true},
+				{int32(2), float64(2.0), int64(2), float32(2.0), "2", true},
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tablet, _ := createTablet(2)
-
+			tablet, _ := createTablet(4)
 			tablet.SetValueAt(int32(1), 0, 0)
 			tablet.SetValueAt(float64(1.0), 1, 0)
 			tablet.SetValueAt(int64(1), 2, 0)
 			tablet.SetValueAt(float32(1.0), 3, 0)
 			tablet.SetValueAt("1", 4, 0)
 			tablet.SetValueAt(true, 5, 0)
-			tablet.SetTimestamp(1, 0)
+			tablet.SetTimestamp(3, 0)
 
 			tablet.SetValueAt(int32(2), 0, 1)
 			tablet.SetValueAt(float64(2.0), 1, 1)
@@ -424,12 +425,27 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt(float32(2.0), 3, 1)
 			tablet.SetValueAt("2", 4, 1)
 			tablet.SetValueAt(true, 5, 1)
-			tablet.SetTimestamp(0, 1)
+			tablet.SetTimestamp(4, 1)
+
+			tablet.SetValueAt(int32(3), 0, 2)
+			tablet.SetValueAt(float64(3.0), 1, 2)
+			tablet.SetValueAt(int64(3), 2, 2)
+			tablet.SetValueAt(float32(3.0), 3, 2)
+			tablet.SetValueAt("3", 4, 2)
+			tablet.SetValueAt(true, 5, 2)
+			tablet.SetTimestamp(1, 2)
+
+			tablet.SetValueAt(int32(4), 0, 3)
+			tablet.SetValueAt(float64(4.0), 1, 3)
+			tablet.SetValueAt(int64(4), 2, 3)
+			tablet.SetValueAt(float32(4.0), 3, 3)
+			tablet.SetValueAt("4", 4, 3)
+			tablet.SetValueAt(true, 5, 3)
+			tablet.SetTimestamp(2, 3)
 
 			if err := tablet.Sort(); (err != nil) != tt.wantErr {
 				t.Errorf("Tablet.Sort() error = %v, wantErr %v", err, tt.wantErr)
 			}
-
 			for rowIndex, row := range tt.want {
 				for columnIndex, wantValue := range row {
 					value, _ := tablet.GetValueAt(columnIndex, rowIndex)
