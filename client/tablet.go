@@ -44,6 +44,40 @@ type Tablet struct {
 	rowCount           int
 }
 
+func (t *Tablet) Len() int {
+	return t.GetRowCount()
+}
+
+func (t *Tablet) Swap(i, j int) {
+	for index, schema := range t.measurementSchemas {
+		switch schema.DataType {
+		case BOOLEAN:
+			sortedSlice := t.values[index].([]bool)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case INT32:
+			sortedSlice := t.values[index].([]int32)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case INT64:
+			sortedSlice := t.values[index].([]int64)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case FLOAT:
+			sortedSlice := t.values[index].([]float32)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case DOUBLE:
+			sortedSlice := t.values[index].([]float64)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		case TEXT:
+			sortedSlice := t.values[index].([]string)
+			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
+		}
+	}
+	t.timestamps[i], t.timestamps[j] = t.timestamps[j], t.timestamps[i]
+}
+
+func (t *Tablet) Less(i, j int) bool {
+	return t.timestamps[i] < t.timestamps[j]
+}
+
 func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
 	t.timestamps[rowIndex] = timestamp
 }
@@ -209,28 +243,7 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 }
 
 func (t *Tablet) Sort() error {
-	sortFunc := func(i int, j int) bool {
-		return t.timestamps[i] < t.timestamps[j]
-	}
-	for i, schema := range t.measurementSchemas {
-		switch schema.DataType {
-		case BOOLEAN:
-			sort.Slice(t.values[i].([]bool), sortFunc)
-		case INT32:
-			sort.Slice(t.values[i].([]int32), sortFunc)
-		case INT64:
-			sort.Slice(t.values[i].([]int64), sortFunc)
-		case FLOAT:
-			sort.Slice(t.values[i].([]float32), sortFunc)
-		case DOUBLE:
-			sort.Slice(t.values[i].([]float64), sortFunc)
-		case TEXT:
-			sort.Slice(t.values[i].([]string), sortFunc)
-		default:
-			return fmt.Errorf("Illegal datatype %v", schema.DataType)
-		}
-	}
-	sort.Slice(t.timestamps, sortFunc)
+	sort.Sort(t)
 	return nil
 }
 
