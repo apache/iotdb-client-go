@@ -342,7 +342,7 @@ func insertRecordsOfOneDevice() {
 		}
 		timestamps = []int64{ts, ts - 1}
 	)
-	checkError(session.InsertRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, true))
+	checkError(session.InsertRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
 }
 
 func deleteData() {
