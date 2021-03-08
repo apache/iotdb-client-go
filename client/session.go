@@ -308,6 +308,28 @@ func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes
 	return r, err
 }
 
+type deviceData struct {
+	timestamps        []int64
+	measurementsSlice [][]string
+	dataTypesSlice    [][]TSDataType
+	valuesSlice       [][]interface{}
+}
+
+func (d *deviceData) Len() int {
+	return len(d.timestamps)
+}
+
+func (d *deviceData) Less(i, j int) bool {
+	return d.timestamps[i] < d.timestamps[j]
+}
+
+func (d *deviceData) Swap(i, j int) {
+	d.timestamps[i], d.timestamps[j] = d.timestamps[j], d.timestamps[i]
+	d.measurementsSlice[i], d.measurementsSlice[j] = d.measurementsSlice[j], d.measurementsSlice[i]
+	d.dataTypesSlice[i], d.dataTypesSlice[j] = d.dataTypesSlice[j], d.dataTypesSlice[i]
+	d.valuesSlice[i], d.valuesSlice[j] = d.valuesSlice[j], d.valuesSlice[i]
+}
+
 // InsertRecordsOfOneDevice Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
 // executeBatch, we pack some insert request in batch and send them to server. If you want improve
 // your performance, please see insertTablet method
@@ -319,13 +341,12 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
 	}
 
 	if !sorted {
-		sortFunc := func(i, j int) bool {
-			return timestamps[i] < timestamps[j]
-		}
-		sort.Slice(measurementsSlice, sortFunc)
-		sort.Slice(dataTypesSlice, sortFunc)
-		sort.Slice(valuesSlice, sortFunc)
-		sort.Slice(timestamps, sortFunc)
+		sort.Sort(&deviceData{
+			timestamps:        timestamps,
+			measurementsSlice: measurementsSlice,
+			dataTypesSlice:    dataTypesSlice,
+			valuesSlice:       valuesSlice,
+		})
 	}
 
 	valuesList := make([][]byte, length)
