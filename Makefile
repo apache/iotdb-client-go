@@ -56,3 +56,13 @@ e2e_test:
 e2e_test_clean:
 	rm -rf /tmp/iotdb docker-context
 	docker-compose -f test/e2e/docker-compose.yml down
+
+#only used for project structure that the iotdb main project is in the parent folder of this project.
+e2e_test_for_parent_git_repo:
+    mkdir -p docker-context/iotdb
+    unzip -o -q server/target/iotdb-server-*.zip -d docker-context/iotdb
+    docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
+
+e2e_test_clean_for_parent_git_repo:
+	rm -rf docker-context
+	docker-compose -f test/e2e/docker-compose.yml down
