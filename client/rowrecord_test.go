@@ -38,13 +38,13 @@ func TestRowRecord_GetFields(t *testing.T) {
 			name: "GetFields",
 			fields: fields{
 				timestamp: 0,
-				fields: []*Field{&Field{
+				fields: []*Field{{
 					dataType: FLOAT,
 					name:     "temperature",
 					value:    0.1,
 				}},
 			},
-			want: []*Field{&Field{
+			want: []*Field{{
 				dataType: FLOAT,
 				name:     "temperature",
 				value:    0.1,

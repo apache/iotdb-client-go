@@ -539,27 +539,27 @@ func TestIoTDBRpcDataSet_getRowRecord(t *testing.T) {
 			want: &RowRecord{
 				timestamp: 0,
 				fields: []*Field{
-					&Field{
+					{
 						name:     "root.ln.device1.restart_count",
 						dataType: INT32,
 						value:    int32(1),
-					}, &Field{
+					}, {
 						name:     "root.ln.device1.price",
 						dataType: DOUBLE,
 						value:    float64(1988.2),
-					}, &Field{
+					}, {
 						name:     "root.ln.device1.tick_count",
 						dataType: INT64,
 						value:    int64(3333333),
-					}, &Field{
+					}, {
 						name:     "root.ln.device1.temperature",
 						dataType: FLOAT,
 						value:    float32(12.1),
-					}, &Field{
+					}, {
 						name:     "root.ln.device1.description",
 						dataType: TEXT,
 						value:    string("Test Device 1"),
-					}, &Field{
+					}, {
 						name:     "root.ln.device1.status",
 						dataType: BOOLEAN,
 						value:    bool(true),

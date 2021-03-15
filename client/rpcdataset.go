@@ -115,23 +115,18 @@ func (s *IoTDBRpcDataSet) constructOneRow() error {
 			case BOOLEAN:
 				s.values[i] = valueBuffer[:1]
 				s.queryDataSet.ValueList[i] = valueBuffer[1:]
-				break
 			case INT32:
 				s.values[i] = valueBuffer[:4]
 				s.queryDataSet.ValueList[i] = valueBuffer[4:]
-				break
 			case INT64:
 				s.values[i] = valueBuffer[:8]
 				s.queryDataSet.ValueList[i] = valueBuffer[8:]
-				break
 			case FLOAT:
 				s.values[i] = valueBuffer[:4]
 				s.queryDataSet.ValueList[i] = valueBuffer[4:]
-				break
 			case DOUBLE:
 				s.values[i] = valueBuffer[:8]
 				s.queryDataSet.ValueList[i] = valueBuffer[8:]
-				break
 			case TEXT:
 				length := bytesToInt32(valueBuffer[:4])
 				s.values[i] = valueBuffer[4 : 4+length]
@@ -445,7 +440,14 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 		return false, errClosed
 	}
 	s.rowsIndex = 0
-	req := rpc.TSFetchResultsReq{s.sessionId, s.sql, s.fetchSize, s.queryId, true, s.timeoutMs}
+	req := rpc.TSFetchResultsReq{
+		SessionId: s.sessionId,
+		Statement: s.sql,
+		FetchSize: s.fetchSize,
+		QueryId:   s.queryId,
+		IsAlign:   true,
+		Timeout:   s.timeoutMs,
+	}
 	resp, err := s.client.FetchResults(context.Background(), &req)
 
 	if err != nil {
@@ -478,7 +480,8 @@ func (s *IoTDBRpcDataSet) Close() (err error) {
 			QueryId:   &s.queryId,
 		}
 
-		status, err := s.client.CloseOperation(context.Background(), closeRequest)
+		var status *rpc.TSStatus
+		status, err = s.client.CloseOperation(context.Background(), closeRequest)
 		if err == nil {
 			err = VerifySuccess(status)
 		}

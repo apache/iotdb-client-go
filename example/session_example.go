@@ -20,7 +20,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -178,19 +177,14 @@ func printDataSet0(sessionDataSet *client.SessionDataSet) {
 			switch sessionDataSet.GetColumnDataType(i) {
 			case client.BOOLEAN:
 				fmt.Print(sessionDataSet.GetBool(columnName))
-				break
 			case client.INT32:
 				fmt.Print(sessionDataSet.GetInt32(columnName))
-				break
 			case client.INT64:
 				fmt.Print(sessionDataSet.GetInt64(columnName))
-				break
 			case client.FLOAT:
 				fmt.Print(sessionDataSet.GetFloat(columnName))
-				break
 			case client.DOUBLE:
 				fmt.Print(sessionDataSet.GetDouble(columnName))
-				break
 			case client.TEXT:
 				fmt.Print(sessionDataSet.GetText(columnName))
 			default:
@@ -365,33 +359,33 @@ func insertTablet() {
 
 func createTablet(rowCount int) (*client.Tablet, error) {
 	tablet, err := client.NewTablet("root.ln.device1", []*client.MeasurementSchema{
-		&client.MeasurementSchema{
+		{
 			Measurement: "restart_count",
 			DataType:    client.INT32,
 			Encoding:    client.RLE,
 			Compressor:  client.SNAPPY,
-		}, &client.MeasurementSchema{
+		}, {
 			Measurement: "price",
 			DataType:    client.DOUBLE,
 			Encoding:    client.GORILLA,
 			Compressor:  client.SNAPPY,
-		}, &client.MeasurementSchema{
+		}, {
 			Measurement: "tick_count",
 			DataType:    client.INT64,
 			Encoding:    client.RLE,
 			Compressor:  client.SNAPPY,
-		}, &client.MeasurementSchema{
+		}, {
 			Measurement: "temperature",
 			DataType:    client.FLOAT,
 			Encoding:    client.GORILLA,
 			Compressor:  client.SNAPPY,
-		}, &client.MeasurementSchema{
+		}, {
 			Measurement: "description",
 			DataType:    client.TEXT,
 			Encoding:    client.PLAIN,
 			Compressor:  client.SNAPPY,
 		},
-		&client.MeasurementSchema{
+		{
 			Measurement: "status",
 			DataType:    client.BOOLEAN,
 			Encoding:    client.RLE,
@@ -492,17 +486,4 @@ func checkError(status *rpc.TSStatus, err error) {
 			log.Println(err)
 		}
 	}
-}
-
-func validate(tablet *client.Tablet) (err error) {
-	temperatureColumn := 2
-	for i := 0; i < tablet.GetRowCount(); i++ {
-		if v, err := tablet.GetValueAt(temperatureColumn, i); err == nil {
-			temperature := v.(float32)
-			if temperature > 42.5 || temperature < 35.1 {
-				return errors.New("The temperature must be in [35..42]")
-			}
-		}
-	}
-	return err
 }

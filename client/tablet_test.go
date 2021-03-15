@@ -26,7 +26,7 @@ import (
 
 func createTablet(size int) (*Tablet, error) {
 	tablet, err := NewTablet("root.ln.TestDevice", []*MeasurementSchema{
-		&MeasurementSchema{
+		{
 			Measurement: "restart_count",
 			DataType:    INT32,
 			Encoding:    RLE,
@@ -34,17 +34,17 @@ func createTablet(size int) (*Tablet, error) {
 			Properties: map[string]string{
 				"owner": "Mark Liu",
 			},
-		}, &MeasurementSchema{
+		}, {
 			Measurement: "price",
 			DataType:    DOUBLE,
 			Encoding:    GORILLA,
 			Compressor:  SNAPPY,
-		}, &MeasurementSchema{
+		}, {
 			Measurement: "tick_count",
 			DataType:    INT64,
 			Encoding:    RLE,
 			Compressor:  SNAPPY,
-		}, &MeasurementSchema{
+		}, {
 			Measurement: "temperature",
 			DataType:    FLOAT,
 			Encoding:    GORILLA,
@@ -52,7 +52,7 @@ func createTablet(size int) (*Tablet, error) {
 			Properties: map[string]string{
 				"owner": "Mark Liu",
 			},
-		}, &MeasurementSchema{
+		}, {
 			Measurement: "description",
 			DataType:    TEXT,
 			Encoding:    PLAIN,
@@ -61,7 +61,7 @@ func createTablet(size int) (*Tablet, error) {
 				"owner": "Mark Liu",
 			},
 		},
-		&MeasurementSchema{
+		{
 			Measurement: "status",
 			DataType:    BOOLEAN,
 			Encoding:    RLE,
@@ -92,7 +92,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 			fields: fields{
 				deviceId: "root.ln.device5",
 				measurementSchemas: []*MeasurementSchema{
-					&MeasurementSchema{
+					{
 						Measurement: "restart_count",
 						DataType:    INT32,
 						Encoding:    RLE,
@@ -100,17 +100,17 @@ func TestTablet_getDataTypes(t *testing.T) {
 						Properties: map[string]string{
 							"owner": "Mark Liu",
 						},
-					}, &MeasurementSchema{
+					}, {
 						Measurement: "price",
 						DataType:    DOUBLE,
 						Encoding:    GORILLA,
 						Compressor:  SNAPPY,
-					}, &MeasurementSchema{
+					}, {
 						Measurement: "tick_count",
 						DataType:    INT64,
 						Encoding:    RLE,
 						Compressor:  SNAPPY,
-					}, &MeasurementSchema{
+					}, {
 						Measurement: "temperature",
 						DataType:    FLOAT,
 						Encoding:    GORILLA,
@@ -118,7 +118,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 						Properties: map[string]string{
 							"owner": "Mark Liu",
 						},
-					}, &MeasurementSchema{
+					}, {
 						Measurement: "description",
 						DataType:    TEXT,
 						Encoding:    PLAIN,
@@ -127,7 +127,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 							"owner": "Mark Liu",
 						},
 					},
-					&MeasurementSchema{
+					{
 						Measurement: "status",
 						DataType:    BOOLEAN,
 						Encoding:    RLE,
