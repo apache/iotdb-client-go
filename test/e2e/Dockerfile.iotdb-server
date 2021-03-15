@@ -21,7 +21,7 @@ FROM openjdk:11-jre-slim
 
 RUN apt update \
   && apt install -y procps && apt clean
-ADD docker-context /usr/local
+ADD target /usr/local
 WORKDIR /usr/local/iotdb
 EXPOSE 6667
 CMD [ "/usr/local/iotdb/sbin/start-server.sh" ]
