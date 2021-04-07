@@ -84,77 +84,77 @@ func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
 
 func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error {
 	if value == nil {
-		return errors.New("Illegal argument value can't be nil")
+		return errors.New("illegal argument value can't be nil")
 	}
 
 	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
-		return fmt.Errorf("Illegal argument columnIndex %d", columnIndex)
+		return fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
 	if rowIndex < 0 || rowIndex > int(t.rowCount) {
-		return fmt.Errorf("Illegal argument rowIndex %d", rowIndex)
+		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
 	switch t.measurementSchemas[columnIndex].DataType {
 	case BOOLEAN:
 		values := t.values[columnIndex].([]bool)
-		switch value.(type) {
+		switch v := value.(type) {
 		case bool:
-			values[rowIndex] = value.(bool)
+			values[rowIndex] = v
 		case *bool:
-			values[rowIndex] = *value.(*bool)
+			values[rowIndex] = *v
 		default:
-			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	case INT32:
 		values := t.values[columnIndex].([]int32)
-		switch value.(type) {
+		switch v := value.(type) {
 		case int32:
-			values[rowIndex] = value.(int32)
+			values[rowIndex] = v
 		case *int32:
-			values[rowIndex] = *value.(*int32)
+			values[rowIndex] = *v
 		default:
-			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	case INT64:
 		values := t.values[columnIndex].([]int64)
-		switch value.(type) {
+		switch v := value.(type) {
 		case int64:
-			values[rowIndex] = value.(int64)
+			values[rowIndex] = v
 		case *int64:
-			values[rowIndex] = *value.(*int64)
+			values[rowIndex] = *v
 		default:
-			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	case FLOAT:
 		values := t.values[columnIndex].([]float32)
-		switch value.(type) {
+		switch v := value.(type) {
 		case float32:
-			values[rowIndex] = value.(float32)
+			values[rowIndex] = v
 		case *float32:
-			values[rowIndex] = *value.(*float32)
+			values[rowIndex] = *v
 		default:
-			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	case DOUBLE:
 		values := t.values[columnIndex].([]float64)
-		switch value.(type) {
+		switch v := value.(type) {
 		case float64:
-			values[rowIndex] = value.(float64)
+			values[rowIndex] = v
 		case *float64:
-			values[rowIndex] = *value.(*float64)
+			values[rowIndex] = *v
 		default:
-			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	case TEXT:
 		values := t.values[columnIndex].([]string)
-		switch value.(type) {
+		switch v := value.(type) {
 		case string:
-			values[rowIndex] = value.(string)
+			values[rowIndex] = v
 		case []byte:
-			values[rowIndex] = string(value.([]byte))
+			values[rowIndex] = string(v)
 		default:
-			return fmt.Errorf("Illegal argument value %v %v", value, reflect.TypeOf(value))
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	}
 	return nil
@@ -166,11 +166,11 @@ func (t *Tablet) GetRowCount() int {
 
 func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
-		return nil, fmt.Errorf("Illegal argument columnIndex %d", columnIndex)
+		return nil, fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
 	if rowIndex < 0 || rowIndex > int(t.rowCount) {
-		return nil, fmt.Errorf("Illegal argument rowIndex %d", rowIndex)
+		return nil, fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
 	schema := t.measurementSchemas[columnIndex]
@@ -188,7 +188,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 	case TEXT:
 		return t.values[columnIndex].([]string)[rowIndex], nil
 	default:
-		return nil, fmt.Errorf("Illegal datatype %v", schema.DataType)
+		return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 	}
 }
 
@@ -236,7 +236,7 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 				binary.Write(buff, binary.BigEndian, []byte(s))
 			}
 		default:
-			return nil, fmt.Errorf("Illegal datatype %v", schema.DataType)
+			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 		}
 	}
 	return buff.Bytes(), nil
@@ -270,7 +270,7 @@ func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, rowCoun
 		case TEXT:
 			tablet.values[i] = make([]string, rowCount)
 		default:
-			return nil, fmt.Errorf("Illegal datatype %v", schema.DataType)
+			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 		}
 	}
 	return tablet, nil

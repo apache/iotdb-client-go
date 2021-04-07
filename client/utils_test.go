@@ -218,7 +218,7 @@ func Test_verifySuccess(t *testing.T) {
 					Code:    MultipleError,
 					Message: &errMsg,
 					SubStatus: []*rpc.TSStatus{
-						&rpc.TSStatus{
+						{
 							Code:    ShutDownError,
 							Message: &errMsg,
 						},
@@ -263,7 +263,7 @@ func Test_verifySuccesses(t *testing.T) {
 			name: "InternalServerError",
 			args: args{
 				statuses: []*rpc.TSStatus{
-					&rpc.TSStatus{
+					{
 						Code:      InternalServerError,
 						Message:   &internalServerError,
 						SubStatus: []*rpc.TSStatus{},
@@ -275,7 +275,7 @@ func Test_verifySuccesses(t *testing.T) {
 			name: "SuccessStatus",
 			args: args{
 				statuses: []*rpc.TSStatus{
-					&rpc.TSStatus{
+					{
 						Code:      SuccessStatus,
 						Message:   &success,
 						SubStatus: []*rpc.TSStatus{},

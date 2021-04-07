@@ -39,7 +39,7 @@ const (
 	DefaultFetchSize = 1024
 )
 
-var lengthError = errors.New("deviceIds, times, measurementsList and valuesList's size should be equal")
+var errLength = errors.New("deviceIds, times, measurementsList and valuesList's size should be equal")
 
 type Config struct {
 	Host      string
@@ -54,7 +54,6 @@ type Session struct {
 	config             *Config
 	client             *rpc.TSIServiceClient
 	sessionId          int64
-	isClose            bool
 	trans              thrift.TTransport
 	requestStatementId int64
 }
@@ -484,7 +483,7 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 	timestamps []int64) (*rpc.TSInsertRecordsReq, error) {
 	length := len(deviceIds)
 	if length != len(timestamps) || length != len(measurements) || length != len(values) {
-		return nil, lengthError
+		return nil, errLength
 	}
 	request := rpc.TSInsertRecordsReq{
 		SessionId:        s.sessionId,
@@ -550,12 +549,11 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 				return nil, fmt.Errorf("values[%d] %v(%v) must be float64", i, v, reflect.TypeOf(v))
 			}
 		case TEXT:
-			switch v.(type) {
+			switch s := v.(type) {
 			case string:
-				text := v.(string)
-				size := len(text)
+				size := len(s)
 				binary.Write(buff, binary.BigEndian, int32(size))
-				binary.Write(buff, binary.BigEndian, []byte(text))
+				binary.Write(buff, binary.BigEndian, []byte(s))
 			default:
 				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
 			}
