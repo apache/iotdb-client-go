@@ -542,18 +542,18 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 				return nil, fmt.Errorf("values[%d] %v(%v) must be float32", i, v, reflect.TypeOf(v))
 			}
 		case DOUBLE:
-			switch v := v.(type) {
+			switch v.(type) {
 			case float64:
 				binary.Write(buff, binary.BigEndian, v)
 			default:
 				return nil, fmt.Errorf("values[%d] %v(%v) must be float64", i, v, reflect.TypeOf(v))
 			}
 		case TEXT:
-			switch v := v.(type) {
+			switch s := v.(type) {
 			case string:
-				size := len(v)
+				size := len(s)
 				binary.Write(buff, binary.BigEndian, int32(size))
-				binary.Write(buff, binary.BigEndian, []byte(v))
+				binary.Write(buff, binary.BigEndian, []byte(s))
 			default:
 				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
 			}
