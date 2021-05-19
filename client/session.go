@@ -274,7 +274,11 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs int64) (*SessionDa
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.config.FetchSize, Timeout: &timeoutMs}
 	if resp, err := s.client.ExecuteQueryStatement(context.Background(), &request); err == nil {
-		return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+			return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+		} else {
+			return nil, statusErr
+		}
 	} else {
 		return nil, err
 	}
