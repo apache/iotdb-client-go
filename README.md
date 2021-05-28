@@ -20,18 +20,34 @@
 -->
 [English](./README.md) | [中文](./README_ZH.md)
 
+# Apache IoTDB
+
+[![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
+[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
+[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
+![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
+![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
+![](https://img.shields.io/badge/java--language-1.8-blue.svg)
+[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
+
+
+Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance for 
+data management and analysis, deployable on the edge and the cloud. Due to its light-weight 
+architecture, high performance and rich feature set together with its deep integration with 
+Apache Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massive data storage, 
+high-speed data ingestion and complex data analysis in the IoT industrial fields.
+
 # Apache IoTDB Client for Go
 
 ## Overview
 
 This is the GoLang client of Apache IoTDB.
 
-[Apache IoTDB](https://iotdb.apache.org) (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
-
 Apache IoTDB website: https://iotdb.apache.org
 Apache IoTDB Github: https://github.com/apache/iotdb
-
-## How to Compile the Client
 
 ## Prerequisites
 
