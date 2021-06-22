@@ -270,9 +270,9 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 	return s.genDataSet(sql, resp), err
 }
 
-func (s *Session) ExecuteQueryStatement(sql string, timeoutMs int64) (*SessionDataSet, error) {
+func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
-		FetchSize: &s.config.FetchSize, Timeout: &timeoutMs}
+		FetchSize: &s.config.FetchSize, Timeout: timeoutMs}
 	if resp, err := s.client.ExecuteQueryStatement(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
@@ -444,7 +444,7 @@ func (s *Session) ExecuteUpdateStatement(sql string) (*SessionDataSet, error) {
 }
 
 func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) *SessionDataSet {
-	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, 0)
+	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, nil)
 }
 
 func (s *Session) genInsertTabletsReq(tablets []*Tablet) (*rpc.TSInsertTabletsReq, error) {

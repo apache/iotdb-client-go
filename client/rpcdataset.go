@@ -67,7 +67,7 @@ type IoTDBRpcDataSet struct {
 	emptyResultSet             bool
 	ignoreTimeStamp            bool
 	closed                     bool
-	timeoutMs                  int64
+	timeoutMs                  *int64
 }
 
 func (s *IoTDBRpcDataSet) getColumnIndex(columnName string) int32 {
@@ -510,7 +510,7 @@ func (s *IoTDBRpcDataSet) Close() (err error) {
 func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []string,
 	columnNameIndex map[string]int32,
 	queryId int64, client *rpc.TSIServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
-	ignoreTimeStamp bool, fetchSize int32, timeoutMs int64) *IoTDBRpcDataSet {
+	ignoreTimeStamp bool, fetchSize int32, timeoutMs *int64) *IoTDBRpcDataSet {
 
 	ds := &IoTDBRpcDataSet{
 		sql:             sql,

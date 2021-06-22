@@ -79,7 +79,7 @@ func (s *e2eTestSuite) Test_CreateTimeseries() {
 		compressor = client.SNAPPY
 	)
 	s.checkError(s.session.CreateTimeseries(path, dataType, encoding, compressor, nil, nil))
-	ds, err := s.session.ExecuteQueryStatement("show timeseries root.tsg1.dev1.status", 1000)
+	ds, err := s.session.ExecuteQueryStatement("show timeseries root.tsg1.dev1.status", nil)
 
 	assert := s.Require()
 
@@ -101,7 +101,7 @@ func (s *e2eTestSuite) Test_InsertRecords() {
 	)
 	s.checkError(s.session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp))
 
-	ds, err := s.session.ExecuteQueryStatement("select status from root.tsg1.dev1", 1000)
+	ds, err := s.session.ExecuteQueryStatement("select status from root.tsg1.dev1", nil)
 	assert := s.Require()
 	assert.NoError(err)
 	defer ds.Close()

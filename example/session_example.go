@@ -79,7 +79,8 @@ func main() {
 	deleteTimeseries("root.sg1.dev1.status")
 
 	insertTablet()
-	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1", 1000); err == nil {
+	var timeout int64 = 1000
+	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1", &timeout); err == nil {
 		printDevice1(ds)
 		ds.Close()
 	} else {
@@ -445,7 +446,8 @@ func executeStatement() {
 }
 
 func executeQueryStatement(sql string) {
-	sessionDataSet, err := session.ExecuteQueryStatement(sql, 1000)
+	var timeout int64 = 1000
+	sessionDataSet, err := session.ExecuteQueryStatement(sql, &timeout)
 	if err == nil {
 		printDataSet1(sessionDataSet)
 		sessionDataSet.Close()

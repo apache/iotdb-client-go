@@ -2273,12 +2273,14 @@ func (p *TSCloseSessionReq) String() string {
 //  - StatementId
 //  - FetchSize
 //  - Timeout
+//  - EnableRedirectQuery
 type TSExecuteStatementReq struct {
-	SessionId   int64  `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	Statement   string `thrift:"statement,2,required" db:"statement" json:"statement"`
-	StatementId int64  `thrift:"statementId,3,required" db:"statementId" json:"statementId"`
-	FetchSize   *int32 `thrift:"fetchSize,4" db:"fetchSize" json:"fetchSize,omitempty"`
-	Timeout     *int64 `thrift:"timeout,5" db:"timeout" json:"timeout,omitempty"`
+	SessionId           int64  `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
+	Statement           string `thrift:"statement,2,required" db:"statement" json:"statement"`
+	StatementId         int64  `thrift:"statementId,3,required" db:"statementId" json:"statementId"`
+	FetchSize           *int32 `thrift:"fetchSize,4" db:"fetchSize" json:"fetchSize,omitempty"`
+	Timeout             *int64 `thrift:"timeout,5" db:"timeout" json:"timeout,omitempty"`
+	EnableRedirectQuery *bool  `thrift:"enableRedirectQuery,6" db:"enableRedirectQuery" json:"enableRedirectQuery,omitempty"`
 }
 
 func NewTSExecuteStatementReq() *TSExecuteStatementReq {
@@ -2314,12 +2316,25 @@ func (p *TSExecuteStatementReq) GetTimeout() int64 {
 	}
 	return *p.Timeout
 }
+
+var TSExecuteStatementReq_EnableRedirectQuery_DEFAULT bool
+
+func (p *TSExecuteStatementReq) GetEnableRedirectQuery() bool {
+	if !p.IsSetEnableRedirectQuery() {
+		return TSExecuteStatementReq_EnableRedirectQuery_DEFAULT
+	}
+	return *p.EnableRedirectQuery
+}
 func (p *TSExecuteStatementReq) IsSetFetchSize() bool {
 	return p.FetchSize != nil
 }
 
 func (p *TSExecuteStatementReq) IsSetTimeout() bool {
 	return p.Timeout != nil
+}
+
+func (p *TSExecuteStatementReq) IsSetEnableRedirectQuery() bool {
+	return p.EnableRedirectQuery != nil
 }
 
 func (p *TSExecuteStatementReq) Read(iprot thrift.TProtocol) error {
@@ -2386,6 +2401,16 @@ func (p *TSExecuteStatementReq) Read(iprot thrift.TProtocol) error {
 		case 5:
 			if fieldTypeId == thrift.I64 {
 				if err := p.ReadField5(iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 6:
+			if fieldTypeId == thrift.BOOL {
+				if err := p.ReadField6(iprot); err != nil {
 					return err
 				}
 			} else {
@@ -2462,6 +2487,15 @@ func (p *TSExecuteStatementReq) ReadField5(iprot thrift.TProtocol) error {
 	return nil
 }
 
+func (p *TSExecuteStatementReq) ReadField6(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadBool(); err != nil {
+		return thrift.PrependError("error reading field 6: ", err)
+	} else {
+		p.EnableRedirectQuery = &v
+	}
+	return nil
+}
+
 func (p *TSExecuteStatementReq) Write(oprot thrift.TProtocol) error {
 	if err := oprot.WriteStructBegin("TSExecuteStatementReq"); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
@@ -2480,6 +2514,9 @@ func (p *TSExecuteStatementReq) Write(oprot thrift.TProtocol) error {
 			return err
 		}
 		if err := p.writeField5(oprot); err != nil {
+			return err
+		}
+		if err := p.writeField6(oprot); err != nil {
 			return err
 		}
 	}
@@ -2556,6 +2593,21 @@ func (p *TSExecuteStatementReq) writeField5(oprot thrift.TProtocol) (err error) 
 		}
 		if err := oprot.WriteFieldEnd(); err != nil {
 			return thrift.PrependError(fmt.Sprintf("%T write field end error 5:timeout: ", p), err)
+		}
+	}
+	return err
+}
+
+func (p *TSExecuteStatementReq) writeField6(oprot thrift.TProtocol) (err error) {
+	if p.IsSetEnableRedirectQuery() {
+		if err := oprot.WriteFieldBegin("enableRedirectQuery", thrift.BOOL, 6); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:enableRedirectQuery: ", p), err)
+		}
+		if err := oprot.WriteBool(bool(*p.EnableRedirectQuery)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.enableRedirectQuery (6) field write error: ", p), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 6:enableRedirectQuery: ", p), err)
 		}
 	}
 	return err
@@ -3264,7 +3316,7 @@ type TSFetchResultsReq struct {
 	FetchSize int32  `thrift:"fetchSize,3,required" db:"fetchSize" json:"fetchSize"`
 	QueryId   int64  `thrift:"queryId,4,required" db:"queryId" json:"queryId"`
 	IsAlign   bool   `thrift:"isAlign,5,required" db:"isAlign" json:"isAlign"`
-	Timeout   int64  `thrift:"timeout,6,required" db:"timeout" json:"timeout"`
+	Timeout   *int64 `thrift:"timeout,6" db:"timeout" json:"timeout,omitempty"`
 }
 
 func NewTSFetchResultsReq() *TSFetchResultsReq {
@@ -3291,9 +3343,18 @@ func (p *TSFetchResultsReq) GetIsAlign() bool {
 	return p.IsAlign
 }
 
+var TSFetchResultsReq_Timeout_DEFAULT int64
+
 func (p *TSFetchResultsReq) GetTimeout() int64 {
-	return p.Timeout
+	if !p.IsSetTimeout() {
+		return TSFetchResultsReq_Timeout_DEFAULT
+	}
+	return *p.Timeout
 }
+func (p *TSFetchResultsReq) IsSetTimeout() bool {
+	return p.Timeout != nil
+}
+
 func (p *TSFetchResultsReq) Read(iprot thrift.TProtocol) error {
 	if _, err := iprot.ReadStructBegin(); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
@@ -3304,7 +3365,6 @@ func (p *TSFetchResultsReq) Read(iprot thrift.TProtocol) error {
 	var issetFetchSize bool = false
 	var issetQueryId bool = false
 	var issetIsAlign bool = false
-	var issetTimeout bool = false
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin()
@@ -3375,7 +3435,6 @@ func (p *TSFetchResultsReq) Read(iprot thrift.TProtocol) error {
 				if err := p.ReadField6(iprot); err != nil {
 					return err
 				}
-				issetTimeout = true
 			} else {
 				if err := iprot.Skip(fieldTypeId); err != nil {
 					return err
@@ -3407,9 +3466,6 @@ func (p *TSFetchResultsReq) Read(iprot thrift.TProtocol) error {
 	}
 	if !issetIsAlign {
 		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field IsAlign is not set"))
-	}
-	if !issetTimeout {
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Timeout is not set"))
 	}
 	return nil
 }
@@ -3463,7 +3519,7 @@ func (p *TSFetchResultsReq) ReadField6(iprot thrift.TProtocol) error {
 	if v, err := iprot.ReadI64(); err != nil {
 		return thrift.PrependError("error reading field 6: ", err)
 	} else {
-		p.Timeout = v
+		p.Timeout = &v
 	}
 	return nil
 }
@@ -3567,14 +3623,16 @@ func (p *TSFetchResultsReq) writeField5(oprot thrift.TProtocol) (err error) {
 }
 
 func (p *TSFetchResultsReq) writeField6(oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin("timeout", thrift.I64, 6); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:timeout: ", p), err)
-	}
-	if err := oprot.WriteI64(int64(p.Timeout)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.timeout (6) field write error: ", p), err)
-	}
-	if err := oprot.WriteFieldEnd(); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 6:timeout: ", p), err)
+	if p.IsSetTimeout() {
+		if err := oprot.WriteFieldBegin("timeout", thrift.I64, 6); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:timeout: ", p), err)
+		}
+		if err := oprot.WriteI64(int64(*p.Timeout)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.timeout (6) field write error: ", p), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 6:timeout: ", p), err)
+		}
 	}
 	return err
 }
@@ -8331,13 +8389,15 @@ func (p *TSCreateTimeseriesReq) String() string {
 //  - StartTime
 //  - EndTime
 //  - StatementId
+//  - EnableRedirectQuery
 type TSRawDataQueryReq struct {
-	SessionId   int64    `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	Paths       []string `thrift:"paths,2,required" db:"paths" json:"paths"`
-	FetchSize   *int32   `thrift:"fetchSize,3" db:"fetchSize" json:"fetchSize,omitempty"`
-	StartTime   int64    `thrift:"startTime,4,required" db:"startTime" json:"startTime"`
-	EndTime     int64    `thrift:"endTime,5,required" db:"endTime" json:"endTime"`
-	StatementId int64    `thrift:"statementId,6,required" db:"statementId" json:"statementId"`
+	SessionId           int64    `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
+	Paths               []string `thrift:"paths,2,required" db:"paths" json:"paths"`
+	FetchSize           *int32   `thrift:"fetchSize,3" db:"fetchSize" json:"fetchSize,omitempty"`
+	StartTime           int64    `thrift:"startTime,4,required" db:"startTime" json:"startTime"`
+	EndTime             int64    `thrift:"endTime,5,required" db:"endTime" json:"endTime"`
+	StatementId         int64    `thrift:"statementId,6,required" db:"statementId" json:"statementId"`
+	EnableRedirectQuery *bool    `thrift:"enableRedirectQuery,7" db:"enableRedirectQuery" json:"enableRedirectQuery,omitempty"`
 }
 
 func NewTSRawDataQueryReq() *TSRawDataQueryReq {
@@ -8372,8 +8432,21 @@ func (p *TSRawDataQueryReq) GetEndTime() int64 {
 func (p *TSRawDataQueryReq) GetStatementId() int64 {
 	return p.StatementId
 }
+
+var TSRawDataQueryReq_EnableRedirectQuery_DEFAULT bool
+
+func (p *TSRawDataQueryReq) GetEnableRedirectQuery() bool {
+	if !p.IsSetEnableRedirectQuery() {
+		return TSRawDataQueryReq_EnableRedirectQuery_DEFAULT
+	}
+	return *p.EnableRedirectQuery
+}
 func (p *TSRawDataQueryReq) IsSetFetchSize() bool {
 	return p.FetchSize != nil
+}
+
+func (p *TSRawDataQueryReq) IsSetEnableRedirectQuery() bool {
+	return p.EnableRedirectQuery != nil
 }
 
 func (p *TSRawDataQueryReq) Read(iprot thrift.TProtocol) error {
@@ -8456,6 +8529,16 @@ func (p *TSRawDataQueryReq) Read(iprot thrift.TProtocol) error {
 					return err
 				}
 				issetStatementId = true
+			} else {
+				if err := iprot.Skip(fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 7:
+			if fieldTypeId == thrift.BOOL {
+				if err := p.ReadField7(iprot); err != nil {
+					return err
+				}
 			} else {
 				if err := iprot.Skip(fieldTypeId); err != nil {
 					return err
@@ -8558,6 +8641,15 @@ func (p *TSRawDataQueryReq) ReadField6(iprot thrift.TProtocol) error {
 	return nil
 }
 
+func (p *TSRawDataQueryReq) ReadField7(iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadBool(); err != nil {
+		return thrift.PrependError("error reading field 7: ", err)
+	} else {
+		p.EnableRedirectQuery = &v
+	}
+	return nil
+}
+
 func (p *TSRawDataQueryReq) Write(oprot thrift.TProtocol) error {
 	if err := oprot.WriteStructBegin("TSRawDataQueryReq"); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
@@ -8579,6 +8671,9 @@ func (p *TSRawDataQueryReq) Write(oprot thrift.TProtocol) error {
 			return err
 		}
 		if err := p.writeField6(oprot); err != nil {
+			return err
+		}
+		if err := p.writeField7(oprot); err != nil {
 			return err
 		}
 	}
@@ -8675,6 +8770,21 @@ func (p *TSRawDataQueryReq) writeField6(oprot thrift.TProtocol) (err error) {
 	}
 	if err := oprot.WriteFieldEnd(); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T write field end error 6:statementId: ", p), err)
+	}
+	return err
+}
+
+func (p *TSRawDataQueryReq) writeField7(oprot thrift.TProtocol) (err error) {
+	if p.IsSetEnableRedirectQuery() {
+		if err := oprot.WriteFieldBegin("enableRedirectQuery", thrift.BOOL, 7); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 7:enableRedirectQuery: ", p), err)
+		}
+		if err := oprot.WriteBool(bool(*p.EnableRedirectQuery)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.enableRedirectQuery (7) field write error: ", p), err)
+		}
+		if err := oprot.WriteFieldEnd(); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 7:enableRedirectQuery: ", p), err)
+		}
 	}
 	return err
 }
