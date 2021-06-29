@@ -68,7 +68,10 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 
 	var protocolFactory thrift.TProtocolFactory
 	var err error
-	s.trans, err = thrift.NewTSocketTimeout(net.JoinHostPort(s.config.Host, s.config.Port), time.Duration(connectionTimeoutInMs))
+
+	s.trans, err = thrift.NewTSocketConf(net.JoinHostPort(s.config.Host, s.config.Port), &thrift.TConfiguration{
+         ConnectTimeout: time.Duration(connectionTimeoutInMs), // Use 0 for no timeout
+	})
 	if err != nil {
 		return err
 	}
@@ -290,7 +293,7 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	values []interface{}) (*rpc.TSInsertRecordReq, error) {
 	request := &rpc.TSInsertRecordReq{}
 	request.SessionId = s.sessionId
-	request.DeviceId = deviceId
+	request.PrefixPath = deviceId
 	request.Timestamp = time
 	request.Measurements = measurements
 
@@ -585,7 +588,7 @@ func (s *Session) genTSInsertTabletReq(tablet *Tablet) (*rpc.TSInsertTabletReq, 
 	if values, err := tablet.getValuesBytes(); err == nil {
 		request := &rpc.TSInsertTabletReq{
 			SessionId:    s.sessionId,
-			DeviceId:     tablet.deviceId,
+			PrefixPath:     tablet.deviceId,
 			Measurements: tablet.GetMeasurements(),
 			Values:       values,
 			Timestamps:   tablet.GetTimestampBytes(),
