@@ -24,12 +24,12 @@ generate:
 	fi
 
 	@if ! command -v thrift &> /dev/null; then \
-		echo "thrift could not be found, please install thrift 0.13.0"; \
+		echo "thrift could not be found, please install thrift 0.14.1"; \
 		exit 1; \
 	fi
 
-	@if [[ "`thrift --version|grep -o '0.13.[0-9]'`" == "" ]]; then \
-		echo "please install thrift 0.13.0"; \
+	@if [[ "`thrift --version|grep -o '0.14.[0-9]'`" == "" ]]; then \
+		echo "please install thrift 0.14.1"; \
 		exit 1; \
 	fi
 

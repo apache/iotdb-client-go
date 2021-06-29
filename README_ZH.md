@@ -54,10 +54,10 @@ go run session_example.go
 不使用go mod，采用GOPATH
 
 ```sh
-# get thrift 0.13.0
+# get thrift 0.14.1
 go get github.com/apache/thrift
 cd $GOPATH/src/github.com/apache/thrift
-git checkout 0.13.0
+git checkout 0.14.1
 
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
 cd $GOPATH/src/iotdb-client-go-example/session_example
@@ -77,4 +77,4 @@ go run session_example.go
 * golang >= 1.13
 * make   >= 3.0
 * curl   >= 7.1.1
-* thrift 0.13.x
+* thrift 0.14.1
