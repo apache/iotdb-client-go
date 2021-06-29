@@ -4649,18 +4649,16 @@ func (p *TSSetTimeZoneReq) String() string {
 
 // Attributes:
 //  - SessionId
-//  - PrefixPath
+//  - DeviceId
 //  - Measurements
 //  - Values
 //  - Timestamp
-//  - IsAligned
 type TSInsertRecordReq struct {
 	SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	PrefixPath string `thrift:"prefixPath,2,required" db:"prefixPath" json:"prefixPath"`
+	DeviceId string `thrift:"deviceId,2,required" db:"deviceId" json:"deviceId"`
 	Measurements []string `thrift:"measurements,3,required" db:"measurements" json:"measurements"`
 	Values []byte `thrift:"values,4,required" db:"values" json:"values"`
 	Timestamp int64 `thrift:"timestamp,5,required" db:"timestamp" json:"timestamp"`
-	IsAligned *bool `thrift:"isAligned,6" db:"isAligned" json:"isAligned,omitempty"`
 }
 
 func NewTSInsertRecordReq() *TSInsertRecordReq {
@@ -4672,8 +4670,8 @@ func (p *TSInsertRecordReq) GetSessionId() int64 {
 	return p.SessionId
 }
 
-func (p *TSInsertRecordReq) GetPrefixPath() string {
-	return p.PrefixPath
+func (p *TSInsertRecordReq) GetDeviceId() string {
+	return p.DeviceId
 }
 
 func (p *TSInsertRecordReq) GetMeasurements() []string {
@@ -4687,24 +4685,13 @@ func (p *TSInsertRecordReq) GetValues() []byte {
 func (p *TSInsertRecordReq) GetTimestamp() int64 {
 	return p.Timestamp
 }
-var TSInsertRecordReq_IsAligned_DEFAULT bool
-func (p *TSInsertRecordReq) GetIsAligned() bool {
-	if !p.IsSetIsAligned() {
-		return TSInsertRecordReq_IsAligned_DEFAULT
-	}
-	return *p.IsAligned
-}
-func (p *TSInsertRecordReq) IsSetIsAligned() bool {
-	return p.IsAligned != nil
-}
-
 func (p *TSInsertRecordReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
 
 	var issetSessionId bool = false;
-	var issetPrefixPath bool = false;
+	var issetDeviceId bool = false;
 	var issetMeasurements bool = false;
 	var issetValues bool = false;
 	var issetTimestamp bool = false;
@@ -4732,7 +4719,7 @@ func (p *TSInsertRecordReq) Read(ctx context.Context, iprot thrift.TProtocol) er
 				if err := p.ReadField2(ctx, iprot); err != nil {
 					return err
 				}
-				issetPrefixPath = true
+				issetDeviceId = true
 			} else {
 				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
 					return err
@@ -4771,16 +4758,6 @@ func (p *TSInsertRecordReq) Read(ctx context.Context, iprot thrift.TProtocol) er
 					return err
 				}
 			}
-		case 6:
-			if fieldTypeId == thrift.BOOL {
-				if err := p.ReadField6(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
 		default:
 			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
 				return err
@@ -4796,8 +4773,8 @@ func (p *TSInsertRecordReq) Read(ctx context.Context, iprot thrift.TProtocol) er
 	if !issetSessionId{
 		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
 	}
-	if !issetPrefixPath{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field PrefixPath is not set"));
+	if !issetDeviceId{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DeviceId is not set"));
 	}
 	if !issetMeasurements{
 		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Measurements is not set"));
@@ -4824,7 +4801,7 @@ func (p *TSInsertRecordReq)  ReadField2(ctx context.Context, iprot thrift.TProto
 	if v, err := iprot.ReadString(ctx); err != nil {
 		return thrift.PrependError("error reading field 2: ", err)
 	} else {
-		p.PrefixPath = v
+		p.DeviceId = v
 	}
 	return nil
 }
@@ -4869,15 +4846,6 @@ func (p *TSInsertRecordReq)  ReadField5(ctx context.Context, iprot thrift.TProto
 	return nil
 }
 
-func (p *TSInsertRecordReq)  ReadField6(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadBool(ctx); err != nil {
-		return thrift.PrependError("error reading field 6: ", err)
-	} else {
-		p.IsAligned = &v
-	}
-	return nil
-}
-
 func (p *TSInsertRecordReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
 	if err := oprot.WriteStructBegin(ctx, "TSInsertRecordReq"); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
@@ -4887,7 +4855,6 @@ func (p *TSInsertRecordReq) Write(ctx context.Context, oprot thrift.TProtocol) e
 		if err := p.writeField3(ctx, oprot); err != nil { return err }
 		if err := p.writeField4(ctx, oprot); err != nil { return err }
 		if err := p.writeField5(ctx, oprot); err != nil { return err }
-		if err := p.writeField6(ctx, oprot); err != nil { return err }
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err) }
@@ -4907,12 +4874,12 @@ func (p *TSInsertRecordReq) writeField1(ctx context.Context, oprot thrift.TProto
 }
 
 func (p *TSInsertRecordReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "prefixPath", thrift.STRING, 2); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:prefixPath: ", p), err) }
-	if err := oprot.WriteString(ctx, string(p.PrefixPath)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.prefixPath (2) field write error: ", p), err) }
+	if err := oprot.WriteFieldBegin(ctx, "deviceId", thrift.STRING, 2); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:deviceId: ", p), err) }
+	if err := oprot.WriteString(ctx, string(p.DeviceId)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.deviceId (2) field write error: ", p), err) }
 	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:prefixPath: ", p), err) }
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:deviceId: ", p), err) }
 	return err
 }
 
@@ -4954,18 +4921,6 @@ func (p *TSInsertRecordReq) writeField5(ctx context.Context, oprot thrift.TProto
 	return err
 }
 
-func (p *TSInsertRecordReq) writeField6(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetIsAligned() {
-		if err := oprot.WriteFieldBegin(ctx, "isAligned", thrift.BOOL, 6); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:isAligned: ", p), err) }
-		if err := oprot.WriteBool(ctx, bool(*p.IsAligned)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T.isAligned (6) field write error: ", p), err) }
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 6:isAligned: ", p), err) }
-	}
-	return err
-}
-
 func (p *TSInsertRecordReq) Equals(other *TSInsertRecordReq) bool {
 	if p == other {
 		return true
@@ -4973,7 +4928,7 @@ func (p *TSInsertRecordReq) Equals(other *TSInsertRecordReq) bool {
 		return false
 	}
 	if p.SessionId != other.SessionId { return false }
-	if p.PrefixPath != other.PrefixPath { return false }
+	if p.DeviceId != other.DeviceId { return false }
 	if len(p.Measurements) != len(other.Measurements) { return false }
 	for i, _tgt := range p.Measurements {
 		_src28 := other.Measurements[i]
@@ -4981,12 +4936,6 @@ func (p *TSInsertRecordReq) Equals(other *TSInsertRecordReq) bool {
 	}
 	if bytes.Compare(p.Values, other.Values) != 0 { return false }
 	if p.Timestamp != other.Timestamp { return false }
-	if p.IsAligned != other.IsAligned {
-		if p.IsAligned == nil || other.IsAligned == nil {
-			return false
-		}
-		if (*p.IsAligned) != (*other.IsAligned) { return false }
-	}
 	return true
 }
 
@@ -5323,22 +5272,20 @@ func (p *TSInsertStringRecordReq) String() string {
 
 // Attributes:
 //  - SessionId
-//  - PrefixPath
+//  - DeviceId
 //  - Measurements
 //  - Values
 //  - Timestamps
 //  - Types
 //  - Size
-//  - IsAligned
 type TSInsertTabletReq struct {
 	SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	PrefixPath string `thrift:"prefixPath,2,required" db:"prefixPath" json:"prefixPath"`
+	DeviceId string `thrift:"deviceId,2,required" db:"deviceId" json:"deviceId"`
 	Measurements []string `thrift:"measurements,3,required" db:"measurements" json:"measurements"`
 	Values []byte `thrift:"values,4,required" db:"values" json:"values"`
 	Timestamps []byte `thrift:"timestamps,5,required" db:"timestamps" json:"timestamps"`
 	Types []int32 `thrift:"types,6,required" db:"types" json:"types"`
 	Size int32 `thrift:"size,7,required" db:"size" json:"size"`
-	IsAligned *bool `thrift:"isAligned,8" db:"isAligned" json:"isAligned,omitempty"`
 }
 
 func NewTSInsertTabletReq() *TSInsertTabletReq {
@@ -5350,8 +5297,8 @@ func (p *TSInsertTabletReq) GetSessionId() int64 {
 	return p.SessionId
 }
 
-func (p *TSInsertTabletReq) GetPrefixPath() string {
-	return p.PrefixPath
+func (p *TSInsertTabletReq) GetDeviceId() string {
+	return p.DeviceId
 }
 
 func (p *TSInsertTabletReq) GetMeasurements() []string {
@@ -5373,24 +5320,13 @@ func (p *TSInsertTabletReq) GetTypes() []int32 {
 func (p *TSInsertTabletReq) GetSize() int32 {
 	return p.Size
 }
-var TSInsertTabletReq_IsAligned_DEFAULT bool
-func (p *TSInsertTabletReq) GetIsAligned() bool {
-	if !p.IsSetIsAligned() {
-		return TSInsertTabletReq_IsAligned_DEFAULT
-	}
-	return *p.IsAligned
-}
-func (p *TSInsertTabletReq) IsSetIsAligned() bool {
-	return p.IsAligned != nil
-}
-
 func (p *TSInsertTabletReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
 
 	var issetSessionId bool = false;
-	var issetPrefixPath bool = false;
+	var issetDeviceId bool = false;
 	var issetMeasurements bool = false;
 	var issetValues bool = false;
 	var issetTimestamps bool = false;
@@ -5420,7 +5356,7 @@ func (p *TSInsertTabletReq) Read(ctx context.Context, iprot thrift.TProtocol) er
 				if err := p.ReadField2(ctx, iprot); err != nil {
 					return err
 				}
-				issetPrefixPath = true
+				issetDeviceId = true
 			} else {
 				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
 					return err
@@ -5481,16 +5417,6 @@ func (p *TSInsertTabletReq) Read(ctx context.Context, iprot thrift.TProtocol) er
 					return err
 				}
 			}
-		case 8:
-			if fieldTypeId == thrift.BOOL {
-				if err := p.ReadField8(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
 		default:
 			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
 				return err
@@ -5506,8 +5432,8 @@ func (p *TSInsertTabletReq) Read(ctx context.Context, iprot thrift.TProtocol) er
 	if !issetSessionId{
 		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
 	}
-	if !issetPrefixPath{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field PrefixPath is not set"));
+	if !issetDeviceId{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DeviceId is not set"));
 	}
 	if !issetMeasurements{
 		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Measurements is not set"));
@@ -5540,7 +5466,7 @@ func (p *TSInsertTabletReq)  ReadField2(ctx context.Context, iprot thrift.TProto
 	if v, err := iprot.ReadString(ctx); err != nil {
 		return thrift.PrependError("error reading field 2: ", err)
 	} else {
-		p.PrefixPath = v
+		p.DeviceId = v
 	}
 	return nil
 }
@@ -5616,15 +5542,6 @@ func (p *TSInsertTabletReq)  ReadField7(ctx context.Context, iprot thrift.TProto
 	return nil
 }
 
-func (p *TSInsertTabletReq)  ReadField8(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadBool(ctx); err != nil {
-		return thrift.PrependError("error reading field 8: ", err)
-	} else {
-		p.IsAligned = &v
-	}
-	return nil
-}
-
 func (p *TSInsertTabletReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
 	if err := oprot.WriteStructBegin(ctx, "TSInsertTabletReq"); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
@@ -5636,7 +5553,6 @@ func (p *TSInsertTabletReq) Write(ctx context.Context, oprot thrift.TProtocol) e
 		if err := p.writeField5(ctx, oprot); err != nil { return err }
 		if err := p.writeField6(ctx, oprot); err != nil { return err }
 		if err := p.writeField7(ctx, oprot); err != nil { return err }
-		if err := p.writeField8(ctx, oprot); err != nil { return err }
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err) }
@@ -5656,12 +5572,12 @@ func (p *TSInsertTabletReq) writeField1(ctx context.Context, oprot thrift.TProto
 }
 
 func (p *TSInsertTabletReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "prefixPath", thrift.STRING, 2); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:prefixPath: ", p), err) }
-	if err := oprot.WriteString(ctx, string(p.PrefixPath)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.prefixPath (2) field write error: ", p), err) }
+	if err := oprot.WriteFieldBegin(ctx, "deviceId", thrift.STRING, 2); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:deviceId: ", p), err) }
+	if err := oprot.WriteString(ctx, string(p.DeviceId)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.deviceId (2) field write error: ", p), err) }
 	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:prefixPath: ", p), err) }
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:deviceId: ", p), err) }
 	return err
 }
 
@@ -5731,18 +5647,6 @@ func (p *TSInsertTabletReq) writeField7(ctx context.Context, oprot thrift.TProto
 	return err
 }
 
-func (p *TSInsertTabletReq) writeField8(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetIsAligned() {
-		if err := oprot.WriteFieldBegin(ctx, "isAligned", thrift.BOOL, 8); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 8:isAligned: ", p), err) }
-		if err := oprot.WriteBool(ctx, bool(*p.IsAligned)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T.isAligned (8) field write error: ", p), err) }
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 8:isAligned: ", p), err) }
-	}
-	return err
-}
-
 func (p *TSInsertTabletReq) Equals(other *TSInsertTabletReq) bool {
 	if p == other {
 		return true
@@ -5750,7 +5654,7 @@ func (p *TSInsertTabletReq) Equals(other *TSInsertTabletReq) bool {
 		return false
 	}
 	if p.SessionId != other.SessionId { return false }
-	if p.PrefixPath != other.PrefixPath { return false }
+	if p.DeviceId != other.DeviceId { return false }
 	if len(p.Measurements) != len(other.Measurements) { return false }
 	for i, _tgt := range p.Measurements {
 		_src35 := other.Measurements[i]
@@ -5764,12 +5668,6 @@ func (p *TSInsertTabletReq) Equals(other *TSInsertTabletReq) bool {
 		if _tgt != _src36 { return false }
 	}
 	if p.Size != other.Size { return false }
-	if p.IsAligned != other.IsAligned {
-		if p.IsAligned == nil || other.IsAligned == nil {
-			return false
-		}
-		if (*p.IsAligned) != (*other.IsAligned) { return false }
-	}
 	return true
 }
 
@@ -8344,466 +8242,6 @@ func (p *TSCreateTimeseriesReq) String() string {
 
 // Attributes:
 //  - SessionId
-//  - PrefixPath
-//  - Measurements
-//  - DataTypes
-//  - Encodings
-//  - Compressor
-//  - MeasurementAlias
-type TSCreateAlignedTimeseriesReq struct {
-	SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	PrefixPath string `thrift:"prefixPath,2,required" db:"prefixPath" json:"prefixPath"`
-	Measurements []string `thrift:"measurements,3,required" db:"measurements" json:"measurements"`
-	DataTypes []int32 `thrift:"dataTypes,4,required" db:"dataTypes" json:"dataTypes"`
-	Encodings []int32 `thrift:"encodings,5,required" db:"encodings" json:"encodings"`
-	Compressor int32 `thrift:"compressor,6,required" db:"compressor" json:"compressor"`
-	MeasurementAlias []string `thrift:"measurementAlias,7" db:"measurementAlias" json:"measurementAlias,omitempty"`
-}
-
-func NewTSCreateAlignedTimeseriesReq() *TSCreateAlignedTimeseriesReq {
-	return &TSCreateAlignedTimeseriesReq{}
-}
-
-
-func (p *TSCreateAlignedTimeseriesReq) GetSessionId() int64 {
-	return p.SessionId
-}
-
-func (p *TSCreateAlignedTimeseriesReq) GetPrefixPath() string {
-	return p.PrefixPath
-}
-
-func (p *TSCreateAlignedTimeseriesReq) GetMeasurements() []string {
-	return p.Measurements
-}
-
-func (p *TSCreateAlignedTimeseriesReq) GetDataTypes() []int32 {
-	return p.DataTypes
-}
-
-func (p *TSCreateAlignedTimeseriesReq) GetEncodings() []int32 {
-	return p.Encodings
-}
-
-func (p *TSCreateAlignedTimeseriesReq) GetCompressor() int32 {
-	return p.Compressor
-}
-var TSCreateAlignedTimeseriesReq_MeasurementAlias_DEFAULT []string
-
-func (p *TSCreateAlignedTimeseriesReq) GetMeasurementAlias() []string {
-	return p.MeasurementAlias
-}
-func (p *TSCreateAlignedTimeseriesReq) IsSetMeasurementAlias() bool {
-	return p.MeasurementAlias != nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-	var issetSessionId bool = false;
-	var issetPrefixPath bool = false;
-	var issetMeasurements bool = false;
-	var issetDataTypes bool = false;
-	var issetEncodings bool = false;
-	var issetCompressor bool = false;
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.I64 {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-				issetSessionId = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 2:
-			if fieldTypeId == thrift.STRING {
-				if err := p.ReadField2(ctx, iprot); err != nil {
-					return err
-				}
-				issetPrefixPath = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 3:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField3(ctx, iprot); err != nil {
-					return err
-				}
-				issetMeasurements = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 4:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField4(ctx, iprot); err != nil {
-					return err
-				}
-				issetDataTypes = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 5:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField5(ctx, iprot); err != nil {
-					return err
-				}
-				issetEncodings = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 6:
-			if fieldTypeId == thrift.I32 {
-				if err := p.ReadField6(ctx, iprot); err != nil {
-					return err
-				}
-				issetCompressor = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 7:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField7(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	if !issetSessionId{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
-	}
-	if !issetPrefixPath{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field PrefixPath is not set"));
-	}
-	if !issetMeasurements{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Measurements is not set"));
-	}
-	if !issetDataTypes{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DataTypes is not set"));
-	}
-	if !issetEncodings{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Encodings is not set"));
-	}
-	if !issetCompressor{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Compressor is not set"));
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI64(ctx); err != nil {
-		return thrift.PrependError("error reading field 1: ", err)
-	} else {
-		p.SessionId = v
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadString(ctx); err != nil {
-		return thrift.PrependError("error reading field 2: ", err)
-	} else {
-		p.PrefixPath = v
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([]string, 0, size)
-	p.Measurements =  tSlice
-	for i := 0; i < size; i ++ {
-		var _elem94 string
-		if v, err := iprot.ReadString(ctx); err != nil {
-			return thrift.PrependError("error reading field 0: ", err)
-		} else {
-			_elem94 = v
-		}
-		p.Measurements = append(p.Measurements, _elem94)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([]int32, 0, size)
-	p.DataTypes =  tSlice
-	for i := 0; i < size; i ++ {
-		var _elem95 int32
-		if v, err := iprot.ReadI32(ctx); err != nil {
-			return thrift.PrependError("error reading field 0: ", err)
-		} else {
-			_elem95 = v
-		}
-		p.DataTypes = append(p.DataTypes, _elem95)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq)  ReadField5(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([]int32, 0, size)
-	p.Encodings =  tSlice
-	for i := 0; i < size; i ++ {
-		var _elem96 int32
-		if v, err := iprot.ReadI32(ctx); err != nil {
-			return thrift.PrependError("error reading field 0: ", err)
-		} else {
-			_elem96 = v
-		}
-		p.Encodings = append(p.Encodings, _elem96)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq)  ReadField6(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI32(ctx); err != nil {
-		return thrift.PrependError("error reading field 6: ", err)
-	} else {
-		p.Compressor = v
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq)  ReadField7(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([]string, 0, size)
-	p.MeasurementAlias =  tSlice
-	for i := 0; i < size; i ++ {
-		var _elem97 string
-		if v, err := iprot.ReadString(ctx); err != nil {
-			return thrift.PrependError("error reading field 0: ", err)
-		} else {
-			_elem97 = v
-		}
-		p.MeasurementAlias = append(p.MeasurementAlias, _elem97)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "TSCreateAlignedTimeseriesReq"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-		if err := p.writeField2(ctx, oprot); err != nil { return err }
-		if err := p.writeField3(ctx, oprot); err != nil { return err }
-		if err := p.writeField4(ctx, oprot); err != nil { return err }
-		if err := p.writeField5(ctx, oprot); err != nil { return err }
-		if err := p.writeField6(ctx, oprot); err != nil { return err }
-		if err := p.writeField7(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSCreateAlignedTimeseriesReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
-	if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.sessionId (1) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:sessionId: ", p), err) }
-	return err
-}
-
-func (p *TSCreateAlignedTimeseriesReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "prefixPath", thrift.STRING, 2); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:prefixPath: ", p), err) }
-	if err := oprot.WriteString(ctx, string(p.PrefixPath)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.prefixPath (2) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:prefixPath: ", p), err) }
-	return err
-}
-
-func (p *TSCreateAlignedTimeseriesReq) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "measurements", thrift.LIST, 3); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:measurements: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.Measurements)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.Measurements {
-		if err := oprot.WriteString(ctx, string(v)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 3:measurements: ", p), err) }
-	return err
-}
-
-func (p *TSCreateAlignedTimeseriesReq) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "dataTypes", thrift.LIST, 4); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:dataTypes: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.I32, len(p.DataTypes)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.DataTypes {
-		if err := oprot.WriteI32(ctx, int32(v)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 4:dataTypes: ", p), err) }
-	return err
-}
-
-func (p *TSCreateAlignedTimeseriesReq) writeField5(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "encodings", thrift.LIST, 5); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 5:encodings: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.I32, len(p.Encodings)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.Encodings {
-		if err := oprot.WriteI32(ctx, int32(v)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 5:encodings: ", p), err) }
-	return err
-}
-
-func (p *TSCreateAlignedTimeseriesReq) writeField6(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "compressor", thrift.I32, 6); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:compressor: ", p), err) }
-	if err := oprot.WriteI32(ctx, int32(p.Compressor)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.compressor (6) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 6:compressor: ", p), err) }
-	return err
-}
-
-func (p *TSCreateAlignedTimeseriesReq) writeField7(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetMeasurementAlias() {
-		if err := oprot.WriteFieldBegin(ctx, "measurementAlias", thrift.LIST, 7); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 7:measurementAlias: ", p), err) }
-		if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.MeasurementAlias)); err != nil {
-			return thrift.PrependError("error writing list begin: ", err)
-		}
-		for _, v := range p.MeasurementAlias {
-			if err := oprot.WriteString(ctx, string(v)); err != nil {
-				return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-		}
-		if err := oprot.WriteListEnd(ctx); err != nil {
-			return thrift.PrependError("error writing list end: ", err)
-		}
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 7:measurementAlias: ", p), err) }
-	}
-	return err
-}
-
-func (p *TSCreateAlignedTimeseriesReq) Equals(other *TSCreateAlignedTimeseriesReq) bool {
-	if p == other {
-		return true
-	} else if p == nil || other == nil {
-		return false
-	}
-	if p.SessionId != other.SessionId { return false }
-	if p.PrefixPath != other.PrefixPath { return false }
-	if len(p.Measurements) != len(other.Measurements) { return false }
-	for i, _tgt := range p.Measurements {
-		_src98 := other.Measurements[i]
-		if _tgt != _src98 { return false }
-	}
-	if len(p.DataTypes) != len(other.DataTypes) { return false }
-	for i, _tgt := range p.DataTypes {
-		_src99 := other.DataTypes[i]
-		if _tgt != _src99 { return false }
-	}
-	if len(p.Encodings) != len(other.Encodings) { return false }
-	for i, _tgt := range p.Encodings {
-		_src100 := other.Encodings[i]
-		if _tgt != _src100 { return false }
-	}
-	if p.Compressor != other.Compressor { return false }
-	if len(p.MeasurementAlias) != len(other.MeasurementAlias) { return false }
-	for i, _tgt := range p.MeasurementAlias {
-		_src101 := other.MeasurementAlias[i]
-		if _tgt != _src101 { return false }
-	}
-	return true
-}
-
-func (p *TSCreateAlignedTimeseriesReq) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSCreateAlignedTimeseriesReq(%+v)", *p)
-}
-
-// Attributes:
-//  - SessionId
 //  - Paths
 //  - FetchSize
 //  - StartTime
@@ -9006,13 +8444,13 @@ func (p *TSRawDataQueryReq)  ReadField2(ctx context.Context, iprot thrift.TProto
 	tSlice := make([]string, 0, size)
 	p.Paths =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem102 string
+		var _elem94 string
 		if v, err := iprot.ReadString(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem102 = v
+			_elem94 = v
 		}
-		p.Paths = append(p.Paths, _elem102)
+		p.Paths = append(p.Paths, _elem94)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -9175,8 +8613,8 @@ func (p *TSRawDataQueryReq) Equals(other *TSRawDataQueryReq) bool {
 	if p.SessionId != other.SessionId { return false }
 	if len(p.Paths) != len(other.Paths) { return false }
 	for i, _tgt := range p.Paths {
-		_src103 := other.Paths[i]
-		if _tgt != _src103 { return false }
+		_src95 := other.Paths[i]
+		if _tgt != _src95 { return false }
 	}
 	if p.FetchSize != other.FetchSize {
 		if p.FetchSize == nil || other.FetchSize == nil {
@@ -9201,365 +8639,6 @@ func (p *TSRawDataQueryReq) String() string {
 		return "<nil>"
 	}
 	return fmt.Sprintf("TSRawDataQueryReq(%+v)", *p)
-}
-
-// Attributes:
-//  - SessionId
-//  - Paths
-//  - FetchSize
-//  - Time
-//  - StatementId
-//  - EnableRedirectQuery
-type TSLastDataQueryReq struct {
-	SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	Paths []string `thrift:"paths,2,required" db:"paths" json:"paths"`
-	FetchSize *int32 `thrift:"fetchSize,3" db:"fetchSize" json:"fetchSize,omitempty"`
-	Time int64 `thrift:"time,4,required" db:"time" json:"time"`
-	StatementId int64 `thrift:"statementId,5,required" db:"statementId" json:"statementId"`
-	EnableRedirectQuery *bool `thrift:"enableRedirectQuery,6" db:"enableRedirectQuery" json:"enableRedirectQuery,omitempty"`
-}
-
-func NewTSLastDataQueryReq() *TSLastDataQueryReq {
-	return &TSLastDataQueryReq{}
-}
-
-
-func (p *TSLastDataQueryReq) GetSessionId() int64 {
-	return p.SessionId
-}
-
-func (p *TSLastDataQueryReq) GetPaths() []string {
-	return p.Paths
-}
-var TSLastDataQueryReq_FetchSize_DEFAULT int32
-func (p *TSLastDataQueryReq) GetFetchSize() int32 {
-	if !p.IsSetFetchSize() {
-		return TSLastDataQueryReq_FetchSize_DEFAULT
-	}
-	return *p.FetchSize
-}
-
-func (p *TSLastDataQueryReq) GetTime() int64 {
-	return p.Time
-}
-
-func (p *TSLastDataQueryReq) GetStatementId() int64 {
-	return p.StatementId
-}
-var TSLastDataQueryReq_EnableRedirectQuery_DEFAULT bool
-func (p *TSLastDataQueryReq) GetEnableRedirectQuery() bool {
-	if !p.IsSetEnableRedirectQuery() {
-		return TSLastDataQueryReq_EnableRedirectQuery_DEFAULT
-	}
-	return *p.EnableRedirectQuery
-}
-func (p *TSLastDataQueryReq) IsSetFetchSize() bool {
-	return p.FetchSize != nil
-}
-
-func (p *TSLastDataQueryReq) IsSetEnableRedirectQuery() bool {
-	return p.EnableRedirectQuery != nil
-}
-
-func (p *TSLastDataQueryReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-	var issetSessionId bool = false;
-	var issetPaths bool = false;
-	var issetTime bool = false;
-	var issetStatementId bool = false;
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.I64 {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-				issetSessionId = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 2:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField2(ctx, iprot); err != nil {
-					return err
-				}
-				issetPaths = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 3:
-			if fieldTypeId == thrift.I32 {
-				if err := p.ReadField3(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 4:
-			if fieldTypeId == thrift.I64 {
-				if err := p.ReadField4(ctx, iprot); err != nil {
-					return err
-				}
-				issetTime = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 5:
-			if fieldTypeId == thrift.I64 {
-				if err := p.ReadField5(ctx, iprot); err != nil {
-					return err
-				}
-				issetStatementId = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 6:
-			if fieldTypeId == thrift.BOOL {
-				if err := p.ReadField6(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	if !issetSessionId{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
-	}
-	if !issetPaths{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Paths is not set"));
-	}
-	if !issetTime{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Time is not set"));
-	}
-	if !issetStatementId{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field StatementId is not set"));
-	}
-	return nil
-}
-
-func (p *TSLastDataQueryReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI64(ctx); err != nil {
-		return thrift.PrependError("error reading field 1: ", err)
-	} else {
-		p.SessionId = v
-	}
-	return nil
-}
-
-func (p *TSLastDataQueryReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([]string, 0, size)
-	p.Paths =  tSlice
-	for i := 0; i < size; i ++ {
-		var _elem104 string
-		if v, err := iprot.ReadString(ctx); err != nil {
-			return thrift.PrependError("error reading field 0: ", err)
-		} else {
-			_elem104 = v
-		}
-		p.Paths = append(p.Paths, _elem104)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSLastDataQueryReq)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI32(ctx); err != nil {
-		return thrift.PrependError("error reading field 3: ", err)
-	} else {
-		p.FetchSize = &v
-	}
-	return nil
-}
-
-func (p *TSLastDataQueryReq)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI64(ctx); err != nil {
-		return thrift.PrependError("error reading field 4: ", err)
-	} else {
-		p.Time = v
-	}
-	return nil
-}
-
-func (p *TSLastDataQueryReq)  ReadField5(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI64(ctx); err != nil {
-		return thrift.PrependError("error reading field 5: ", err)
-	} else {
-		p.StatementId = v
-	}
-	return nil
-}
-
-func (p *TSLastDataQueryReq)  ReadField6(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadBool(ctx); err != nil {
-		return thrift.PrependError("error reading field 6: ", err)
-	} else {
-		p.EnableRedirectQuery = &v
-	}
-	return nil
-}
-
-func (p *TSLastDataQueryReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "TSLastDataQueryReq"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-		if err := p.writeField2(ctx, oprot); err != nil { return err }
-		if err := p.writeField3(ctx, oprot); err != nil { return err }
-		if err := p.writeField4(ctx, oprot); err != nil { return err }
-		if err := p.writeField5(ctx, oprot); err != nil { return err }
-		if err := p.writeField6(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSLastDataQueryReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
-	if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.sessionId (1) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:sessionId: ", p), err) }
-	return err
-}
-
-func (p *TSLastDataQueryReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "paths", thrift.LIST, 2); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:paths: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.Paths)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.Paths {
-		if err := oprot.WriteString(ctx, string(v)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:paths: ", p), err) }
-	return err
-}
-
-func (p *TSLastDataQueryReq) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetFetchSize() {
-		if err := oprot.WriteFieldBegin(ctx, "fetchSize", thrift.I32, 3); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:fetchSize: ", p), err) }
-		if err := oprot.WriteI32(ctx, int32(*p.FetchSize)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T.fetchSize (3) field write error: ", p), err) }
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 3:fetchSize: ", p), err) }
-	}
-	return err
-}
-
-func (p *TSLastDataQueryReq) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "time", thrift.I64, 4); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:time: ", p), err) }
-	if err := oprot.WriteI64(ctx, int64(p.Time)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.time (4) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 4:time: ", p), err) }
-	return err
-}
-
-func (p *TSLastDataQueryReq) writeField5(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "statementId", thrift.I64, 5); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 5:statementId: ", p), err) }
-	if err := oprot.WriteI64(ctx, int64(p.StatementId)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.statementId (5) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 5:statementId: ", p), err) }
-	return err
-}
-
-func (p *TSLastDataQueryReq) writeField6(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetEnableRedirectQuery() {
-		if err := oprot.WriteFieldBegin(ctx, "enableRedirectQuery", thrift.BOOL, 6); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:enableRedirectQuery: ", p), err) }
-		if err := oprot.WriteBool(ctx, bool(*p.EnableRedirectQuery)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T.enableRedirectQuery (6) field write error: ", p), err) }
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 6:enableRedirectQuery: ", p), err) }
-	}
-	return err
-}
-
-func (p *TSLastDataQueryReq) Equals(other *TSLastDataQueryReq) bool {
-	if p == other {
-		return true
-	} else if p == nil || other == nil {
-		return false
-	}
-	if p.SessionId != other.SessionId { return false }
-	if len(p.Paths) != len(other.Paths) { return false }
-	for i, _tgt := range p.Paths {
-		_src105 := other.Paths[i]
-		if _tgt != _src105 { return false }
-	}
-	if p.FetchSize != other.FetchSize {
-		if p.FetchSize == nil || other.FetchSize == nil {
-			return false
-		}
-		if (*p.FetchSize) != (*other.FetchSize) { return false }
-	}
-	if p.Time != other.Time { return false }
-	if p.StatementId != other.StatementId { return false }
-	if p.EnableRedirectQuery != other.EnableRedirectQuery {
-		if p.EnableRedirectQuery == nil || other.EnableRedirectQuery == nil {
-			return false
-		}
-		if (*p.EnableRedirectQuery) != (*other.EnableRedirectQuery) { return false }
-	}
-	return true
-}
-
-func (p *TSLastDataQueryReq) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSLastDataQueryReq(%+v)", *p)
 }
 
 // Attributes:
@@ -9804,13 +8883,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField2(ctx context.Context, iprot thri
 	tSlice := make([]string, 0, size)
 	p.Paths =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem106 string
+		var _elem96 string
 		if v, err := iprot.ReadString(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem106 = v
+			_elem96 = v
 		}
-		p.Paths = append(p.Paths, _elem106)
+		p.Paths = append(p.Paths, _elem96)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -9826,13 +8905,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField3(ctx context.Context, iprot thri
 	tSlice := make([]int32, 0, size)
 	p.DataTypes =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem107 int32
+		var _elem97 int32
 		if v, err := iprot.ReadI32(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem107 = v
+			_elem97 = v
 		}
-		p.DataTypes = append(p.DataTypes, _elem107)
+		p.DataTypes = append(p.DataTypes, _elem97)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -9848,13 +8927,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField4(ctx context.Context, iprot thri
 	tSlice := make([]int32, 0, size)
 	p.Encodings =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem108 int32
+		var _elem98 int32
 		if v, err := iprot.ReadI32(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem108 = v
+			_elem98 = v
 		}
-		p.Encodings = append(p.Encodings, _elem108)
+		p.Encodings = append(p.Encodings, _elem98)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -9870,13 +8949,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField5(ctx context.Context, iprot thri
 	tSlice := make([]int32, 0, size)
 	p.Compressors =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem109 int32
+		var _elem99 int32
 		if v, err := iprot.ReadI32(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem109 = v
+			_elem99 = v
 		}
-		p.Compressors = append(p.Compressors, _elem109)
+		p.Compressors = append(p.Compressors, _elem99)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -9897,26 +8976,26 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField6(ctx context.Context, iprot thri
 			return thrift.PrependError("error reading map begin: ", err)
 		}
 		tMap := make(map[string]string, size)
-		_elem110 :=  tMap
+		_elem100 :=  tMap
 		for i := 0; i < size; i ++ {
-			var _key111 string
+			var _key101 string
 			if v, err := iprot.ReadString(ctx); err != nil {
 				return thrift.PrependError("error reading field 0: ", err)
 			} else {
-				_key111 = v
+				_key101 = v
 			}
-			var _val112 string
+			var _val102 string
 			if v, err := iprot.ReadString(ctx); err != nil {
 				return thrift.PrependError("error reading field 0: ", err)
 			} else {
-				_val112 = v
+				_val102 = v
 			}
-			_elem110[_key111] = _val112
+			_elem100[_key101] = _val102
 		}
 		if err := iprot.ReadMapEnd(ctx); err != nil {
 			return thrift.PrependError("error reading map end: ", err)
 		}
-		p.PropsList = append(p.PropsList, _elem110)
+		p.PropsList = append(p.PropsList, _elem100)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -9937,26 +9016,26 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField7(ctx context.Context, iprot thri
 			return thrift.PrependError("error reading map begin: ", err)
 		}
 		tMap := make(map[string]string, size)
-		_elem113 :=  tMap
+		_elem103 :=  tMap
 		for i := 0; i < size; i ++ {
-			var _key114 string
+			var _key104 string
 			if v, err := iprot.ReadString(ctx); err != nil {
 				return thrift.PrependError("error reading field 0: ", err)
 			} else {
-				_key114 = v
+				_key104 = v
 			}
-			var _val115 string
+			var _val105 string
 			if v, err := iprot.ReadString(ctx); err != nil {
 				return thrift.PrependError("error reading field 0: ", err)
 			} else {
-				_val115 = v
+				_val105 = v
 			}
-			_elem113[_key114] = _val115
+			_elem103[_key104] = _val105
 		}
 		if err := iprot.ReadMapEnd(ctx); err != nil {
 			return thrift.PrependError("error reading map end: ", err)
 		}
-		p.TagsList = append(p.TagsList, _elem113)
+		p.TagsList = append(p.TagsList, _elem103)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -9977,26 +9056,26 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField8(ctx context.Context, iprot thri
 			return thrift.PrependError("error reading map begin: ", err)
 		}
 		tMap := make(map[string]string, size)
-		_elem116 :=  tMap
+		_elem106 :=  tMap
 		for i := 0; i < size; i ++ {
-			var _key117 string
+			var _key107 string
 			if v, err := iprot.ReadString(ctx); err != nil {
 				return thrift.PrependError("error reading field 0: ", err)
 			} else {
-				_key117 = v
+				_key107 = v
 			}
-			var _val118 string
+			var _val108 string
 			if v, err := iprot.ReadString(ctx); err != nil {
 				return thrift.PrependError("error reading field 0: ", err)
 			} else {
-				_val118 = v
+				_val108 = v
 			}
-			_elem116[_key117] = _val118
+			_elem106[_key107] = _val108
 		}
 		if err := iprot.ReadMapEnd(ctx); err != nil {
 			return thrift.PrependError("error reading map end: ", err)
 		}
-		p.AttributesList = append(p.AttributesList, _elem116)
+		p.AttributesList = append(p.AttributesList, _elem106)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -10012,13 +9091,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField9(ctx context.Context, iprot thri
 	tSlice := make([]string, 0, size)
 	p.MeasurementAliasList =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem119 string
+		var _elem109 string
 		if v, err := iprot.ReadString(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem119 = v
+			_elem109 = v
 		}
-		p.MeasurementAliasList = append(p.MeasurementAliasList, _elem119)
+		p.MeasurementAliasList = append(p.MeasurementAliasList, _elem109)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -10248,55 +9327,55 @@ func (p *TSCreateMultiTimeseriesReq) Equals(other *TSCreateMultiTimeseriesReq) b
 	if p.SessionId != other.SessionId { return false }
 	if len(p.Paths) != len(other.Paths) { return false }
 	for i, _tgt := range p.Paths {
-		_src120 := other.Paths[i]
-		if _tgt != _src120 { return false }
+		_src110 := other.Paths[i]
+		if _tgt != _src110 { return false }
 	}
 	if len(p.DataTypes) != len(other.DataTypes) { return false }
 	for i, _tgt := range p.DataTypes {
-		_src121 := other.DataTypes[i]
-		if _tgt != _src121 { return false }
+		_src111 := other.DataTypes[i]
+		if _tgt != _src111 { return false }
 	}
 	if len(p.Encodings) != len(other.Encodings) { return false }
 	for i, _tgt := range p.Encodings {
-		_src122 := other.Encodings[i]
-		if _tgt != _src122 { return false }
+		_src112 := other.Encodings[i]
+		if _tgt != _src112 { return false }
 	}
 	if len(p.Compressors) != len(other.Compressors) { return false }
 	for i, _tgt := range p.Compressors {
-		_src123 := other.Compressors[i]
-		if _tgt != _src123 { return false }
+		_src113 := other.Compressors[i]
+		if _tgt != _src113 { return false }
 	}
 	if len(p.PropsList) != len(other.PropsList) { return false }
 	for i, _tgt := range p.PropsList {
-		_src124 := other.PropsList[i]
-		if len(_tgt) != len(_src124) { return false }
+		_src114 := other.PropsList[i]
+		if len(_tgt) != len(_src114) { return false }
 		for k, _tgt := range _tgt {
-			_src125 := _src124[k]
-			if _tgt != _src125 { return false }
+			_src115 := _src114[k]
+			if _tgt != _src115 { return false }
 		}
 	}
 	if len(p.TagsList) != len(other.TagsList) { return false }
 	for i, _tgt := range p.TagsList {
-		_src126 := other.TagsList[i]
-		if len(_tgt) != len(_src126) { return false }
+		_src116 := other.TagsList[i]
+		if len(_tgt) != len(_src116) { return false }
 		for k, _tgt := range _tgt {
-			_src127 := _src126[k]
-			if _tgt != _src127 { return false }
+			_src117 := _src116[k]
+			if _tgt != _src117 { return false }
 		}
 	}
 	if len(p.AttributesList) != len(other.AttributesList) { return false }
 	for i, _tgt := range p.AttributesList {
-		_src128 := other.AttributesList[i]
-		if len(_tgt) != len(_src128) { return false }
+		_src118 := other.AttributesList[i]
+		if len(_tgt) != len(_src118) { return false }
 		for k, _tgt := range _tgt {
-			_src129 := _src128[k]
-			if _tgt != _src129 { return false }
+			_src119 := _src118[k]
+			if _tgt != _src119 { return false }
 		}
 	}
 	if len(p.MeasurementAliasList) != len(other.MeasurementAliasList) { return false }
 	for i, _tgt := range p.MeasurementAliasList {
-		_src130 := other.MeasurementAliasList[i]
-		if _tgt != _src130 { return false }
+		_src120 := other.MeasurementAliasList[i]
+		if _tgt != _src120 { return false }
 	}
 	return true
 }
@@ -10424,13 +9503,13 @@ func (p *ServerProperties)  ReadField2(ctx context.Context, iprot thrift.TProtoc
 	tSlice := make([]string, 0, size)
 	p.SupportedTimeAggregationOperations =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem131 string
+		var _elem121 string
 		if v, err := iprot.ReadString(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem131 = v
+			_elem121 = v
 		}
-		p.SupportedTimeAggregationOperations = append(p.SupportedTimeAggregationOperations, _elem131)
+		p.SupportedTimeAggregationOperations = append(p.SupportedTimeAggregationOperations, _elem121)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -10509,8 +9588,8 @@ func (p *ServerProperties) Equals(other *ServerProperties) bool {
 	if p.Version != other.Version { return false }
 	if len(p.SupportedTimeAggregationOperations) != len(other.SupportedTimeAggregationOperations) { return false }
 	for i, _tgt := range p.SupportedTimeAggregationOperations {
-		_src132 := other.SupportedTimeAggregationOperations[i]
-		if _tgt != _src132 { return false }
+		_src122 := other.SupportedTimeAggregationOperations[i]
+		if _tgt != _src122 { return false }
 	}
 	if p.TimestampPrecision != other.TimestampPrecision { return false }
 	return true
@@ -10521,751 +9600,6 @@ func (p *ServerProperties) String() string {
 		return "<nil>"
 	}
 	return fmt.Sprintf("ServerProperties(%+v)", *p)
-}
-
-// Attributes:
-//  - SessionId
-//  - TemplateName
-//  - PrefixPath
-type TSSetSchemaTemplateReq struct {
-	SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	TemplateName string `thrift:"templateName,2,required" db:"templateName" json:"templateName"`
-	PrefixPath string `thrift:"prefixPath,3,required" db:"prefixPath" json:"prefixPath"`
-}
-
-func NewTSSetSchemaTemplateReq() *TSSetSchemaTemplateReq {
-	return &TSSetSchemaTemplateReq{}
-}
-
-
-func (p *TSSetSchemaTemplateReq) GetSessionId() int64 {
-	return p.SessionId
-}
-
-func (p *TSSetSchemaTemplateReq) GetTemplateName() string {
-	return p.TemplateName
-}
-
-func (p *TSSetSchemaTemplateReq) GetPrefixPath() string {
-	return p.PrefixPath
-}
-func (p *TSSetSchemaTemplateReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-	var issetSessionId bool = false;
-	var issetTemplateName bool = false;
-	var issetPrefixPath bool = false;
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.I64 {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-				issetSessionId = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 2:
-			if fieldTypeId == thrift.STRING {
-				if err := p.ReadField2(ctx, iprot); err != nil {
-					return err
-				}
-				issetTemplateName = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 3:
-			if fieldTypeId == thrift.STRING {
-				if err := p.ReadField3(ctx, iprot); err != nil {
-					return err
-				}
-				issetPrefixPath = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	if !issetSessionId{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
-	}
-	if !issetTemplateName{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field TemplateName is not set"));
-	}
-	if !issetPrefixPath{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field PrefixPath is not set"));
-	}
-	return nil
-}
-
-func (p *TSSetSchemaTemplateReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI64(ctx); err != nil {
-		return thrift.PrependError("error reading field 1: ", err)
-	} else {
-		p.SessionId = v
-	}
-	return nil
-}
-
-func (p *TSSetSchemaTemplateReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadString(ctx); err != nil {
-		return thrift.PrependError("error reading field 2: ", err)
-	} else {
-		p.TemplateName = v
-	}
-	return nil
-}
-
-func (p *TSSetSchemaTemplateReq)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadString(ctx); err != nil {
-		return thrift.PrependError("error reading field 3: ", err)
-	} else {
-		p.PrefixPath = v
-	}
-	return nil
-}
-
-func (p *TSSetSchemaTemplateReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "TSSetSchemaTemplateReq"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-		if err := p.writeField2(ctx, oprot); err != nil { return err }
-		if err := p.writeField3(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSSetSchemaTemplateReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
-	if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.sessionId (1) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:sessionId: ", p), err) }
-	return err
-}
-
-func (p *TSSetSchemaTemplateReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "templateName", thrift.STRING, 2); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:templateName: ", p), err) }
-	if err := oprot.WriteString(ctx, string(p.TemplateName)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.templateName (2) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:templateName: ", p), err) }
-	return err
-}
-
-func (p *TSSetSchemaTemplateReq) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "prefixPath", thrift.STRING, 3); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:prefixPath: ", p), err) }
-	if err := oprot.WriteString(ctx, string(p.PrefixPath)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.prefixPath (3) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 3:prefixPath: ", p), err) }
-	return err
-}
-
-func (p *TSSetSchemaTemplateReq) Equals(other *TSSetSchemaTemplateReq) bool {
-	if p == other {
-		return true
-	} else if p == nil || other == nil {
-		return false
-	}
-	if p.SessionId != other.SessionId { return false }
-	if p.TemplateName != other.TemplateName { return false }
-	if p.PrefixPath != other.PrefixPath { return false }
-	return true
-}
-
-func (p *TSSetSchemaTemplateReq) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSSetSchemaTemplateReq(%+v)", *p)
-}
-
-// Attributes:
-//  - SessionId
-//  - Name
-//  - SchemaNames
-//  - Measurements
-//  - DataTypes
-//  - Encodings
-//  - Compressors
-type TSCreateSchemaTemplateReq struct {
-	SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-	Name string `thrift:"name,2,required" db:"name" json:"name"`
-	SchemaNames []string `thrift:"schemaNames,3,required" db:"schemaNames" json:"schemaNames"`
-	Measurements [][]string `thrift:"measurements,4,required" db:"measurements" json:"measurements"`
-	DataTypes [][]int32 `thrift:"dataTypes,5,required" db:"dataTypes" json:"dataTypes"`
-	Encodings [][]int32 `thrift:"encodings,6,required" db:"encodings" json:"encodings"`
-	Compressors []int32 `thrift:"compressors,7,required" db:"compressors" json:"compressors"`
-}
-
-func NewTSCreateSchemaTemplateReq() *TSCreateSchemaTemplateReq {
-	return &TSCreateSchemaTemplateReq{}
-}
-
-
-func (p *TSCreateSchemaTemplateReq) GetSessionId() int64 {
-	return p.SessionId
-}
-
-func (p *TSCreateSchemaTemplateReq) GetName() string {
-	return p.Name
-}
-
-func (p *TSCreateSchemaTemplateReq) GetSchemaNames() []string {
-	return p.SchemaNames
-}
-
-func (p *TSCreateSchemaTemplateReq) GetMeasurements() [][]string {
-	return p.Measurements
-}
-
-func (p *TSCreateSchemaTemplateReq) GetDataTypes() [][]int32 {
-	return p.DataTypes
-}
-
-func (p *TSCreateSchemaTemplateReq) GetEncodings() [][]int32 {
-	return p.Encodings
-}
-
-func (p *TSCreateSchemaTemplateReq) GetCompressors() []int32 {
-	return p.Compressors
-}
-func (p *TSCreateSchemaTemplateReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-	var issetSessionId bool = false;
-	var issetName bool = false;
-	var issetSchemaNames bool = false;
-	var issetMeasurements bool = false;
-	var issetDataTypes bool = false;
-	var issetEncodings bool = false;
-	var issetCompressors bool = false;
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.I64 {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-				issetSessionId = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 2:
-			if fieldTypeId == thrift.STRING {
-				if err := p.ReadField2(ctx, iprot); err != nil {
-					return err
-				}
-				issetName = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 3:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField3(ctx, iprot); err != nil {
-					return err
-				}
-				issetSchemaNames = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 4:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField4(ctx, iprot); err != nil {
-					return err
-				}
-				issetMeasurements = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 5:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField5(ctx, iprot); err != nil {
-					return err
-				}
-				issetDataTypes = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 6:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField6(ctx, iprot); err != nil {
-					return err
-				}
-				issetEncodings = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		case 7:
-			if fieldTypeId == thrift.LIST {
-				if err := p.ReadField7(ctx, iprot); err != nil {
-					return err
-				}
-				issetCompressors = true
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	if !issetSessionId{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
-	}
-	if !issetName{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Name is not set"));
-	}
-	if !issetSchemaNames{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SchemaNames is not set"));
-	}
-	if !issetMeasurements{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Measurements is not set"));
-	}
-	if !issetDataTypes{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DataTypes is not set"));
-	}
-	if !issetEncodings{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Encodings is not set"));
-	}
-	if !issetCompressors{
-		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Compressors is not set"));
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadI64(ctx); err != nil {
-		return thrift.PrependError("error reading field 1: ", err)
-	} else {
-		p.SessionId = v
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
-	if v, err := iprot.ReadString(ctx); err != nil {
-		return thrift.PrependError("error reading field 2: ", err)
-	} else {
-		p.Name = v
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([]string, 0, size)
-	p.SchemaNames =  tSlice
-	for i := 0; i < size; i ++ {
-		var _elem133 string
-		if v, err := iprot.ReadString(ctx); err != nil {
-			return thrift.PrependError("error reading field 0: ", err)
-		} else {
-			_elem133 = v
-		}
-		p.SchemaNames = append(p.SchemaNames, _elem133)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([][]string, 0, size)
-	p.Measurements =  tSlice
-	for i := 0; i < size; i ++ {
-		_, size, err := iprot.ReadListBegin(ctx)
-		if err != nil {
-			return thrift.PrependError("error reading list begin: ", err)
-		}
-		tSlice := make([]string, 0, size)
-		_elem134 :=  tSlice
-		for i := 0; i < size; i ++ {
-			var _elem135 string
-			if v, err := iprot.ReadString(ctx); err != nil {
-				return thrift.PrependError("error reading field 0: ", err)
-			} else {
-				_elem135 = v
-			}
-			_elem134 = append(_elem134, _elem135)
-		}
-		if err := iprot.ReadListEnd(ctx); err != nil {
-			return thrift.PrependError("error reading list end: ", err)
-		}
-		p.Measurements = append(p.Measurements, _elem134)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq)  ReadField5(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([][]int32, 0, size)
-	p.DataTypes =  tSlice
-	for i := 0; i < size; i ++ {
-		_, size, err := iprot.ReadListBegin(ctx)
-		if err != nil {
-			return thrift.PrependError("error reading list begin: ", err)
-		}
-		tSlice := make([]int32, 0, size)
-		_elem136 :=  tSlice
-		for i := 0; i < size; i ++ {
-			var _elem137 int32
-			if v, err := iprot.ReadI32(ctx); err != nil {
-				return thrift.PrependError("error reading field 0: ", err)
-			} else {
-				_elem137 = v
-			}
-			_elem136 = append(_elem136, _elem137)
-		}
-		if err := iprot.ReadListEnd(ctx); err != nil {
-			return thrift.PrependError("error reading list end: ", err)
-		}
-		p.DataTypes = append(p.DataTypes, _elem136)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq)  ReadField6(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([][]int32, 0, size)
-	p.Encodings =  tSlice
-	for i := 0; i < size; i ++ {
-		_, size, err := iprot.ReadListBegin(ctx)
-		if err != nil {
-			return thrift.PrependError("error reading list begin: ", err)
-		}
-		tSlice := make([]int32, 0, size)
-		_elem138 :=  tSlice
-		for i := 0; i < size; i ++ {
-			var _elem139 int32
-			if v, err := iprot.ReadI32(ctx); err != nil {
-				return thrift.PrependError("error reading field 0: ", err)
-			} else {
-				_elem139 = v
-			}
-			_elem138 = append(_elem138, _elem139)
-		}
-		if err := iprot.ReadListEnd(ctx); err != nil {
-			return thrift.PrependError("error reading list end: ", err)
-		}
-		p.Encodings = append(p.Encodings, _elem138)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq)  ReadField7(ctx context.Context, iprot thrift.TProtocol) error {
-	_, size, err := iprot.ReadListBegin(ctx)
-	if err != nil {
-		return thrift.PrependError("error reading list begin: ", err)
-	}
-	tSlice := make([]int32, 0, size)
-	p.Compressors =  tSlice
-	for i := 0; i < size; i ++ {
-		var _elem140 int32
-		if v, err := iprot.ReadI32(ctx); err != nil {
-			return thrift.PrependError("error reading field 0: ", err)
-		} else {
-			_elem140 = v
-		}
-		p.Compressors = append(p.Compressors, _elem140)
-	}
-	if err := iprot.ReadListEnd(ctx); err != nil {
-		return thrift.PrependError("error reading list end: ", err)
-	}
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "TSCreateSchemaTemplateReq"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-		if err := p.writeField2(ctx, oprot); err != nil { return err }
-		if err := p.writeField3(ctx, oprot); err != nil { return err }
-		if err := p.writeField4(ctx, oprot); err != nil { return err }
-		if err := p.writeField5(ctx, oprot); err != nil { return err }
-		if err := p.writeField6(ctx, oprot); err != nil { return err }
-		if err := p.writeField7(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSCreateSchemaTemplateReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
-	if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.sessionId (1) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:sessionId: ", p), err) }
-	return err
-}
-
-func (p *TSCreateSchemaTemplateReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "name", thrift.STRING, 2); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:name: ", p), err) }
-	if err := oprot.WriteString(ctx, string(p.Name)); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T.name (2) field write error: ", p), err) }
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:name: ", p), err) }
-	return err
-}
-
-func (p *TSCreateSchemaTemplateReq) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "schemaNames", thrift.LIST, 3); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:schemaNames: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.SchemaNames)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.SchemaNames {
-		if err := oprot.WriteString(ctx, string(v)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 3:schemaNames: ", p), err) }
-	return err
-}
-
-func (p *TSCreateSchemaTemplateReq) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "measurements", thrift.LIST, 4); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:measurements: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.LIST, len(p.Measurements)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.Measurements {
-		if err := oprot.WriteListBegin(ctx, thrift.STRING, len(v)); err != nil {
-			return thrift.PrependError("error writing list begin: ", err)
-		}
-		for _, v := range v {
-			if err := oprot.WriteString(ctx, string(v)); err != nil {
-				return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-		}
-		if err := oprot.WriteListEnd(ctx); err != nil {
-			return thrift.PrependError("error writing list end: ", err)
-		}
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 4:measurements: ", p), err) }
-	return err
-}
-
-func (p *TSCreateSchemaTemplateReq) writeField5(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "dataTypes", thrift.LIST, 5); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 5:dataTypes: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.LIST, len(p.DataTypes)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.DataTypes {
-		if err := oprot.WriteListBegin(ctx, thrift.I32, len(v)); err != nil {
-			return thrift.PrependError("error writing list begin: ", err)
-		}
-		for _, v := range v {
-			if err := oprot.WriteI32(ctx, int32(v)); err != nil {
-				return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-		}
-		if err := oprot.WriteListEnd(ctx); err != nil {
-			return thrift.PrependError("error writing list end: ", err)
-		}
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 5:dataTypes: ", p), err) }
-	return err
-}
-
-func (p *TSCreateSchemaTemplateReq) writeField6(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "encodings", thrift.LIST, 6); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:encodings: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.LIST, len(p.Encodings)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.Encodings {
-		if err := oprot.WriteListBegin(ctx, thrift.I32, len(v)); err != nil {
-			return thrift.PrependError("error writing list begin: ", err)
-		}
-		for _, v := range v {
-			if err := oprot.WriteI32(ctx, int32(v)); err != nil {
-				return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-		}
-		if err := oprot.WriteListEnd(ctx); err != nil {
-			return thrift.PrependError("error writing list end: ", err)
-		}
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 6:encodings: ", p), err) }
-	return err
-}
-
-func (p *TSCreateSchemaTemplateReq) writeField7(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "compressors", thrift.LIST, 7); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 7:compressors: ", p), err) }
-	if err := oprot.WriteListBegin(ctx, thrift.I32, len(p.Compressors)); err != nil {
-		return thrift.PrependError("error writing list begin: ", err)
-	}
-	for _, v := range p.Compressors {
-		if err := oprot.WriteI32(ctx, int32(v)); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
-	}
-	if err := oprot.WriteListEnd(ctx); err != nil {
-		return thrift.PrependError("error writing list end: ", err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 7:compressors: ", p), err) }
-	return err
-}
-
-func (p *TSCreateSchemaTemplateReq) Equals(other *TSCreateSchemaTemplateReq) bool {
-	if p == other {
-		return true
-	} else if p == nil || other == nil {
-		return false
-	}
-	if p.SessionId != other.SessionId { return false }
-	if p.Name != other.Name { return false }
-	if len(p.SchemaNames) != len(other.SchemaNames) { return false }
-	for i, _tgt := range p.SchemaNames {
-		_src141 := other.SchemaNames[i]
-		if _tgt != _src141 { return false }
-	}
-	if len(p.Measurements) != len(other.Measurements) { return false }
-	for i, _tgt := range p.Measurements {
-		_src142 := other.Measurements[i]
-		if len(_tgt) != len(_src142) { return false }
-		for i, _tgt := range _tgt {
-			_src143 := _src142[i]
-			if _tgt != _src143 { return false }
-		}
-	}
-	if len(p.DataTypes) != len(other.DataTypes) { return false }
-	for i, _tgt := range p.DataTypes {
-		_src144 := other.DataTypes[i]
-		if len(_tgt) != len(_src144) { return false }
-		for i, _tgt := range _tgt {
-			_src145 := _src144[i]
-			if _tgt != _src145 { return false }
-		}
-	}
-	if len(p.Encodings) != len(other.Encodings) { return false }
-	for i, _tgt := range p.Encodings {
-		_src146 := other.Encodings[i]
-		if len(_tgt) != len(_src146) { return false }
-		for i, _tgt := range _tgt {
-			_src147 := _src146[i]
-			if _tgt != _src147 { return false }
-		}
-	}
-	if len(p.Compressors) != len(other.Compressors) { return false }
-	for i, _tgt := range p.Compressors {
-		_src148 := other.Compressors[i]
-		if _tgt != _src148 { return false }
-	}
-	return true
-}
-
-func (p *TSCreateSchemaTemplateReq) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSCreateSchemaTemplateReq(%+v)", *p)
 }
 
 type TSIService interface {
@@ -11313,9 +9647,6 @@ type TSIService interface {
 	// Parameters:
 	//  - Req
 	CreateTimeseries(ctx context.Context, req *TSCreateTimeseriesReq) (_r *TSStatus, _err error)
-	// Parameters:
-	//  - Req
-	CreateAlignedTimeseries(ctx context.Context, req *TSCreateAlignedTimeseriesReq) (_r *TSStatus, _err error)
 	// Parameters:
 	//  - Req
 	CreateMultiTimeseries(ctx context.Context, req *TSCreateMultiTimeseriesReq) (_r *TSStatus, _err error)
@@ -11376,17 +9707,8 @@ type TSIService interface {
 	//  - Req
 	ExecuteRawDataQuery(ctx context.Context, req *TSRawDataQueryReq) (_r *TSExecuteStatementResp, _err error)
 	// Parameters:
-	//  - Req
-	ExecuteLastDataQuery(ctx context.Context, req *TSLastDataQueryReq) (_r *TSExecuteStatementResp, _err error)
-	// Parameters:
 	//  - SessionId
 	RequestStatementId(ctx context.Context, sessionId int64) (_r int64, _err error)
-	// Parameters:
-	//  - Req
-	CreateSchemaTemplate(ctx context.Context, req *TSCreateSchemaTemplateReq) (_r *TSStatus, _err error)
-	// Parameters:
-	//  - Req
-	SetSchemaTemplate(ctx context.Context, req *TSSetSchemaTemplateReq) (_r *TSStatus, _err error)
 }
 
 type TSIServiceClient struct {
@@ -11427,589 +9749,529 @@ func (p *TSIServiceClient) SetLastResponseMeta_(meta thrift.ResponseMeta) {
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) OpenSession(ctx context.Context, req *TSOpenSessionReq) (_r *TSOpenSessionResp, _err error) {
-	var _args149 TSIServiceOpenSessionArgs
-	_args149.Req = req
-	var _result151 TSIServiceOpenSessionResult
-	var _meta150 thrift.ResponseMeta
-	_meta150, _err = p.Client_().Call(ctx, "openSession", &_args149, &_result151)
-	p.SetLastResponseMeta_(_meta150)
+	var _args123 TSIServiceOpenSessionArgs
+	_args123.Req = req
+	var _result125 TSIServiceOpenSessionResult
+	var _meta124 thrift.ResponseMeta
+	_meta124, _err = p.Client_().Call(ctx, "openSession", &_args123, &_result125)
+	p.SetLastResponseMeta_(_meta124)
 	if _err != nil {
 		return
 	}
-	return _result151.GetSuccess(), nil
+	return _result125.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) CloseSession(ctx context.Context, req *TSCloseSessionReq) (_r *TSStatus, _err error) {
-	var _args152 TSIServiceCloseSessionArgs
-	_args152.Req = req
-	var _result154 TSIServiceCloseSessionResult
-	var _meta153 thrift.ResponseMeta
-	_meta153, _err = p.Client_().Call(ctx, "closeSession", &_args152, &_result154)
-	p.SetLastResponseMeta_(_meta153)
+	var _args126 TSIServiceCloseSessionArgs
+	_args126.Req = req
+	var _result128 TSIServiceCloseSessionResult
+	var _meta127 thrift.ResponseMeta
+	_meta127, _err = p.Client_().Call(ctx, "closeSession", &_args126, &_result128)
+	p.SetLastResponseMeta_(_meta127)
 	if _err != nil {
 		return
 	}
-	return _result154.GetSuccess(), nil
+	return _result128.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) ExecuteStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-	var _args155 TSIServiceExecuteStatementArgs
-	_args155.Req = req
-	var _result157 TSIServiceExecuteStatementResult
-	var _meta156 thrift.ResponseMeta
-	_meta156, _err = p.Client_().Call(ctx, "executeStatement", &_args155, &_result157)
-	p.SetLastResponseMeta_(_meta156)
+	var _args129 TSIServiceExecuteStatementArgs
+	_args129.Req = req
+	var _result131 TSIServiceExecuteStatementResult
+	var _meta130 thrift.ResponseMeta
+	_meta130, _err = p.Client_().Call(ctx, "executeStatement", &_args129, &_result131)
+	p.SetLastResponseMeta_(_meta130)
 	if _err != nil {
 		return
 	}
-	return _result157.GetSuccess(), nil
+	return _result131.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) ExecuteBatchStatement(ctx context.Context, req *TSExecuteBatchStatementReq) (_r *TSStatus, _err error) {
-	var _args158 TSIServiceExecuteBatchStatementArgs
-	_args158.Req = req
-	var _result160 TSIServiceExecuteBatchStatementResult
-	var _meta159 thrift.ResponseMeta
-	_meta159, _err = p.Client_().Call(ctx, "executeBatchStatement", &_args158, &_result160)
-	p.SetLastResponseMeta_(_meta159)
+	var _args132 TSIServiceExecuteBatchStatementArgs
+	_args132.Req = req
+	var _result134 TSIServiceExecuteBatchStatementResult
+	var _meta133 thrift.ResponseMeta
+	_meta133, _err = p.Client_().Call(ctx, "executeBatchStatement", &_args132, &_result134)
+	p.SetLastResponseMeta_(_meta133)
 	if _err != nil {
 		return
 	}
-	return _result160.GetSuccess(), nil
+	return _result134.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) ExecuteQueryStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-	var _args161 TSIServiceExecuteQueryStatementArgs
-	_args161.Req = req
-	var _result163 TSIServiceExecuteQueryStatementResult
-	var _meta162 thrift.ResponseMeta
-	_meta162, _err = p.Client_().Call(ctx, "executeQueryStatement", &_args161, &_result163)
-	p.SetLastResponseMeta_(_meta162)
+	var _args135 TSIServiceExecuteQueryStatementArgs
+	_args135.Req = req
+	var _result137 TSIServiceExecuteQueryStatementResult
+	var _meta136 thrift.ResponseMeta
+	_meta136, _err = p.Client_().Call(ctx, "executeQueryStatement", &_args135, &_result137)
+	p.SetLastResponseMeta_(_meta136)
 	if _err != nil {
 		return
 	}
-	return _result163.GetSuccess(), nil
+	return _result137.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) ExecuteUpdateStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-	var _args164 TSIServiceExecuteUpdateStatementArgs
-	_args164.Req = req
-	var _result166 TSIServiceExecuteUpdateStatementResult
-	var _meta165 thrift.ResponseMeta
-	_meta165, _err = p.Client_().Call(ctx, "executeUpdateStatement", &_args164, &_result166)
-	p.SetLastResponseMeta_(_meta165)
+	var _args138 TSIServiceExecuteUpdateStatementArgs
+	_args138.Req = req
+	var _result140 TSIServiceExecuteUpdateStatementResult
+	var _meta139 thrift.ResponseMeta
+	_meta139, _err = p.Client_().Call(ctx, "executeUpdateStatement", &_args138, &_result140)
+	p.SetLastResponseMeta_(_meta139)
 	if _err != nil {
 		return
 	}
-	return _result166.GetSuccess(), nil
+	return _result140.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) FetchResults(ctx context.Context, req *TSFetchResultsReq) (_r *TSFetchResultsResp, _err error) {
-	var _args167 TSIServiceFetchResultsArgs
-	_args167.Req = req
-	var _result169 TSIServiceFetchResultsResult
-	var _meta168 thrift.ResponseMeta
-	_meta168, _err = p.Client_().Call(ctx, "fetchResults", &_args167, &_result169)
-	p.SetLastResponseMeta_(_meta168)
+	var _args141 TSIServiceFetchResultsArgs
+	_args141.Req = req
+	var _result143 TSIServiceFetchResultsResult
+	var _meta142 thrift.ResponseMeta
+	_meta142, _err = p.Client_().Call(ctx, "fetchResults", &_args141, &_result143)
+	p.SetLastResponseMeta_(_meta142)
 	if _err != nil {
 		return
 	}
-	return _result169.GetSuccess(), nil
+	return _result143.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) FetchMetadata(ctx context.Context, req *TSFetchMetadataReq) (_r *TSFetchMetadataResp, _err error) {
-	var _args170 TSIServiceFetchMetadataArgs
-	_args170.Req = req
-	var _result172 TSIServiceFetchMetadataResult
-	var _meta171 thrift.ResponseMeta
-	_meta171, _err = p.Client_().Call(ctx, "fetchMetadata", &_args170, &_result172)
-	p.SetLastResponseMeta_(_meta171)
+	var _args144 TSIServiceFetchMetadataArgs
+	_args144.Req = req
+	var _result146 TSIServiceFetchMetadataResult
+	var _meta145 thrift.ResponseMeta
+	_meta145, _err = p.Client_().Call(ctx, "fetchMetadata", &_args144, &_result146)
+	p.SetLastResponseMeta_(_meta145)
 	if _err != nil {
 		return
 	}
-	return _result172.GetSuccess(), nil
+	return _result146.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) CancelOperation(ctx context.Context, req *TSCancelOperationReq) (_r *TSStatus, _err error) {
-	var _args173 TSIServiceCancelOperationArgs
-	_args173.Req = req
-	var _result175 TSIServiceCancelOperationResult
-	var _meta174 thrift.ResponseMeta
-	_meta174, _err = p.Client_().Call(ctx, "cancelOperation", &_args173, &_result175)
-	p.SetLastResponseMeta_(_meta174)
+	var _args147 TSIServiceCancelOperationArgs
+	_args147.Req = req
+	var _result149 TSIServiceCancelOperationResult
+	var _meta148 thrift.ResponseMeta
+	_meta148, _err = p.Client_().Call(ctx, "cancelOperation", &_args147, &_result149)
+	p.SetLastResponseMeta_(_meta148)
 	if _err != nil {
 		return
 	}
-	return _result175.GetSuccess(), nil
+	return _result149.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) CloseOperation(ctx context.Context, req *TSCloseOperationReq) (_r *TSStatus, _err error) {
-	var _args176 TSIServiceCloseOperationArgs
-	_args176.Req = req
-	var _result178 TSIServiceCloseOperationResult
-	var _meta177 thrift.ResponseMeta
-	_meta177, _err = p.Client_().Call(ctx, "closeOperation", &_args176, &_result178)
-	p.SetLastResponseMeta_(_meta177)
+	var _args150 TSIServiceCloseOperationArgs
+	_args150.Req = req
+	var _result152 TSIServiceCloseOperationResult
+	var _meta151 thrift.ResponseMeta
+	_meta151, _err = p.Client_().Call(ctx, "closeOperation", &_args150, &_result152)
+	p.SetLastResponseMeta_(_meta151)
 	if _err != nil {
 		return
 	}
-	return _result178.GetSuccess(), nil
+	return _result152.GetSuccess(), nil
 }
 
 // Parameters:
 //  - SessionId
 func (p *TSIServiceClient) GetTimeZone(ctx context.Context, sessionId int64) (_r *TSGetTimeZoneResp, _err error) {
-	var _args179 TSIServiceGetTimeZoneArgs
-	_args179.SessionId = sessionId
-	var _result181 TSIServiceGetTimeZoneResult
-	var _meta180 thrift.ResponseMeta
-	_meta180, _err = p.Client_().Call(ctx, "getTimeZone", &_args179, &_result181)
-	p.SetLastResponseMeta_(_meta180)
+	var _args153 TSIServiceGetTimeZoneArgs
+	_args153.SessionId = sessionId
+	var _result155 TSIServiceGetTimeZoneResult
+	var _meta154 thrift.ResponseMeta
+	_meta154, _err = p.Client_().Call(ctx, "getTimeZone", &_args153, &_result155)
+	p.SetLastResponseMeta_(_meta154)
 	if _err != nil {
 		return
 	}
-	return _result181.GetSuccess(), nil
+	return _result155.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) SetTimeZone(ctx context.Context, req *TSSetTimeZoneReq) (_r *TSStatus, _err error) {
-	var _args182 TSIServiceSetTimeZoneArgs
-	_args182.Req = req
-	var _result184 TSIServiceSetTimeZoneResult
-	var _meta183 thrift.ResponseMeta
-	_meta183, _err = p.Client_().Call(ctx, "setTimeZone", &_args182, &_result184)
-	p.SetLastResponseMeta_(_meta183)
+	var _args156 TSIServiceSetTimeZoneArgs
+	_args156.Req = req
+	var _result158 TSIServiceSetTimeZoneResult
+	var _meta157 thrift.ResponseMeta
+	_meta157, _err = p.Client_().Call(ctx, "setTimeZone", &_args156, &_result158)
+	p.SetLastResponseMeta_(_meta157)
 	if _err != nil {
 		return
 	}
-	return _result184.GetSuccess(), nil
+	return _result158.GetSuccess(), nil
 }
 
 func (p *TSIServiceClient) GetProperties(ctx context.Context) (_r *ServerProperties, _err error) {
-	var _args185 TSIServiceGetPropertiesArgs
-	var _result187 TSIServiceGetPropertiesResult
-	var _meta186 thrift.ResponseMeta
-	_meta186, _err = p.Client_().Call(ctx, "getProperties", &_args185, &_result187)
-	p.SetLastResponseMeta_(_meta186)
+	var _args159 TSIServiceGetPropertiesArgs
+	var _result161 TSIServiceGetPropertiesResult
+	var _meta160 thrift.ResponseMeta
+	_meta160, _err = p.Client_().Call(ctx, "getProperties", &_args159, &_result161)
+	p.SetLastResponseMeta_(_meta160)
 	if _err != nil {
 		return
 	}
-	return _result187.GetSuccess(), nil
+	return _result161.GetSuccess(), nil
 }
 
 // Parameters:
 //  - SessionId
 //  - StorageGroup
 func (p *TSIServiceClient) SetStorageGroup(ctx context.Context, sessionId int64, storageGroup string) (_r *TSStatus, _err error) {
-	var _args188 TSIServiceSetStorageGroupArgs
-	_args188.SessionId = sessionId
-	_args188.StorageGroup = storageGroup
-	var _result190 TSIServiceSetStorageGroupResult
-	var _meta189 thrift.ResponseMeta
-	_meta189, _err = p.Client_().Call(ctx, "setStorageGroup", &_args188, &_result190)
-	p.SetLastResponseMeta_(_meta189)
+	var _args162 TSIServiceSetStorageGroupArgs
+	_args162.SessionId = sessionId
+	_args162.StorageGroup = storageGroup
+	var _result164 TSIServiceSetStorageGroupResult
+	var _meta163 thrift.ResponseMeta
+	_meta163, _err = p.Client_().Call(ctx, "setStorageGroup", &_args162, &_result164)
+	p.SetLastResponseMeta_(_meta163)
 	if _err != nil {
 		return
 	}
-	return _result190.GetSuccess(), nil
+	return _result164.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) CreateTimeseries(ctx context.Context, req *TSCreateTimeseriesReq) (_r *TSStatus, _err error) {
-	var _args191 TSIServiceCreateTimeseriesArgs
-	_args191.Req = req
-	var _result193 TSIServiceCreateTimeseriesResult
-	var _meta192 thrift.ResponseMeta
-	_meta192, _err = p.Client_().Call(ctx, "createTimeseries", &_args191, &_result193)
-	p.SetLastResponseMeta_(_meta192)
+	var _args165 TSIServiceCreateTimeseriesArgs
+	_args165.Req = req
+	var _result167 TSIServiceCreateTimeseriesResult
+	var _meta166 thrift.ResponseMeta
+	_meta166, _err = p.Client_().Call(ctx, "createTimeseries", &_args165, &_result167)
+	p.SetLastResponseMeta_(_meta166)
 	if _err != nil {
 		return
 	}
-	return _result193.GetSuccess(), nil
-}
-
-// Parameters:
-//  - Req
-func (p *TSIServiceClient) CreateAlignedTimeseries(ctx context.Context, req *TSCreateAlignedTimeseriesReq) (_r *TSStatus, _err error) {
-	var _args194 TSIServiceCreateAlignedTimeseriesArgs
-	_args194.Req = req
-	var _result196 TSIServiceCreateAlignedTimeseriesResult
-	var _meta195 thrift.ResponseMeta
-	_meta195, _err = p.Client_().Call(ctx, "createAlignedTimeseries", &_args194, &_result196)
-	p.SetLastResponseMeta_(_meta195)
-	if _err != nil {
-		return
-	}
-	return _result196.GetSuccess(), nil
+	return _result167.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) CreateMultiTimeseries(ctx context.Context, req *TSCreateMultiTimeseriesReq) (_r *TSStatus, _err error) {
-	var _args197 TSIServiceCreateMultiTimeseriesArgs
-	_args197.Req = req
-	var _result199 TSIServiceCreateMultiTimeseriesResult
-	var _meta198 thrift.ResponseMeta
-	_meta198, _err = p.Client_().Call(ctx, "createMultiTimeseries", &_args197, &_result199)
-	p.SetLastResponseMeta_(_meta198)
+	var _args168 TSIServiceCreateMultiTimeseriesArgs
+	_args168.Req = req
+	var _result170 TSIServiceCreateMultiTimeseriesResult
+	var _meta169 thrift.ResponseMeta
+	_meta169, _err = p.Client_().Call(ctx, "createMultiTimeseries", &_args168, &_result170)
+	p.SetLastResponseMeta_(_meta169)
 	if _err != nil {
 		return
 	}
-	return _result199.GetSuccess(), nil
+	return _result170.GetSuccess(), nil
 }
 
 // Parameters:
 //  - SessionId
 //  - Path
 func (p *TSIServiceClient) DeleteTimeseries(ctx context.Context, sessionId int64, path []string) (_r *TSStatus, _err error) {
-	var _args200 TSIServiceDeleteTimeseriesArgs
-	_args200.SessionId = sessionId
-	_args200.Path = path
-	var _result202 TSIServiceDeleteTimeseriesResult
-	var _meta201 thrift.ResponseMeta
-	_meta201, _err = p.Client_().Call(ctx, "deleteTimeseries", &_args200, &_result202)
-	p.SetLastResponseMeta_(_meta201)
+	var _args171 TSIServiceDeleteTimeseriesArgs
+	_args171.SessionId = sessionId
+	_args171.Path = path
+	var _result173 TSIServiceDeleteTimeseriesResult
+	var _meta172 thrift.ResponseMeta
+	_meta172, _err = p.Client_().Call(ctx, "deleteTimeseries", &_args171, &_result173)
+	p.SetLastResponseMeta_(_meta172)
 	if _err != nil {
 		return
 	}
-	return _result202.GetSuccess(), nil
+	return _result173.GetSuccess(), nil
 }
 
 // Parameters:
 //  - SessionId
 //  - StorageGroup
 func (p *TSIServiceClient) DeleteStorageGroups(ctx context.Context, sessionId int64, storageGroup []string) (_r *TSStatus, _err error) {
-	var _args203 TSIServiceDeleteStorageGroupsArgs
-	_args203.SessionId = sessionId
-	_args203.StorageGroup = storageGroup
-	var _result205 TSIServiceDeleteStorageGroupsResult
-	var _meta204 thrift.ResponseMeta
-	_meta204, _err = p.Client_().Call(ctx, "deleteStorageGroups", &_args203, &_result205)
-	p.SetLastResponseMeta_(_meta204)
+	var _args174 TSIServiceDeleteStorageGroupsArgs
+	_args174.SessionId = sessionId
+	_args174.StorageGroup = storageGroup
+	var _result176 TSIServiceDeleteStorageGroupsResult
+	var _meta175 thrift.ResponseMeta
+	_meta175, _err = p.Client_().Call(ctx, "deleteStorageGroups", &_args174, &_result176)
+	p.SetLastResponseMeta_(_meta175)
 	if _err != nil {
 		return
 	}
-	return _result205.GetSuccess(), nil
+	return _result176.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) InsertRecord(ctx context.Context, req *TSInsertRecordReq) (_r *TSStatus, _err error) {
-	var _args206 TSIServiceInsertRecordArgs
-	_args206.Req = req
-	var _result208 TSIServiceInsertRecordResult
-	var _meta207 thrift.ResponseMeta
-	_meta207, _err = p.Client_().Call(ctx, "insertRecord", &_args206, &_result208)
-	p.SetLastResponseMeta_(_meta207)
+	var _args177 TSIServiceInsertRecordArgs
+	_args177.Req = req
+	var _result179 TSIServiceInsertRecordResult
+	var _meta178 thrift.ResponseMeta
+	_meta178, _err = p.Client_().Call(ctx, "insertRecord", &_args177, &_result179)
+	p.SetLastResponseMeta_(_meta178)
 	if _err != nil {
 		return
 	}
-	return _result208.GetSuccess(), nil
+	return _result179.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) InsertStringRecord(ctx context.Context, req *TSInsertStringRecordReq) (_r *TSStatus, _err error) {
-	var _args209 TSIServiceInsertStringRecordArgs
-	_args209.Req = req
-	var _result211 TSIServiceInsertStringRecordResult
-	var _meta210 thrift.ResponseMeta
-	_meta210, _err = p.Client_().Call(ctx, "insertStringRecord", &_args209, &_result211)
-	p.SetLastResponseMeta_(_meta210)
+	var _args180 TSIServiceInsertStringRecordArgs
+	_args180.Req = req
+	var _result182 TSIServiceInsertStringRecordResult
+	var _meta181 thrift.ResponseMeta
+	_meta181, _err = p.Client_().Call(ctx, "insertStringRecord", &_args180, &_result182)
+	p.SetLastResponseMeta_(_meta181)
 	if _err != nil {
 		return
 	}
-	return _result211.GetSuccess(), nil
+	return _result182.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) InsertTablet(ctx context.Context, req *TSInsertTabletReq) (_r *TSStatus, _err error) {
-	var _args212 TSIServiceInsertTabletArgs
-	_args212.Req = req
-	var _result214 TSIServiceInsertTabletResult
-	var _meta213 thrift.ResponseMeta
-	_meta213, _err = p.Client_().Call(ctx, "insertTablet", &_args212, &_result214)
-	p.SetLastResponseMeta_(_meta213)
+	var _args183 TSIServiceInsertTabletArgs
+	_args183.Req = req
+	var _result185 TSIServiceInsertTabletResult
+	var _meta184 thrift.ResponseMeta
+	_meta184, _err = p.Client_().Call(ctx, "insertTablet", &_args183, &_result185)
+	p.SetLastResponseMeta_(_meta184)
 	if _err != nil {
 		return
 	}
-	return _result214.GetSuccess(), nil
+	return _result185.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) InsertTablets(ctx context.Context, req *TSInsertTabletsReq) (_r *TSStatus, _err error) {
-	var _args215 TSIServiceInsertTabletsArgs
-	_args215.Req = req
-	var _result217 TSIServiceInsertTabletsResult
-	var _meta216 thrift.ResponseMeta
-	_meta216, _err = p.Client_().Call(ctx, "insertTablets", &_args215, &_result217)
-	p.SetLastResponseMeta_(_meta216)
+	var _args186 TSIServiceInsertTabletsArgs
+	_args186.Req = req
+	var _result188 TSIServiceInsertTabletsResult
+	var _meta187 thrift.ResponseMeta
+	_meta187, _err = p.Client_().Call(ctx, "insertTablets", &_args186, &_result188)
+	p.SetLastResponseMeta_(_meta187)
 	if _err != nil {
 		return
 	}
-	return _result217.GetSuccess(), nil
+	return _result188.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) InsertRecords(ctx context.Context, req *TSInsertRecordsReq) (_r *TSStatus, _err error) {
-	var _args218 TSIServiceInsertRecordsArgs
-	_args218.Req = req
-	var _result220 TSIServiceInsertRecordsResult
-	var _meta219 thrift.ResponseMeta
-	_meta219, _err = p.Client_().Call(ctx, "insertRecords", &_args218, &_result220)
-	p.SetLastResponseMeta_(_meta219)
+	var _args189 TSIServiceInsertRecordsArgs
+	_args189.Req = req
+	var _result191 TSIServiceInsertRecordsResult
+	var _meta190 thrift.ResponseMeta
+	_meta190, _err = p.Client_().Call(ctx, "insertRecords", &_args189, &_result191)
+	p.SetLastResponseMeta_(_meta190)
 	if _err != nil {
 		return
 	}
-	return _result220.GetSuccess(), nil
+	return _result191.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) InsertRecordsOfOneDevice(ctx context.Context, req *TSInsertRecordsOfOneDeviceReq) (_r *TSStatus, _err error) {
-	var _args221 TSIServiceInsertRecordsOfOneDeviceArgs
-	_args221.Req = req
-	var _result223 TSIServiceInsertRecordsOfOneDeviceResult
-	var _meta222 thrift.ResponseMeta
-	_meta222, _err = p.Client_().Call(ctx, "insertRecordsOfOneDevice", &_args221, &_result223)
-	p.SetLastResponseMeta_(_meta222)
+	var _args192 TSIServiceInsertRecordsOfOneDeviceArgs
+	_args192.Req = req
+	var _result194 TSIServiceInsertRecordsOfOneDeviceResult
+	var _meta193 thrift.ResponseMeta
+	_meta193, _err = p.Client_().Call(ctx, "insertRecordsOfOneDevice", &_args192, &_result194)
+	p.SetLastResponseMeta_(_meta193)
 	if _err != nil {
 		return
 	}
-	return _result223.GetSuccess(), nil
+	return _result194.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) InsertStringRecords(ctx context.Context, req *TSInsertStringRecordsReq) (_r *TSStatus, _err error) {
-	var _args224 TSIServiceInsertStringRecordsArgs
-	_args224.Req = req
-	var _result226 TSIServiceInsertStringRecordsResult
-	var _meta225 thrift.ResponseMeta
-	_meta225, _err = p.Client_().Call(ctx, "insertStringRecords", &_args224, &_result226)
-	p.SetLastResponseMeta_(_meta225)
+	var _args195 TSIServiceInsertStringRecordsArgs
+	_args195.Req = req
+	var _result197 TSIServiceInsertStringRecordsResult
+	var _meta196 thrift.ResponseMeta
+	_meta196, _err = p.Client_().Call(ctx, "insertStringRecords", &_args195, &_result197)
+	p.SetLastResponseMeta_(_meta196)
 	if _err != nil {
 		return
 	}
-	return _result226.GetSuccess(), nil
+	return _result197.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) TestInsertTablet(ctx context.Context, req *TSInsertTabletReq) (_r *TSStatus, _err error) {
-	var _args227 TSIServiceTestInsertTabletArgs
-	_args227.Req = req
-	var _result229 TSIServiceTestInsertTabletResult
-	var _meta228 thrift.ResponseMeta
-	_meta228, _err = p.Client_().Call(ctx, "testInsertTablet", &_args227, &_result229)
-	p.SetLastResponseMeta_(_meta228)
+	var _args198 TSIServiceTestInsertTabletArgs
+	_args198.Req = req
+	var _result200 TSIServiceTestInsertTabletResult
+	var _meta199 thrift.ResponseMeta
+	_meta199, _err = p.Client_().Call(ctx, "testInsertTablet", &_args198, &_result200)
+	p.SetLastResponseMeta_(_meta199)
 	if _err != nil {
 		return
 	}
-	return _result229.GetSuccess(), nil
+	return _result200.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) TestInsertTablets(ctx context.Context, req *TSInsertTabletsReq) (_r *TSStatus, _err error) {
-	var _args230 TSIServiceTestInsertTabletsArgs
-	_args230.Req = req
-	var _result232 TSIServiceTestInsertTabletsResult
-	var _meta231 thrift.ResponseMeta
-	_meta231, _err = p.Client_().Call(ctx, "testInsertTablets", &_args230, &_result232)
-	p.SetLastResponseMeta_(_meta231)
+	var _args201 TSIServiceTestInsertTabletsArgs
+	_args201.Req = req
+	var _result203 TSIServiceTestInsertTabletsResult
+	var _meta202 thrift.ResponseMeta
+	_meta202, _err = p.Client_().Call(ctx, "testInsertTablets", &_args201, &_result203)
+	p.SetLastResponseMeta_(_meta202)
 	if _err != nil {
 		return
 	}
-	return _result232.GetSuccess(), nil
+	return _result203.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) TestInsertRecord(ctx context.Context, req *TSInsertRecordReq) (_r *TSStatus, _err error) {
-	var _args233 TSIServiceTestInsertRecordArgs
-	_args233.Req = req
-	var _result235 TSIServiceTestInsertRecordResult
-	var _meta234 thrift.ResponseMeta
-	_meta234, _err = p.Client_().Call(ctx, "testInsertRecord", &_args233, &_result235)
-	p.SetLastResponseMeta_(_meta234)
+	var _args204 TSIServiceTestInsertRecordArgs
+	_args204.Req = req
+	var _result206 TSIServiceTestInsertRecordResult
+	var _meta205 thrift.ResponseMeta
+	_meta205, _err = p.Client_().Call(ctx, "testInsertRecord", &_args204, &_result206)
+	p.SetLastResponseMeta_(_meta205)
 	if _err != nil {
 		return
 	}
-	return _result235.GetSuccess(), nil
+	return _result206.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) TestInsertStringRecord(ctx context.Context, req *TSInsertStringRecordReq) (_r *TSStatus, _err error) {
-	var _args236 TSIServiceTestInsertStringRecordArgs
-	_args236.Req = req
-	var _result238 TSIServiceTestInsertStringRecordResult
-	var _meta237 thrift.ResponseMeta
-	_meta237, _err = p.Client_().Call(ctx, "testInsertStringRecord", &_args236, &_result238)
-	p.SetLastResponseMeta_(_meta237)
+	var _args207 TSIServiceTestInsertStringRecordArgs
+	_args207.Req = req
+	var _result209 TSIServiceTestInsertStringRecordResult
+	var _meta208 thrift.ResponseMeta
+	_meta208, _err = p.Client_().Call(ctx, "testInsertStringRecord", &_args207, &_result209)
+	p.SetLastResponseMeta_(_meta208)
 	if _err != nil {
 		return
 	}
-	return _result238.GetSuccess(), nil
+	return _result209.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) TestInsertRecords(ctx context.Context, req *TSInsertRecordsReq) (_r *TSStatus, _err error) {
-	var _args239 TSIServiceTestInsertRecordsArgs
-	_args239.Req = req
-	var _result241 TSIServiceTestInsertRecordsResult
-	var _meta240 thrift.ResponseMeta
-	_meta240, _err = p.Client_().Call(ctx, "testInsertRecords", &_args239, &_result241)
-	p.SetLastResponseMeta_(_meta240)
+	var _args210 TSIServiceTestInsertRecordsArgs
+	_args210.Req = req
+	var _result212 TSIServiceTestInsertRecordsResult
+	var _meta211 thrift.ResponseMeta
+	_meta211, _err = p.Client_().Call(ctx, "testInsertRecords", &_args210, &_result212)
+	p.SetLastResponseMeta_(_meta211)
 	if _err != nil {
 		return
 	}
-	return _result241.GetSuccess(), nil
+	return _result212.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) TestInsertRecordsOfOneDevice(ctx context.Context, req *TSInsertRecordsOfOneDeviceReq) (_r *TSStatus, _err error) {
-	var _args242 TSIServiceTestInsertRecordsOfOneDeviceArgs
-	_args242.Req = req
-	var _result244 TSIServiceTestInsertRecordsOfOneDeviceResult
-	var _meta243 thrift.ResponseMeta
-	_meta243, _err = p.Client_().Call(ctx, "testInsertRecordsOfOneDevice", &_args242, &_result244)
-	p.SetLastResponseMeta_(_meta243)
+	var _args213 TSIServiceTestInsertRecordsOfOneDeviceArgs
+	_args213.Req = req
+	var _result215 TSIServiceTestInsertRecordsOfOneDeviceResult
+	var _meta214 thrift.ResponseMeta
+	_meta214, _err = p.Client_().Call(ctx, "testInsertRecordsOfOneDevice", &_args213, &_result215)
+	p.SetLastResponseMeta_(_meta214)
 	if _err != nil {
 		return
 	}
-	return _result244.GetSuccess(), nil
+	return _result215.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) TestInsertStringRecords(ctx context.Context, req *TSInsertStringRecordsReq) (_r *TSStatus, _err error) {
-	var _args245 TSIServiceTestInsertStringRecordsArgs
-	_args245.Req = req
-	var _result247 TSIServiceTestInsertStringRecordsResult
-	var _meta246 thrift.ResponseMeta
-	_meta246, _err = p.Client_().Call(ctx, "testInsertStringRecords", &_args245, &_result247)
-	p.SetLastResponseMeta_(_meta246)
+	var _args216 TSIServiceTestInsertStringRecordsArgs
+	_args216.Req = req
+	var _result218 TSIServiceTestInsertStringRecordsResult
+	var _meta217 thrift.ResponseMeta
+	_meta217, _err = p.Client_().Call(ctx, "testInsertStringRecords", &_args216, &_result218)
+	p.SetLastResponseMeta_(_meta217)
 	if _err != nil {
 		return
 	}
-	return _result247.GetSuccess(), nil
+	return _result218.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) DeleteData(ctx context.Context, req *TSDeleteDataReq) (_r *TSStatus, _err error) {
-	var _args248 TSIServiceDeleteDataArgs
-	_args248.Req = req
-	var _result250 TSIServiceDeleteDataResult
-	var _meta249 thrift.ResponseMeta
-	_meta249, _err = p.Client_().Call(ctx, "deleteData", &_args248, &_result250)
-	p.SetLastResponseMeta_(_meta249)
+	var _args219 TSIServiceDeleteDataArgs
+	_args219.Req = req
+	var _result221 TSIServiceDeleteDataResult
+	var _meta220 thrift.ResponseMeta
+	_meta220, _err = p.Client_().Call(ctx, "deleteData", &_args219, &_result221)
+	p.SetLastResponseMeta_(_meta220)
 	if _err != nil {
 		return
 	}
-	return _result250.GetSuccess(), nil
+	return _result221.GetSuccess(), nil
 }
 
 // Parameters:
 //  - Req
 func (p *TSIServiceClient) ExecuteRawDataQuery(ctx context.Context, req *TSRawDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
-	var _args251 TSIServiceExecuteRawDataQueryArgs
-	_args251.Req = req
-	var _result253 TSIServiceExecuteRawDataQueryResult
-	var _meta252 thrift.ResponseMeta
-	_meta252, _err = p.Client_().Call(ctx, "executeRawDataQuery", &_args251, &_result253)
-	p.SetLastResponseMeta_(_meta252)
+	var _args222 TSIServiceExecuteRawDataQueryArgs
+	_args222.Req = req
+	var _result224 TSIServiceExecuteRawDataQueryResult
+	var _meta223 thrift.ResponseMeta
+	_meta223, _err = p.Client_().Call(ctx, "executeRawDataQuery", &_args222, &_result224)
+	p.SetLastResponseMeta_(_meta223)
 	if _err != nil {
 		return
 	}
-	return _result253.GetSuccess(), nil
-}
-
-// Parameters:
-//  - Req
-func (p *TSIServiceClient) ExecuteLastDataQuery(ctx context.Context, req *TSLastDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
-	var _args254 TSIServiceExecuteLastDataQueryArgs
-	_args254.Req = req
-	var _result256 TSIServiceExecuteLastDataQueryResult
-	var _meta255 thrift.ResponseMeta
-	_meta255, _err = p.Client_().Call(ctx, "executeLastDataQuery", &_args254, &_result256)
-	p.SetLastResponseMeta_(_meta255)
-	if _err != nil {
-		return
-	}
-	return _result256.GetSuccess(), nil
+	return _result224.GetSuccess(), nil
 }
 
 // Parameters:
 //  - SessionId
 func (p *TSIServiceClient) RequestStatementId(ctx context.Context, sessionId int64) (_r int64, _err error) {
-	var _args257 TSIServiceRequestStatementIdArgs
-	_args257.SessionId = sessionId
-	var _result259 TSIServiceRequestStatementIdResult
-	var _meta258 thrift.ResponseMeta
-	_meta258, _err = p.Client_().Call(ctx, "requestStatementId", &_args257, &_result259)
-	p.SetLastResponseMeta_(_meta258)
+	var _args225 TSIServiceRequestStatementIdArgs
+	_args225.SessionId = sessionId
+	var _result227 TSIServiceRequestStatementIdResult
+	var _meta226 thrift.ResponseMeta
+	_meta226, _err = p.Client_().Call(ctx, "requestStatementId", &_args225, &_result227)
+	p.SetLastResponseMeta_(_meta226)
 	if _err != nil {
 		return
 	}
-	return _result259.GetSuccess(), nil
-}
-
-// Parameters:
-//  - Req
-func (p *TSIServiceClient) CreateSchemaTemplate(ctx context.Context, req *TSCreateSchemaTemplateReq) (_r *TSStatus, _err error) {
-	var _args260 TSIServiceCreateSchemaTemplateArgs
-	_args260.Req = req
-	var _result262 TSIServiceCreateSchemaTemplateResult
-	var _meta261 thrift.ResponseMeta
-	_meta261, _err = p.Client_().Call(ctx, "createSchemaTemplate", &_args260, &_result262)
-	p.SetLastResponseMeta_(_meta261)
-	if _err != nil {
-		return
-	}
-	return _result262.GetSuccess(), nil
-}
-
-// Parameters:
-//  - Req
-func (p *TSIServiceClient) SetSchemaTemplate(ctx context.Context, req *TSSetSchemaTemplateReq) (_r *TSStatus, _err error) {
-	var _args263 TSIServiceSetSchemaTemplateArgs
-	_args263.Req = req
-	var _result265 TSIServiceSetSchemaTemplateResult
-	var _meta264 thrift.ResponseMeta
-	_meta264, _err = p.Client_().Call(ctx, "setSchemaTemplate", &_args263, &_result265)
-	p.SetLastResponseMeta_(_meta264)
-	if _err != nil {
-		return
-	}
-	return _result265.GetSuccess(), nil
+	return _result227.GetSuccess(), nil
 }
 
 type TSIServiceProcessor struct {
@@ -12032,47 +10294,43 @@ func (p *TSIServiceProcessor) ProcessorMap() map[string]thrift.TProcessorFunctio
 
 func NewTSIServiceProcessor(handler TSIService) *TSIServiceProcessor {
 
-	self266 := &TSIServiceProcessor{handler:handler, processorMap:make(map[string]thrift.TProcessorFunction)}
-	self266.processorMap["openSession"] = &tSIServiceProcessorOpenSession{handler:handler}
-	self266.processorMap["closeSession"] = &tSIServiceProcessorCloseSession{handler:handler}
-	self266.processorMap["executeStatement"] = &tSIServiceProcessorExecuteStatement{handler:handler}
-	self266.processorMap["executeBatchStatement"] = &tSIServiceProcessorExecuteBatchStatement{handler:handler}
-	self266.processorMap["executeQueryStatement"] = &tSIServiceProcessorExecuteQueryStatement{handler:handler}
-	self266.processorMap["executeUpdateStatement"] = &tSIServiceProcessorExecuteUpdateStatement{handler:handler}
-	self266.processorMap["fetchResults"] = &tSIServiceProcessorFetchResults{handler:handler}
-	self266.processorMap["fetchMetadata"] = &tSIServiceProcessorFetchMetadata{handler:handler}
-	self266.processorMap["cancelOperation"] = &tSIServiceProcessorCancelOperation{handler:handler}
-	self266.processorMap["closeOperation"] = &tSIServiceProcessorCloseOperation{handler:handler}
-	self266.processorMap["getTimeZone"] = &tSIServiceProcessorGetTimeZone{handler:handler}
-	self266.processorMap["setTimeZone"] = &tSIServiceProcessorSetTimeZone{handler:handler}
-	self266.processorMap["getProperties"] = &tSIServiceProcessorGetProperties{handler:handler}
-	self266.processorMap["setStorageGroup"] = &tSIServiceProcessorSetStorageGroup{handler:handler}
-	self266.processorMap["createTimeseries"] = &tSIServiceProcessorCreateTimeseries{handler:handler}
-	self266.processorMap["createAlignedTimeseries"] = &tSIServiceProcessorCreateAlignedTimeseries{handler:handler}
-	self266.processorMap["createMultiTimeseries"] = &tSIServiceProcessorCreateMultiTimeseries{handler:handler}
-	self266.processorMap["deleteTimeseries"] = &tSIServiceProcessorDeleteTimeseries{handler:handler}
-	self266.processorMap["deleteStorageGroups"] = &tSIServiceProcessorDeleteStorageGroups{handler:handler}
-	self266.processorMap["insertRecord"] = &tSIServiceProcessorInsertRecord{handler:handler}
-	self266.processorMap["insertStringRecord"] = &tSIServiceProcessorInsertStringRecord{handler:handler}
-	self266.processorMap["insertTablet"] = &tSIServiceProcessorInsertTablet{handler:handler}
-	self266.processorMap["insertTablets"] = &tSIServiceProcessorInsertTablets{handler:handler}
-	self266.processorMap["insertRecords"] = &tSIServiceProcessorInsertRecords{handler:handler}
-	self266.processorMap["insertRecordsOfOneDevice"] = &tSIServiceProcessorInsertRecordsOfOneDevice{handler:handler}
-	self266.processorMap["insertStringRecords"] = &tSIServiceProcessorInsertStringRecords{handler:handler}
-	self266.processorMap["testInsertTablet"] = &tSIServiceProcessorTestInsertTablet{handler:handler}
-	self266.processorMap["testInsertTablets"] = &tSIServiceProcessorTestInsertTablets{handler:handler}
-	self266.processorMap["testInsertRecord"] = &tSIServiceProcessorTestInsertRecord{handler:handler}
-	self266.processorMap["testInsertStringRecord"] = &tSIServiceProcessorTestInsertStringRecord{handler:handler}
-	self266.processorMap["testInsertRecords"] = &tSIServiceProcessorTestInsertRecords{handler:handler}
-	self266.processorMap["testInsertRecordsOfOneDevice"] = &tSIServiceProcessorTestInsertRecordsOfOneDevice{handler:handler}
-	self266.processorMap["testInsertStringRecords"] = &tSIServiceProcessorTestInsertStringRecords{handler:handler}
-	self266.processorMap["deleteData"] = &tSIServiceProcessorDeleteData{handler:handler}
-	self266.processorMap["executeRawDataQuery"] = &tSIServiceProcessorExecuteRawDataQuery{handler:handler}
-	self266.processorMap["executeLastDataQuery"] = &tSIServiceProcessorExecuteLastDataQuery{handler:handler}
-	self266.processorMap["requestStatementId"] = &tSIServiceProcessorRequestStatementId{handler:handler}
-	self266.processorMap["createSchemaTemplate"] = &tSIServiceProcessorCreateSchemaTemplate{handler:handler}
-	self266.processorMap["setSchemaTemplate"] = &tSIServiceProcessorSetSchemaTemplate{handler:handler}
-	return self266
+	self228 := &TSIServiceProcessor{handler:handler, processorMap:make(map[string]thrift.TProcessorFunction)}
+	self228.processorMap["openSession"] = &tSIServiceProcessorOpenSession{handler:handler}
+	self228.processorMap["closeSession"] = &tSIServiceProcessorCloseSession{handler:handler}
+	self228.processorMap["executeStatement"] = &tSIServiceProcessorExecuteStatement{handler:handler}
+	self228.processorMap["executeBatchStatement"] = &tSIServiceProcessorExecuteBatchStatement{handler:handler}
+	self228.processorMap["executeQueryStatement"] = &tSIServiceProcessorExecuteQueryStatement{handler:handler}
+	self228.processorMap["executeUpdateStatement"] = &tSIServiceProcessorExecuteUpdateStatement{handler:handler}
+	self228.processorMap["fetchResults"] = &tSIServiceProcessorFetchResults{handler:handler}
+	self228.processorMap["fetchMetadata"] = &tSIServiceProcessorFetchMetadata{handler:handler}
+	self228.processorMap["cancelOperation"] = &tSIServiceProcessorCancelOperation{handler:handler}
+	self228.processorMap["closeOperation"] = &tSIServiceProcessorCloseOperation{handler:handler}
+	self228.processorMap["getTimeZone"] = &tSIServiceProcessorGetTimeZone{handler:handler}
+	self228.processorMap["setTimeZone"] = &tSIServiceProcessorSetTimeZone{handler:handler}
+	self228.processorMap["getProperties"] = &tSIServiceProcessorGetProperties{handler:handler}
+	self228.processorMap["setStorageGroup"] = &tSIServiceProcessorSetStorageGroup{handler:handler}
+	self228.processorMap["createTimeseries"] = &tSIServiceProcessorCreateTimeseries{handler:handler}
+	self228.processorMap["createMultiTimeseries"] = &tSIServiceProcessorCreateMultiTimeseries{handler:handler}
+	self228.processorMap["deleteTimeseries"] = &tSIServiceProcessorDeleteTimeseries{handler:handler}
+	self228.processorMap["deleteStorageGroups"] = &tSIServiceProcessorDeleteStorageGroups{handler:handler}
+	self228.processorMap["insertRecord"] = &tSIServiceProcessorInsertRecord{handler:handler}
+	self228.processorMap["insertStringRecord"] = &tSIServiceProcessorInsertStringRecord{handler:handler}
+	self228.processorMap["insertTablet"] = &tSIServiceProcessorInsertTablet{handler:handler}
+	self228.processorMap["insertTablets"] = &tSIServiceProcessorInsertTablets{handler:handler}
+	self228.processorMap["insertRecords"] = &tSIServiceProcessorInsertRecords{handler:handler}
+	self228.processorMap["insertRecordsOfOneDevice"] = &tSIServiceProcessorInsertRecordsOfOneDevice{handler:handler}
+	self228.processorMap["insertStringRecords"] = &tSIServiceProcessorInsertStringRecords{handler:handler}
+	self228.processorMap["testInsertTablet"] = &tSIServiceProcessorTestInsertTablet{handler:handler}
+	self228.processorMap["testInsertTablets"] = &tSIServiceProcessorTestInsertTablets{handler:handler}
+	self228.processorMap["testInsertRecord"] = &tSIServiceProcessorTestInsertRecord{handler:handler}
+	self228.processorMap["testInsertStringRecord"] = &tSIServiceProcessorTestInsertStringRecord{handler:handler}
+	self228.processorMap["testInsertRecords"] = &tSIServiceProcessorTestInsertRecords{handler:handler}
+	self228.processorMap["testInsertRecordsOfOneDevice"] = &tSIServiceProcessorTestInsertRecordsOfOneDevice{handler:handler}
+	self228.processorMap["testInsertStringRecords"] = &tSIServiceProcessorTestInsertStringRecords{handler:handler}
+	self228.processorMap["deleteData"] = &tSIServiceProcessorDeleteData{handler:handler}
+	self228.processorMap["executeRawDataQuery"] = &tSIServiceProcessorExecuteRawDataQuery{handler:handler}
+	self228.processorMap["requestStatementId"] = &tSIServiceProcessorRequestStatementId{handler:handler}
+	return self228
 }
 
 func (p *TSIServiceProcessor) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
@@ -12083,12 +10341,12 @@ func (p *TSIServiceProcessor) Process(ctx context.Context, iprot, oprot thrift.T
 	}
 	iprot.Skip(ctx, thrift.STRUCT)
 	iprot.ReadMessageEnd(ctx)
-	x267 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function " + name)
+	x229 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function " + name)
 	oprot.WriteMessageBegin(ctx, name, thrift.EXCEPTION, seqId)
-	x267.Write(ctx, oprot)
+	x229.Write(ctx, oprot)
 	oprot.WriteMessageEnd(ctx)
 	oprot.Flush(ctx)
-	return false, x267
+	return false, x229
 
 }
 
@@ -13260,85 +11518,6 @@ func (p *tSIServiceProcessorCreateTimeseries) Process(ctx context.Context, seqId
 	}
 	tickerCancel()
 	if err2 = oprot.WriteMessageBegin(ctx, "createTimeseries", thrift.REPLY, seqId); err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.WriteMessageEnd(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err != nil {
-		return
-	}
-	return true, err
-}
-
-type tSIServiceProcessorCreateAlignedTimeseries struct {
-	handler TSIService
-}
-
-func (p *tSIServiceProcessorCreateAlignedTimeseries) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := TSIServiceCreateAlignedTimeseriesArgs{}
-	var err2 error
-	if err2 = args.Read(ctx, iprot); err2 != nil {
-		iprot.ReadMessageEnd(ctx)
-		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err2.Error())
-		oprot.WriteMessageBegin(ctx, "createAlignedTimeseries", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return false, thrift.WrapTException(err2)
-	}
-	iprot.ReadMessageEnd(ctx)
-
-	tickerCancel := func() {}
-	// Start a goroutine to do server side connectivity check.
-	if thrift.ServerConnectivityCheckInterval > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		defer cancel()
-		var tickerCtx context.Context
-		tickerCtx, tickerCancel = context.WithCancel(context.Background())
-		defer tickerCancel()
-		go func(ctx context.Context, cancel context.CancelFunc) {
-			ticker := time.NewTicker(thrift.ServerConnectivityCheckInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					if !iprot.Transport().IsOpen() {
-						cancel()
-						return
-					}
-				}
-			}
-		}(tickerCtx, cancel)
-	}
-
-	result := TSIServiceCreateAlignedTimeseriesResult{}
-	var retval *TSStatus
-	if retval, err2 = p.handler.CreateAlignedTimeseries(ctx, args.Req); err2 != nil {
-		tickerCancel()
-		if err2 == thrift.ErrAbandonRequest {
-			return false, thrift.WrapTException(err2)
-		}
-		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing createAlignedTimeseries: " + err2.Error())
-		oprot.WriteMessageBegin(ctx, "createAlignedTimeseries", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return true, thrift.WrapTException(err2)
-	} else {
-		result.Success = retval
-	}
-	tickerCancel()
-	if err2 = oprot.WriteMessageBegin(ctx, "createAlignedTimeseries", thrift.REPLY, seqId); err2 != nil {
 		err = thrift.WrapTException(err2)
 	}
 	if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
@@ -14857,85 +13036,6 @@ func (p *tSIServiceProcessorExecuteRawDataQuery) Process(ctx context.Context, se
 	return true, err
 }
 
-type tSIServiceProcessorExecuteLastDataQuery struct {
-	handler TSIService
-}
-
-func (p *tSIServiceProcessorExecuteLastDataQuery) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := TSIServiceExecuteLastDataQueryArgs{}
-	var err2 error
-	if err2 = args.Read(ctx, iprot); err2 != nil {
-		iprot.ReadMessageEnd(ctx)
-		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err2.Error())
-		oprot.WriteMessageBegin(ctx, "executeLastDataQuery", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return false, thrift.WrapTException(err2)
-	}
-	iprot.ReadMessageEnd(ctx)
-
-	tickerCancel := func() {}
-	// Start a goroutine to do server side connectivity check.
-	if thrift.ServerConnectivityCheckInterval > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		defer cancel()
-		var tickerCtx context.Context
-		tickerCtx, tickerCancel = context.WithCancel(context.Background())
-		defer tickerCancel()
-		go func(ctx context.Context, cancel context.CancelFunc) {
-			ticker := time.NewTicker(thrift.ServerConnectivityCheckInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					if !iprot.Transport().IsOpen() {
-						cancel()
-						return
-					}
-				}
-			}
-		}(tickerCtx, cancel)
-	}
-
-	result := TSIServiceExecuteLastDataQueryResult{}
-	var retval *TSExecuteStatementResp
-	if retval, err2 = p.handler.ExecuteLastDataQuery(ctx, args.Req); err2 != nil {
-		tickerCancel()
-		if err2 == thrift.ErrAbandonRequest {
-			return false, thrift.WrapTException(err2)
-		}
-		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing executeLastDataQuery: " + err2.Error())
-		oprot.WriteMessageBegin(ctx, "executeLastDataQuery", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return true, thrift.WrapTException(err2)
-	} else {
-		result.Success = retval
-	}
-	tickerCancel()
-	if err2 = oprot.WriteMessageBegin(ctx, "executeLastDataQuery", thrift.REPLY, seqId); err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.WriteMessageEnd(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err != nil {
-		return
-	}
-	return true, err
-}
-
 type tSIServiceProcessorRequestStatementId struct {
 	handler TSIService
 }
@@ -14998,164 +13098,6 @@ func (p *tSIServiceProcessorRequestStatementId) Process(ctx context.Context, seq
 	}
 	tickerCancel()
 	if err2 = oprot.WriteMessageBegin(ctx, "requestStatementId", thrift.REPLY, seqId); err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.WriteMessageEnd(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err != nil {
-		return
-	}
-	return true, err
-}
-
-type tSIServiceProcessorCreateSchemaTemplate struct {
-	handler TSIService
-}
-
-func (p *tSIServiceProcessorCreateSchemaTemplate) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := TSIServiceCreateSchemaTemplateArgs{}
-	var err2 error
-	if err2 = args.Read(ctx, iprot); err2 != nil {
-		iprot.ReadMessageEnd(ctx)
-		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err2.Error())
-		oprot.WriteMessageBegin(ctx, "createSchemaTemplate", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return false, thrift.WrapTException(err2)
-	}
-	iprot.ReadMessageEnd(ctx)
-
-	tickerCancel := func() {}
-	// Start a goroutine to do server side connectivity check.
-	if thrift.ServerConnectivityCheckInterval > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		defer cancel()
-		var tickerCtx context.Context
-		tickerCtx, tickerCancel = context.WithCancel(context.Background())
-		defer tickerCancel()
-		go func(ctx context.Context, cancel context.CancelFunc) {
-			ticker := time.NewTicker(thrift.ServerConnectivityCheckInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					if !iprot.Transport().IsOpen() {
-						cancel()
-						return
-					}
-				}
-			}
-		}(tickerCtx, cancel)
-	}
-
-	result := TSIServiceCreateSchemaTemplateResult{}
-	var retval *TSStatus
-	if retval, err2 = p.handler.CreateSchemaTemplate(ctx, args.Req); err2 != nil {
-		tickerCancel()
-		if err2 == thrift.ErrAbandonRequest {
-			return false, thrift.WrapTException(err2)
-		}
-		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing createSchemaTemplate: " + err2.Error())
-		oprot.WriteMessageBegin(ctx, "createSchemaTemplate", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return true, thrift.WrapTException(err2)
-	} else {
-		result.Success = retval
-	}
-	tickerCancel()
-	if err2 = oprot.WriteMessageBegin(ctx, "createSchemaTemplate", thrift.REPLY, seqId); err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.WriteMessageEnd(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
-		err = thrift.WrapTException(err2)
-	}
-	if err != nil {
-		return
-	}
-	return true, err
-}
-
-type tSIServiceProcessorSetSchemaTemplate struct {
-	handler TSIService
-}
-
-func (p *tSIServiceProcessorSetSchemaTemplate) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-	args := TSIServiceSetSchemaTemplateArgs{}
-	var err2 error
-	if err2 = args.Read(ctx, iprot); err2 != nil {
-		iprot.ReadMessageEnd(ctx)
-		x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err2.Error())
-		oprot.WriteMessageBegin(ctx, "setSchemaTemplate", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return false, thrift.WrapTException(err2)
-	}
-	iprot.ReadMessageEnd(ctx)
-
-	tickerCancel := func() {}
-	// Start a goroutine to do server side connectivity check.
-	if thrift.ServerConnectivityCheckInterval > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		defer cancel()
-		var tickerCtx context.Context
-		tickerCtx, tickerCancel = context.WithCancel(context.Background())
-		defer tickerCancel()
-		go func(ctx context.Context, cancel context.CancelFunc) {
-			ticker := time.NewTicker(thrift.ServerConnectivityCheckInterval)
-			defer ticker.Stop()
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-ticker.C:
-					if !iprot.Transport().IsOpen() {
-						cancel()
-						return
-					}
-				}
-			}
-		}(tickerCtx, cancel)
-	}
-
-	result := TSIServiceSetSchemaTemplateResult{}
-	var retval *TSStatus
-	if retval, err2 = p.handler.SetSchemaTemplate(ctx, args.Req); err2 != nil {
-		tickerCancel()
-		if err2 == thrift.ErrAbandonRequest {
-			return false, thrift.WrapTException(err2)
-		}
-		x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing setSchemaTemplate: " + err2.Error())
-		oprot.WriteMessageBegin(ctx, "setSchemaTemplate", thrift.EXCEPTION, seqId)
-		x.Write(ctx, oprot)
-		oprot.WriteMessageEnd(ctx)
-		oprot.Flush(ctx)
-		return true, thrift.WrapTException(err2)
-	} else {
-		result.Success = retval
-	}
-	tickerCancel()
-	if err2 = oprot.WriteMessageBegin(ctx, "setSchemaTemplate", thrift.REPLY, seqId); err2 != nil {
 		err = thrift.WrapTException(err2)
 	}
 	if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
@@ -18127,204 +16069,6 @@ func (p *TSIServiceCreateTimeseriesResult) String() string {
 
 // Attributes:
 //  - Req
-type TSIServiceCreateAlignedTimeseriesArgs struct {
-	Req *TSCreateAlignedTimeseriesReq `thrift:"req,1" db:"req" json:"req"`
-}
-
-func NewTSIServiceCreateAlignedTimeseriesArgs() *TSIServiceCreateAlignedTimeseriesArgs {
-	return &TSIServiceCreateAlignedTimeseriesArgs{}
-}
-
-var TSIServiceCreateAlignedTimeseriesArgs_Req_DEFAULT *TSCreateAlignedTimeseriesReq
-func (p *TSIServiceCreateAlignedTimeseriesArgs) GetReq() *TSCreateAlignedTimeseriesReq {
-	if !p.IsSetReq() {
-		return TSIServiceCreateAlignedTimeseriesArgs_Req_DEFAULT
-	}
-	return p.Req
-}
-func (p *TSIServiceCreateAlignedTimeseriesArgs) IsSetReq() bool {
-	return p.Req != nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesArgs) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesArgs)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Req = &TSCreateAlignedTimeseriesReq{}
-	if err := p.Req.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Req), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesArgs) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "createAlignedTimeseries_args"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesArgs) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "req", thrift.STRUCT, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:req: ", p), err) }
-	if err := p.Req.Write(ctx, oprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Req), err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:req: ", p), err) }
-	return err
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesArgs) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceCreateAlignedTimeseriesArgs(%+v)", *p)
-}
-
-// Attributes:
-//  - Success
-type TSIServiceCreateAlignedTimeseriesResult struct {
-	Success *TSStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
-}
-
-func NewTSIServiceCreateAlignedTimeseriesResult() *TSIServiceCreateAlignedTimeseriesResult {
-	return &TSIServiceCreateAlignedTimeseriesResult{}
-}
-
-var TSIServiceCreateAlignedTimeseriesResult_Success_DEFAULT *TSStatus
-func (p *TSIServiceCreateAlignedTimeseriesResult) GetSuccess() *TSStatus {
-	if !p.IsSetSuccess() {
-		return TSIServiceCreateAlignedTimeseriesResult_Success_DEFAULT
-	}
-	return p.Success
-}
-func (p *TSIServiceCreateAlignedTimeseriesResult) IsSetSuccess() bool {
-	return p.Success != nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesResult) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 0:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField0(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesResult)  ReadField0(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Success = &TSStatus{}
-	if err := p.Success.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesResult) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "createAlignedTimeseries_result"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesResult) writeField0(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetSuccess() {
-		if err := oprot.WriteFieldBegin(ctx, "success", thrift.STRUCT, 0); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
-		if err := p.Success.Write(ctx, oprot); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
-		}
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
-	}
-	return err
-}
-
-func (p *TSIServiceCreateAlignedTimeseriesResult) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceCreateAlignedTimeseriesResult(%+v)", *p)
-}
-
-// Attributes:
-//  - Req
 type TSIServiceCreateMultiTimeseriesArgs struct {
 	Req *TSCreateMultiTimeseriesReq `thrift:"req,1" db:"req" json:"req"`
 }
@@ -18606,13 +16350,13 @@ func (p *TSIServiceDeleteTimeseriesArgs)  ReadField2(ctx context.Context, iprot 
 	tSlice := make([]string, 0, size)
 	p.Path =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem268 string
+		var _elem230 string
 		if v, err := iprot.ReadString(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem268 = v
+			_elem230 = v
 		}
-		p.Path = append(p.Path, _elem268)
+		p.Path = append(p.Path, _elem230)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -18854,13 +16598,13 @@ func (p *TSIServiceDeleteStorageGroupsArgs)  ReadField2(ctx context.Context, ipr
 	tSlice := make([]string, 0, size)
 	p.StorageGroup =  tSlice
 	for i := 0; i < size; i ++ {
-		var _elem269 string
+		var _elem231 string
 		if v, err := iprot.ReadString(ctx); err != nil {
 			return thrift.PrependError("error reading field 0: ", err)
 		} else {
-			_elem269 = v
+			_elem231 = v
 		}
-		p.StorageGroup = append(p.StorageGroup, _elem269)
+		p.StorageGroup = append(p.StorageGroup, _elem231)
 	}
 	if err := iprot.ReadListEnd(ctx); err != nil {
 		return thrift.PrependError("error reading list end: ", err)
@@ -22186,204 +19930,6 @@ func (p *TSIServiceExecuteRawDataQueryResult) String() string {
 }
 
 // Attributes:
-//  - Req
-type TSIServiceExecuteLastDataQueryArgs struct {
-	Req *TSLastDataQueryReq `thrift:"req,1" db:"req" json:"req"`
-}
-
-func NewTSIServiceExecuteLastDataQueryArgs() *TSIServiceExecuteLastDataQueryArgs {
-	return &TSIServiceExecuteLastDataQueryArgs{}
-}
-
-var TSIServiceExecuteLastDataQueryArgs_Req_DEFAULT *TSLastDataQueryReq
-func (p *TSIServiceExecuteLastDataQueryArgs) GetReq() *TSLastDataQueryReq {
-	if !p.IsSetReq() {
-		return TSIServiceExecuteLastDataQueryArgs_Req_DEFAULT
-	}
-	return p.Req
-}
-func (p *TSIServiceExecuteLastDataQueryArgs) IsSetReq() bool {
-	return p.Req != nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryArgs) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryArgs)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Req = &TSLastDataQueryReq{}
-	if err := p.Req.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Req), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryArgs) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "executeLastDataQuery_args"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryArgs) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "req", thrift.STRUCT, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:req: ", p), err) }
-	if err := p.Req.Write(ctx, oprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Req), err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:req: ", p), err) }
-	return err
-}
-
-func (p *TSIServiceExecuteLastDataQueryArgs) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceExecuteLastDataQueryArgs(%+v)", *p)
-}
-
-// Attributes:
-//  - Success
-type TSIServiceExecuteLastDataQueryResult struct {
-	Success *TSExecuteStatementResp `thrift:"success,0" db:"success" json:"success,omitempty"`
-}
-
-func NewTSIServiceExecuteLastDataQueryResult() *TSIServiceExecuteLastDataQueryResult {
-	return &TSIServiceExecuteLastDataQueryResult{}
-}
-
-var TSIServiceExecuteLastDataQueryResult_Success_DEFAULT *TSExecuteStatementResp
-func (p *TSIServiceExecuteLastDataQueryResult) GetSuccess() *TSExecuteStatementResp {
-	if !p.IsSetSuccess() {
-		return TSIServiceExecuteLastDataQueryResult_Success_DEFAULT
-	}
-	return p.Success
-}
-func (p *TSIServiceExecuteLastDataQueryResult) IsSetSuccess() bool {
-	return p.Success != nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryResult) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 0:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField0(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryResult)  ReadField0(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Success = &TSExecuteStatementResp{}
-	if err := p.Success.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryResult) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "executeLastDataQuery_result"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceExecuteLastDataQueryResult) writeField0(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetSuccess() {
-		if err := oprot.WriteFieldBegin(ctx, "success", thrift.STRUCT, 0); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
-		if err := p.Success.Write(ctx, oprot); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
-		}
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
-	}
-	return err
-}
-
-func (p *TSIServiceExecuteLastDataQueryResult) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceExecuteLastDataQueryResult(%+v)", *p)
-}
-
-// Attributes:
 //  - SessionId
 type TSIServiceRequestStatementIdArgs struct {
 	SessionId int64 `thrift:"sessionId,1" db:"sessionId" json:"sessionId"`
@@ -22572,402 +20118,6 @@ func (p *TSIServiceRequestStatementIdResult) String() string {
 		return "<nil>"
 	}
 	return fmt.Sprintf("TSIServiceRequestStatementIdResult(%+v)", *p)
-}
-
-// Attributes:
-//  - Req
-type TSIServiceCreateSchemaTemplateArgs struct {
-	Req *TSCreateSchemaTemplateReq `thrift:"req,1" db:"req" json:"req"`
-}
-
-func NewTSIServiceCreateSchemaTemplateArgs() *TSIServiceCreateSchemaTemplateArgs {
-	return &TSIServiceCreateSchemaTemplateArgs{}
-}
-
-var TSIServiceCreateSchemaTemplateArgs_Req_DEFAULT *TSCreateSchemaTemplateReq
-func (p *TSIServiceCreateSchemaTemplateArgs) GetReq() *TSCreateSchemaTemplateReq {
-	if !p.IsSetReq() {
-		return TSIServiceCreateSchemaTemplateArgs_Req_DEFAULT
-	}
-	return p.Req
-}
-func (p *TSIServiceCreateSchemaTemplateArgs) IsSetReq() bool {
-	return p.Req != nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateArgs) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateArgs)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Req = &TSCreateSchemaTemplateReq{}
-	if err := p.Req.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Req), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateArgs) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "createSchemaTemplate_args"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateArgs) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "req", thrift.STRUCT, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:req: ", p), err) }
-	if err := p.Req.Write(ctx, oprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Req), err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:req: ", p), err) }
-	return err
-}
-
-func (p *TSIServiceCreateSchemaTemplateArgs) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceCreateSchemaTemplateArgs(%+v)", *p)
-}
-
-// Attributes:
-//  - Success
-type TSIServiceCreateSchemaTemplateResult struct {
-	Success *TSStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
-}
-
-func NewTSIServiceCreateSchemaTemplateResult() *TSIServiceCreateSchemaTemplateResult {
-	return &TSIServiceCreateSchemaTemplateResult{}
-}
-
-var TSIServiceCreateSchemaTemplateResult_Success_DEFAULT *TSStatus
-func (p *TSIServiceCreateSchemaTemplateResult) GetSuccess() *TSStatus {
-	if !p.IsSetSuccess() {
-		return TSIServiceCreateSchemaTemplateResult_Success_DEFAULT
-	}
-	return p.Success
-}
-func (p *TSIServiceCreateSchemaTemplateResult) IsSetSuccess() bool {
-	return p.Success != nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateResult) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 0:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField0(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateResult)  ReadField0(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Success = &TSStatus{}
-	if err := p.Success.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateResult) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "createSchemaTemplate_result"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceCreateSchemaTemplateResult) writeField0(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetSuccess() {
-		if err := oprot.WriteFieldBegin(ctx, "success", thrift.STRUCT, 0); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
-		if err := p.Success.Write(ctx, oprot); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
-		}
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
-	}
-	return err
-}
-
-func (p *TSIServiceCreateSchemaTemplateResult) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceCreateSchemaTemplateResult(%+v)", *p)
-}
-
-// Attributes:
-//  - Req
-type TSIServiceSetSchemaTemplateArgs struct {
-	Req *TSSetSchemaTemplateReq `thrift:"req,1" db:"req" json:"req"`
-}
-
-func NewTSIServiceSetSchemaTemplateArgs() *TSIServiceSetSchemaTemplateArgs {
-	return &TSIServiceSetSchemaTemplateArgs{}
-}
-
-var TSIServiceSetSchemaTemplateArgs_Req_DEFAULT *TSSetSchemaTemplateReq
-func (p *TSIServiceSetSchemaTemplateArgs) GetReq() *TSSetSchemaTemplateReq {
-	if !p.IsSetReq() {
-		return TSIServiceSetSchemaTemplateArgs_Req_DEFAULT
-	}
-	return p.Req
-}
-func (p *TSIServiceSetSchemaTemplateArgs) IsSetReq() bool {
-	return p.Req != nil
-}
-
-func (p *TSIServiceSetSchemaTemplateArgs) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 1:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField1(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceSetSchemaTemplateArgs)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Req = &TSSetSchemaTemplateReq{}
-	if err := p.Req.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Req), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceSetSchemaTemplateArgs) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "setSchemaTemplate_args"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceSetSchemaTemplateArgs) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if err := oprot.WriteFieldBegin(ctx, "req", thrift.STRUCT, 1); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:req: ", p), err) }
-	if err := p.Req.Write(ctx, oprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Req), err)
-	}
-	if err := oprot.WriteFieldEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:req: ", p), err) }
-	return err
-}
-
-func (p *TSIServiceSetSchemaTemplateArgs) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceSetSchemaTemplateArgs(%+v)", *p)
-}
-
-// Attributes:
-//  - Success
-type TSIServiceSetSchemaTemplateResult struct {
-	Success *TSStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
-}
-
-func NewTSIServiceSetSchemaTemplateResult() *TSIServiceSetSchemaTemplateResult {
-	return &TSIServiceSetSchemaTemplateResult{}
-}
-
-var TSIServiceSetSchemaTemplateResult_Success_DEFAULT *TSStatus
-func (p *TSIServiceSetSchemaTemplateResult) GetSuccess() *TSStatus {
-	if !p.IsSetSuccess() {
-		return TSIServiceSetSchemaTemplateResult_Success_DEFAULT
-	}
-	return p.Success
-}
-func (p *TSIServiceSetSchemaTemplateResult) IsSetSuccess() bool {
-	return p.Success != nil
-}
-
-func (p *TSIServiceSetSchemaTemplateResult) Read(ctx context.Context, iprot thrift.TProtocol) error {
-	if _, err := iprot.ReadStructBegin(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-	}
-
-
-	for {
-		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-		if err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-		}
-		if fieldTypeId == thrift.STOP { break; }
-		switch fieldId {
-		case 0:
-			if fieldTypeId == thrift.STRUCT {
-				if err := p.ReadField0(ctx, iprot); err != nil {
-					return err
-				}
-			} else {
-				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-					return err
-				}
-			}
-		default:
-			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-				return err
-			}
-		}
-		if err := iprot.ReadFieldEnd(ctx); err != nil {
-			return err
-		}
-	}
-	if err := iprot.ReadStructEnd(ctx); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceSetSchemaTemplateResult)  ReadField0(ctx context.Context, iprot thrift.TProtocol) error {
-	p.Success = &TSStatus{}
-	if err := p.Success.Read(ctx, iprot); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
-	}
-	return nil
-}
-
-func (p *TSIServiceSetSchemaTemplateResult) Write(ctx context.Context, oprot thrift.TProtocol) error {
-	if err := oprot.WriteStructBegin(ctx, "setSchemaTemplate_result"); err != nil {
-		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
-	}
-	if err := oprot.WriteFieldStop(ctx); err != nil {
-		return thrift.PrependError("write field stop error: ", err) }
-	if err := oprot.WriteStructEnd(ctx); err != nil {
-		return thrift.PrependError("write struct stop error: ", err) }
-	return nil
-}
-
-func (p *TSIServiceSetSchemaTemplateResult) writeField0(ctx context.Context, oprot thrift.TProtocol) (err error) {
-	if p.IsSetSuccess() {
-		if err := oprot.WriteFieldBegin(ctx, "success", thrift.STRUCT, 0); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
-		if err := p.Success.Write(ctx, oprot); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
-		}
-		if err := oprot.WriteFieldEnd(ctx); err != nil {
-			return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
-	}
-	return err
-}
-
-func (p *TSIServiceSetSchemaTemplateResult) String() string {
-	if p == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("TSIServiceSetSchemaTemplateResult(%+v)", *p)
 }
 
 

@@ -293,7 +293,7 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	values []interface{}) (*rpc.TSInsertRecordReq, error) {
 	request := &rpc.TSInsertRecordReq{}
 	request.SessionId = s.sessionId
-	request.PrefixPath = deviceId
+	request.DeviceId = deviceId
 	request.Timestamp = time
 	request.Measurements = measurements
 
@@ -588,7 +588,7 @@ func (s *Session) genTSInsertTabletReq(tablet *Tablet) (*rpc.TSInsertTabletReq, 
 	if values, err := tablet.getValuesBytes(); err == nil {
 		request := &rpc.TSInsertTabletReq{
 			SessionId:    s.sessionId,
-			PrefixPath:     tablet.deviceId,
+			DeviceId:     tablet.deviceId,
 			Measurements: tablet.GetMeasurements(),
 			Values:       values,
 			Timestamps:   tablet.GetTimestampBytes(),
