@@ -68,7 +68,10 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 
 	var protocolFactory thrift.TProtocolFactory
 	var err error
-	s.trans, err = thrift.NewTSocketTimeout(net.JoinHostPort(s.config.Host, s.config.Port), time.Duration(connectionTimeoutInMs))
+
+	s.trans, err = thrift.NewTSocketConf(net.JoinHostPort(s.config.Host, s.config.Port), &thrift.TConfiguration{
+         ConnectTimeout: time.Duration(connectionTimeoutInMs), // Use 0 for no timeout
+	})
 	if err != nil {
 		return err
 	}
