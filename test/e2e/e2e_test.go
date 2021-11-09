@@ -30,7 +30,7 @@ import (
 
 type e2eTestSuite struct {
 	suite.Suite
-	session *client.Session
+	session client.Session
 }
 
 func TestE2ETestSuite(t *testing.T) {

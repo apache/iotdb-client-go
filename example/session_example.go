@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/apache/iotdb-client-go/client"
@@ -36,7 +37,7 @@ var (
 	user     string
 	password string
 )
-var session *client.Session
+var session client.Session
 
 func main() {
 	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
@@ -487,5 +488,18 @@ func checkError(status *rpc.TSStatus, err error) {
 		if err = client.VerifySuccess(status); err != nil {
 			log.Println(err)
 		}
+	}
+}
+
+// If your IotDB is a cluster version, you can use the following code for multi node connection
+func connectCluster() {
+	config := &client.ClusterConfig{
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669", ","),
+		UserName: "root",
+		Password: "root",
+	}
+	session = client.NewClusterSession(config)
+	if err := session.OpenCluster(false); err != nil {
+		log.Fatal(err)
 	}
 }
