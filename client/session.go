@@ -246,9 +246,9 @@ func (s *Session) CreateTimeseries(path string, dataType TSDataType, encoding TS
 	request := rpc.TSCreateTimeseriesReq{SessionId: s.sessionId, Path: path, DataType: int32(dataType), Encoding: int32(encoding),
 		Compressor: int32(compressor), Attributes: attributes, Tags: tags}
 	status, err := s.client.CreateTimeseries(context.Background(), &request)
-	if err != nil && r == nil {
+	if err != nil && status == nil {
 		if reconnect() {
-			r, err = session.client.CreateTimeseries(context.Background(), &request)
+			status, err = session.client.CreateTimeseries(context.Background(), &request)
 		}
 	}
 	return status, err
