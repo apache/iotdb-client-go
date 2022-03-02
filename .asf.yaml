@@ -18,7 +18,7 @@
 #
 
 github:
-  description: "Apache IoTDB"
+  description: "Apache IoTDB Client for Go"
   homepage: https://iotdb.apache.org/
   labels:
     - timeseries
@@ -28,3 +28,7 @@ github:
   features:
     wiki: true
     issues: true
+  enabled_merge_buttons:
+    squash:  true
+    merge:   false
+    rebase:  false
