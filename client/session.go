@@ -137,7 +137,6 @@ type ClusterSession struct {
 }
 
 func (s *Session) OpenCluster(enableRPCCompression bool) error {
-
 	if s.config.FetchSize <= 0 {
 		s.config.FetchSize = DefaultFetchSize
 	}
@@ -386,6 +385,7 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 
 	if err != nil && resp == nil {
 		if reconnect() {
+			request.SessionId = defaultSessionConn.sessionId
 			resp, err = defaultSessionConn.client.ExecuteStatement(context.Background(), &request)
 		}
 	}
@@ -776,6 +776,7 @@ func (s *Session) InsertTablet(tablet *Tablet, sorted bool) (r *rpc.TSStatus, er
 
 	if err != nil && r == nil {
 		if reconnect() {
+			request.SessionId = defaultSessionConn.sessionId
 			r, err = defaultSessionConn.client.InsertTablet(context.Background(), request)
 		}
 	}
