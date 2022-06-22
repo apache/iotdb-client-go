@@ -40,8 +40,8 @@ var (
 var session client.Session
 
 func InitSingleSession() client.Session {
-	flag.StringVar(&host, "host", "172.16.48.4", "--host=192.168.1.100")
-	flag.StringVar(&port, "port", "8685", "--port=6667")
+	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
+	flag.StringVar(&port, "port", "6667", "--port=6667")
 	flag.StringVar(&user, "user", "root", "--user=root")
 	flag.StringVar(&password, "password", "root", "--password=root")
 	flag.Parse()
@@ -59,7 +59,7 @@ func InitSingleSession() client.Session {
 }
 
 func InitClusterSession() client.Session {
-	nodeUrls := []string{"172.16.48.4:8685", "172.16.48.5:8685", "172.16.48.7:8685"}
+	nodeUrls := []string{"127.0.0.1:6667", "127.0.0.1:6668", "127.0.0.1:6669"}
 	clusterConfig := &client.ClusterConfig{
 		NodeUrls: nodeUrls,
 		UserName: "root",

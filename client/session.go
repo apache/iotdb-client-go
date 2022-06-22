@@ -909,7 +909,6 @@ func reconnect() bool {
 			err = initClusterConn(e.Value.(endPoint))
 			if err == nil {
 				connectedSuccess = true
-				fmt.Println("qihouliang host", e.Value.(endPoint).Host)
 				break
 			} else {
 				log.Println("Connection refused:", e.Value.(endPoint))
