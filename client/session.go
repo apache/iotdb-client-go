@@ -59,7 +59,6 @@ type Session struct {
 	sessionId          int64
 	trans              thrift.TTransport
 	requestStatementId int64
-	host               endPoint
 }
 
 type endPoint struct {
@@ -135,10 +134,6 @@ type ClusterSession struct {
 	sessionId          int64
 	trans              thrift.TTransport
 	requestStatementId int64
-}
-
-func (s *Session) GetHost() endPoint {
-	return s.host
 }
 
 func (s *Session) OpenCluster(enableRPCCompression bool) error {
@@ -839,7 +834,6 @@ func NewClusterSession(ClusterConfig *ClusterConfig) Session {
 				} else {
 					defaultSessionConn.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
 						ClusterConfig.UserName, ClusterConfig.Password, ClusterConfig.FetchSize, ClusterConfig.TimeZone)
-					defaultSessionConn.host = e.Value.(endPoint)
 					break
 				}
 			}
