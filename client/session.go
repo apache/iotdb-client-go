@@ -59,6 +59,7 @@ type Session struct {
 	sessionId          int64
 	trans              thrift.TTransport
 	requestStatementId int64
+	host               endPoint
 }
 
 type endPoint struct {
@@ -136,7 +137,12 @@ type ClusterSession struct {
 	requestStatementId int64
 }
 
+func (s *Session) GetHost() endPoint {
+	return s.host
+}
+
 func (s *Session) OpenCluster(enableRPCCompression bool) error {
+
 	if s.config.FetchSize <= 0 {
 		s.config.FetchSize = DefaultFetchSize
 	}
@@ -360,7 +366,7 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
 }
 
 func (s *Session) GetTimeZone() (string, error) {
-	resp, err := defaultSessionConn.client.GetTimeZone(context.Background(), defaultSessionConn.sessionId)
+	resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
 	if err != nil {
 		return "", err
 	}
@@ -368,9 +374,9 @@ func (s *Session) GetTimeZone() (string, error) {
 }
 
 func (s *Session) SetTimeZone(timeZone string) (r *rpc.TSStatus, err error) {
-	request := rpc.TSSetTimeZoneReq{SessionId: defaultSessionConn.sessionId, TimeZone: timeZone}
-	r, err = defaultSessionConn.client.SetTimeZone(context.Background(), &request)
-	defaultSessionConn.config.TimeZone = timeZone
+	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
+	r, err = s.client.SetTimeZone(context.Background(), &request)
+	s.config.TimeZone = timeZone
 	return r, err
 }
 
@@ -833,6 +839,7 @@ func NewClusterSession(ClusterConfig *ClusterConfig) Session {
 				} else {
 					defaultSessionConn.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
 						ClusterConfig.UserName, ClusterConfig.Password, ClusterConfig.FetchSize, ClusterConfig.TimeZone)
+					defaultSessionConn.host = e.Value.(endPoint)
 					break
 				}
 			}
@@ -876,7 +883,6 @@ func initClusterConn(node endPoint) error {
 	if err != nil {
 		return err
 	}
-
 	defaultSessionConn.SetTimeZone(defaultSessionConn.config.TimeZone)
 	defaultSessionConn.config.TimeZone, err = defaultSessionConn.GetTimeZone()
 	return err
@@ -903,6 +909,7 @@ func reconnect() bool {
 			err = initClusterConn(e.Value.(endPoint))
 			if err == nil {
 				connectedSuccess = true
+				fmt.Println("qihouliang host", e.Value.(endPoint).Host)
 				break
 			} else {
 				log.Println("Connection refused:", e.Value.(endPoint))
