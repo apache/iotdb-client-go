@@ -29,8 +29,6 @@
 Apache IoTDB website: https://iotdb.apache.org
 Apache IoTDB Github: https://github.com/apache/iotdb
 
-## 如何编译
-
 ## 环境准备
 
     golang >= 1.13
