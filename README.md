@@ -22,14 +22,6 @@
 
 # Apache IoTDB
 
-[![E2E Tests](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml/badge.svg)](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml)
-[![GitHub release](https://img.shields.io/github/release/apache/iotdb-client-go.svg)](https://github.com/apache/iotdb-client-go/releases)
-[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-![](https://github-size-badge.herokuapp.com/apache/iotdb-client-go.svg)
-![](https://img.shields.io/badge/platform-win10%20%7C%20macos%20%7C%20linux-yellow.svg)
-[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
-
-
 Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance for 
 data management and analysis, deployable on the edge and the cloud. Due to its light-weight 
 architecture, high performance and rich feature set together with its deep integration with 
@@ -37,6 +29,13 @@ Apache Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massiv
 high-speed data ingestion and complex data analysis in the IoT industrial fields.
 
 # Apache IoTDB Client for Go
+
+[![E2E Tests](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml/badge.svg)](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb-client-go.svg)](https://github.com/apache/iotdb-client-go/releases)
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+![](https://github-size-badge.herokuapp.com/apache/iotdb-client-go.svg)
+![](https://img.shields.io/badge/platform-win10%20%7C%20macos%20%7C%20linux-yellow.svg)
+[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 ## Overview
 
@@ -68,10 +67,10 @@ go run session_example.go
 Without go mod
 
 ```sh
-# get thrift 0.14.1
+# get thrift 0.15.0
 go get github.com/apache/thrift
 cd $GOPATH/src/github.com/apache/thrift
-git checkout 0.14.1
+git checkout 0.15.0
 
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
 cd $GOPATH/src/iotdb-client-go-example/session_example
@@ -92,4 +91,4 @@ go run session_example.go
 * golang >= 1.13
 * make >= 3.0
 * curl >= 7.1.1
-* thrift 0.14.1
+* thrift 0.15.0
