@@ -3,11 +3,11 @@ name: Go
 on:
   push:
     branches:
-      - master
+      - main
       - 'rel/*'
   pull_request:
     branches:
-      - master
+      - main
       - 'rel/*'
   # allow manually run the action:
   workflow_dispatch:
