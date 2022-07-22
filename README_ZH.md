@@ -20,7 +20,20 @@
 -->
 [English](./README.md) | [中文](./README_ZH.md)
 
+# Apache IoTDB
+
+Apache IoTDB（物联网数据库）是一个物联网原生数据库，在数据管理和分析方面表现良好，可部署在边缘设备和云上。
+由于其轻量级架构、高性能和丰富的功能集，以及与Apache Hadoop、Spark和Flink的深度集成，
+Apache IoTDB可以满足物联网工业领域的海量数据存储、高速数据摄取和复杂数据分析的要求。
+
 # Apache IoTDB Go语言客户端
+
+[![E2E Tests](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml/badge.svg)](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb-client-go.svg)](https://github.com/apache/iotdb-client-go/releases)
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+![](https://github-size-badge.herokuapp.com/apache/iotdb-client-go.svg)
+![](https://img.shields.io/badge/platform-win10%20%7C%20macos%20%7C%20linux-yellow.svg)
+[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 ## 概览
 
@@ -52,10 +65,10 @@ go run session_example.go
 不使用go mod，采用GOPATH
 
 ```sh
-# get thrift 0.14.1
+# get thrift 0.15.0
 go get github.com/apache/thrift
 cd $GOPATH/src/github.com/apache/thrift
-git checkout 0.14.1
+git checkout 0.15.0
 
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
 cd $GOPATH/src/iotdb-client-go-example/session_example
@@ -75,4 +88,4 @@ go run session_example.go
 * golang >= 1.13
 * make   >= 3.0
 * curl   >= 7.1.1
-* thrift 0.14.1
+* thrift 0.15.0

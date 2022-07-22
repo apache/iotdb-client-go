@@ -79,13 +79,16 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	var protocolFactory thrift.TProtocolFactory
 	var err error
 
-	s.trans, err = thrift.NewTSocketConf(net.JoinHostPort(s.config.Host, s.config.Port), &thrift.TConfiguration{
+	// in thrift 0.14.1, this func returns two values; in thrift 0.15.0, it returns one.
+	s.trans = thrift.NewTSocketConf(net.JoinHostPort(s.config.Host, s.config.Port), &thrift.TConfiguration{
 		ConnectTimeout: time.Duration(connectionTimeoutInMs), // Use 0 for no timeout
 	})
 	if err != nil {
 		return err
 	}
-	s.trans = thrift.NewTFramedTransport(s.trans)
+	// s.trans = thrift.NewTFramedTransport(s.trans)	// deprecated
+	var tmp_conf = thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
+	s.trans = thrift.NewTFramedTransportConf(s.trans, &tmp_conf)
 	if !s.trans.IsOpen() {
 		err = s.trans.Open()
 		if err != nil {
@@ -813,11 +816,13 @@ func NewClusterSession(ClusterConfig *ClusterConfig) Session {
 	}
 	var err error
 	for e := endPointList.Front(); e != nil; e = e.Next() {
-		session.trans, err = thrift.NewTSocketConf(net.JoinHostPort(e.Value.(endPoint).Host, e.Value.(endPoint).Port), &thrift.TConfiguration{
+		session.trans = thrift.NewTSocketConf(net.JoinHostPort(e.Value.(endPoint).Host, e.Value.(endPoint).Port), &thrift.TConfiguration{
 			ConnectTimeout: time.Duration(0), // Use 0 for no timeout
 		})
 		if err == nil {
-			session.trans = thrift.NewTFramedTransport(session.trans)
+			// session.trans = thrift.NewTFramedTransport(session.trans)	// deprecated
+			var tmp_conf = thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
+			session.trans = thrift.NewTFramedTransportConf(session.trans, &tmp_conf)
 			if !session.trans.IsOpen() {
 				err = session.trans.Open()
 				if err != nil {
@@ -839,11 +844,13 @@ func NewClusterSession(ClusterConfig *ClusterConfig) Session {
 func (s *Session) initClusterConn(node endPoint) error {
 	var err error
 
-	s.trans, err = thrift.NewTSocketConf(net.JoinHostPort(node.Host, node.Port), &thrift.TConfiguration{
+	s.trans = thrift.NewTSocketConf(net.JoinHostPort(node.Host, node.Port), &thrift.TConfiguration{
 		ConnectTimeout: time.Duration(0), // Use 0 for no timeout
 	})
 	if err == nil {
-		s.trans = thrift.NewTFramedTransport(s.trans)
+		// s.trans = thrift.NewTFramedTransport(s.trans)	// deprecated
+		var tmp_conf = thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
+		s.trans = thrift.NewTFramedTransportConf(s.trans, &tmp_conf)
 		if !s.trans.IsOpen() {
 			err = s.trans.Open()
 			if err != nil {
