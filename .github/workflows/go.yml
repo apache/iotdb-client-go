@@ -2,9 +2,20 @@ name: Go
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - master
+      - 'rel/*'
   pull_request:
-    branches: [ main ]
+    branches:
+      - master
+      - 'rel/*'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 
 jobs:
 
