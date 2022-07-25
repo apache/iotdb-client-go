@@ -343,7 +343,7 @@ func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) (r 
  *error: correctness of operation
  */
 func (s *Session) InsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) (r *rpc.TSStatus, err error) {
-	request := rpc.TSInsertStringRecordReq{SessionId: s.sessionId, DeviceId: deviceId, Measurements: measurements,
+	request := rpc.TSInsertStringRecordReq{SessionId: s.sessionId, PrefixPath: deviceId, Measurements: measurements,
 		Values: values, Timestamp: timestamp}
 	r, err = s.client.InsertStringRecord(context.Background(), &request)
 	if err != nil && r == nil {
@@ -418,7 +418,7 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	values []interface{}) (*rpc.TSInsertRecordReq, error) {
 	request := &rpc.TSInsertRecordReq{}
 	request.SessionId = s.sessionId
-	request.DeviceId = deviceId
+	request.PrefixPath = deviceId
 	request.Timestamp = time
 	request.Measurements = measurements
 
@@ -497,7 +497,7 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
 
 	request := &rpc.TSInsertRecordsOfOneDeviceReq{
 		SessionId:        s.sessionId,
-		DeviceId:         deviceId,
+		PrefixPath:       deviceId,
 		Timestamps:       timestamps,
 		MeasurementsList: measurementsSlice,
 		ValuesList:       valuesList,
@@ -656,7 +656,7 @@ func (s *Session) genInsertTabletsReq(tablets []*Tablet) (*rpc.TSInsertTabletsRe
 	}
 	request := rpc.TSInsertTabletsReq{
 		SessionId:        s.sessionId,
-		DeviceIds:        deviceIds,
+		PrefixPaths:      deviceIds,
 		TypesList:        typesList,
 		MeasurementsList: measurementsList,
 		ValuesList:       valuesList,
@@ -674,7 +674,7 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 	}
 	request := rpc.TSInsertRecordsReq{
 		SessionId:        s.sessionId,
-		DeviceIds:        deviceIds,
+		PrefixPaths:      deviceIds,
 		MeasurementsList: measurements,
 		Timestamps:       timestamps,
 	}
@@ -778,7 +778,7 @@ func (s *Session) genTSInsertTabletReq(tablet *Tablet) (*rpc.TSInsertTabletReq, 
 	if values, err := tablet.getValuesBytes(); err == nil {
 		request := &rpc.TSInsertTabletReq{
 			SessionId:    s.sessionId,
-			DeviceId:     tablet.deviceId,
+			PrefixPath:   tablet.deviceId,
 			Measurements: tablet.GetMeasurements(),
 			Values:       values,
 			Timestamps:   tablet.GetTimestampBytes(),
