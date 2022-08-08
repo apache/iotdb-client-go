@@ -172,16 +172,18 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 		timestamps = []int64{ts, ts - 1}
 	)
 	s.checkError(s.session.InsertAlignedRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
-	ds, err := s.session.ExecuteStatement("show devices")
+	ds, err := s.session.ExecuteStatement("select temperature from root.al1.dev4")
 	assert := s.Require()
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
 	var status string
 	assert.NoError(ds.Scan(&status))
-	assert.Equal(status, "root.al1.dev4")
+	assert.Equal(status, "12.1")
 }
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
+	var timeseries = []string{"root.ln.device1.**"}
+	s.session.DeleteTimeseries(timeseries)
 	if tablet, err := createTablet(12); err == nil {
 		status, err := s.session.InsertAlignedTablet(tablet, false)
 		s.checkError(status, err)
@@ -197,6 +199,7 @@ func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	var status string
 	assert.NoError(ds.Scan(&status))
 	assert.Equal(status, "12")
+	s.session.DeleteStorageGroup("root.ln.**")
 }
 func createTablet(rowCount int) (*client.Tablet, error) {
 	tablet, err := client.NewTablet("root.ln.device1", []*client.MeasurementSchema{
@@ -252,6 +255,8 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 }
 
 func (s *e2eTestSuite) Test_InsertAlignedTablets() {
+	var timeseries = []string{"root.ln.device1.**"}
+	s.session.DeleteTimeseries(timeseries)
 	tablet1, err := createTablet(8)
 	if err != nil {
 		log.Fatal(err)
@@ -272,4 +277,5 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	var status string
 	assert.NoError(ds.Scan(&status))
 	assert.Equal(status, "12")
+	s.session.DeleteStorageGroup("root.ln.**")
 }
