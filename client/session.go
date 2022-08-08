@@ -415,13 +415,14 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	measurements []string,
 	types []TSDataType,
-	values []interface{}) (*rpc.TSInsertRecordReq, error) {
+	values []interface{},
+	isAligned bool) (*rpc.TSInsertRecordReq, error) {
 	request := &rpc.TSInsertRecordReq{}
 	request.SessionId = s.sessionId
 	request.PrefixPath = deviceId
 	request.Timestamp = time
 	request.Measurements = measurements
-
+	request.IsAligned = &isAligned
 	if bys, err := valuesToBytes(types, values); err == nil {
 		request.Values = bys
 	} else {
@@ -431,7 +432,24 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 }
 
 func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []TSDataType, values []interface{}, timestamp int64) (r *rpc.TSStatus, err error) {
-	request, err := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values)
+	request, err := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values, false)
+	if err != nil {
+		return nil, err
+	}
+	r, err = s.client.InsertRecord(context.Background(), request)
+
+	if err != nil && r == nil {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			r, err = s.client.InsertRecord(context.Background(), request)
+		}
+	}
+
+	return r, err
+}
+
+func (s *Session) InsertAlignedRecord(deviceId string, measurements []string, dataTypes []TSDataType, values []interface{}, timestamp int64) (r *rpc.TSStatus, err error) {
+	request, err := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values, true)
 	if err != nil {
 		return nil, err
 	}
@@ -452,6 +470,7 @@ type deviceData struct {
 	measurementsSlice [][]string
 	dataTypesSlice    [][]TSDataType
 	valuesSlice       [][]interface{}
+	isAligned         bool
 }
 
 func (d *deviceData) Len() int {
@@ -515,6 +534,49 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
 	return r, err
 }
 
+func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []int64, measurementsSlice [][]string, dataTypesSlice [][]TSDataType, valuesSlice [][]interface{}, sorted bool) (r *rpc.TSStatus, err error) {
+	length := len(timestamps)
+	if len(measurementsSlice) != length || len(dataTypesSlice) != length || len(valuesSlice) != length {
+		return nil, errors.New("timestamps, measurementsSlice and valuesSlice's size should be equal")
+	}
+
+	if !sorted {
+		sort.Sort(&deviceData{
+			timestamps:        timestamps,
+			measurementsSlice: measurementsSlice,
+			dataTypesSlice:    dataTypesSlice,
+			valuesSlice:       valuesSlice,
+		})
+	}
+
+	valuesList := make([][]byte, length)
+	for i := 0; i < length; i++ {
+		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i]); err != nil {
+			return nil, err
+		}
+	}
+	var isAligned = true
+	request := &rpc.TSInsertRecordsOfOneDeviceReq{
+		SessionId:        s.sessionId,
+		PrefixPath:       deviceId,
+		Timestamps:       timestamps,
+		MeasurementsList: measurementsSlice,
+		ValuesList:       valuesList,
+		IsAligned:        &isAligned,
+	}
+
+	r, err = s.client.InsertRecordsOfOneDevice(context.Background(), request)
+
+	if err != nil && r == nil {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			r, err = s.client.InsertRecordsOfOneDevice(context.Background(), request)
+		}
+	}
+
+	return r, err
+}
+
 /*
  *insert multiple rows of data, records are independent to each other, in other words, there's no relationship
  *between those records
@@ -529,7 +591,24 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
  */
 func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dataTypes [][]TSDataType, values [][]interface{},
 	timestamps []int64) (r *rpc.TSStatus, err error) {
-	request, err := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps)
+	request, err := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps, false)
+	if err != nil {
+		return nil, err
+	} else {
+		r, err = s.client.InsertRecords(context.Background(), request)
+		if err != nil && r == nil {
+			if s.reconnect() {
+				request.SessionId = s.sessionId
+				r, err = s.client.InsertRecords(context.Background(), request)
+			}
+		}
+		return r, err
+	}
+}
+
+func (s *Session) InsertAlignedRecords(deviceIds []string, measurements [][]string, dataTypes [][]TSDataType, values [][]interface{},
+	timestamps []int64) (r *rpc.TSStatus, err error) {
+	request, err := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps, true)
 	if err != nil {
 		return nil, err
 	} else {
@@ -557,7 +636,29 @@ func (s *Session) InsertTablets(tablets []*Tablet, sorted bool) (r *rpc.TSStatus
 			}
 		}
 	}
-	request, err := s.genInsertTabletsReq(tablets)
+	request, err := s.genInsertTabletsReq(tablets, false)
+	if err != nil {
+		return nil, err
+	}
+	r, err = s.client.InsertTablets(context.Background(), request)
+	if err != nil && r == nil {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			r, err = s.client.InsertTablets(context.Background(), request)
+		}
+	}
+	return r, err
+}
+
+func (s *Session) InsertAlignedTablets(tablets []*Tablet, sorted bool) (r *rpc.TSStatus, err error) {
+	if !sorted {
+		for _, t := range tablets {
+			if err := t.Sort(); err != nil {
+				return nil, err
+			}
+		}
+	}
+	request, err := s.genInsertTabletsReq(tablets, true)
 	if err != nil {
 		return nil, err
 	}
@@ -630,7 +731,7 @@ func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) *Sess
 	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, nil)
 }
 
-func (s *Session) genInsertTabletsReq(tablets []*Tablet) (*rpc.TSInsertTabletsReq, error) {
+func (s *Session) genInsertTabletsReq(tablets []*Tablet, isAligned bool) (*rpc.TSInsertTabletsReq, error) {
 	var (
 		length           = len(tablets)
 		deviceIds        = make([]string, length)
@@ -662,12 +763,13 @@ func (s *Session) genInsertTabletsReq(tablets []*Tablet) (*rpc.TSInsertTabletsRe
 		ValuesList:       valuesList,
 		TimestampsList:   timestampsList,
 		SizeList:         sizeList,
+		IsAligned:        &isAligned,
 	}
 	return &request, nil
 }
 
 func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]string, dataTypes [][]TSDataType, values [][]interface{},
-	timestamps []int64) (*rpc.TSInsertRecordsReq, error) {
+	timestamps []int64, isAligned bool) (*rpc.TSInsertRecordsReq, error) {
 	length := len(deviceIds)
 	if length != len(timestamps) || length != len(measurements) || length != len(values) {
 		return nil, errLength
@@ -677,6 +779,7 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 		PrefixPaths:      deviceIds,
 		MeasurementsList: measurements,
 		Timestamps:       timestamps,
+		IsAligned:        &isAligned,
 	}
 	v := make([][]byte, length)
 	for i := 0; i < len(measurements); i++ {
@@ -757,7 +860,7 @@ func (s *Session) InsertTablet(tablet *Tablet, sorted bool) (r *rpc.TSStatus, er
 			return nil, err
 		}
 	}
-	request, err := s.genTSInsertTabletReq(tablet)
+	request, err := s.genTSInsertTabletReq(tablet, false)
 	if err != nil {
 		return nil, err
 	}
@@ -774,7 +877,30 @@ func (s *Session) InsertTablet(tablet *Tablet, sorted bool) (r *rpc.TSStatus, er
 	return r, err
 }
 
-func (s *Session) genTSInsertTabletReq(tablet *Tablet) (*rpc.TSInsertTabletReq, error) {
+func (s *Session) InsertAlignedTablet(tablet *Tablet, sorted bool) (r *rpc.TSStatus, err error) {
+	if !sorted {
+		if err := tablet.Sort(); err != nil {
+			return nil, err
+		}
+	}
+	request, err := s.genTSInsertTabletReq(tablet, true)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err = s.client.InsertTablet(context.Background(), request)
+
+	if err != nil && r == nil {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			r, err = s.client.InsertTablet(context.Background(), request)
+		}
+	}
+
+	return r, err
+}
+
+func (s *Session) genTSInsertTabletReq(tablet *Tablet, isAligned bool) (*rpc.TSInsertTabletReq, error) {
 	if values, err := tablet.getValuesBytes(); err == nil {
 		request := &rpc.TSInsertTabletReq{
 			SessionId:    s.sessionId,
@@ -784,6 +910,7 @@ func (s *Session) genTSInsertTabletReq(tablet *Tablet) (*rpc.TSInsertTabletReq, 
 			Timestamps:   tablet.GetTimestampBytes(),
 			Types:        tablet.getDataTypes(),
 			Size:         int32(tablet.rowCount),
+			IsAligned:    &isAligned,
 		}
 		return request, nil
 	} else {
