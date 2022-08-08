@@ -42,7 +42,7 @@ func TestE2ETestSuite(t *testing.T) {
 
 func (s *e2eTestSuite) SetupSuite() {
 	config := &client.Config{
-		Host:     "localhost",
+		Host:     "iotdb",
 		Port:     "6667",
 		UserName: "root",
 		Password: "root",
