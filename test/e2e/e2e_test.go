@@ -276,6 +276,6 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	assert.True(ds.Next())
 	var status string
 	assert.NoError(ds.Scan(&status))
-	assert.Equal(status, "12")
+	assert.Equal(status, "8")
 	s.session.DeleteStorageGroup("root.ln.**")
 }
