@@ -172,14 +172,14 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 		timestamps = []int64{ts, ts - 1}
 	)
 	s.checkError(s.session.InsertAlignedRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
-	ds, err := s.session.ExecuteStatement("show devices")
+	ds, err := s.session.ExecuteStatement("select temperature from root.al1.dev4")
 	assert := s.Require()
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
 	var status string
 	assert.NoError(ds.Scan(&status))
-	assert.Equal(status, "root.al1.dev4")
+	assert.Equal(status, "12.1")
 }
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	if tablet, err := createTablet(12); err == nil {
