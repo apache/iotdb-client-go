@@ -70,6 +70,10 @@ func main() {
 	createMultiTimeseries()
 	deleteTimeseries("root.sg1.dev1.temperature")
 
+	createAlignedTimeseries("root.sg1.dev1", []string{"status", "temperature"}, []string{"sts", "temp"})
+	deleteTimeseries("root.sg1.dev1.status")
+	deleteTimeseries("root.sg1.dev1.temperature")
+
 	insertStringRecord()
 	deleteTimeseries("root.ln.wf02.wt02.hardware")
 
@@ -272,6 +276,24 @@ func createTimeseries(path string) {
 		compressor = client.SNAPPY
 	)
 	checkError(session.CreateTimeseries(path, dataType, encoding, compressor, nil, nil))
+}
+
+func createAlignedTimeseries(prefixPath string, measurements, measurementAlias []string) {
+	var (
+		dataTypes = []client.TSDataType{
+			client.FLOAT,
+			client.FLOAT,
+		}
+		encodings = []client.TSEncoding{
+			client.PLAIN,
+			client.PLAIN,
+		}
+		compressors = []client.TSCompressionType{
+			client.LZ4,
+			client.LZ4,
+		}
+	)
+	checkError(session.CreateAlignedTimeseries(prefixPath, measurements, dataTypes, encodings, compressors, measurementAlias))
 }
 
 func createMultiTimeseries() {

@@ -91,6 +91,40 @@ func (s *e2eTestSuite) Test_CreateTimeseries() {
 	assert.Equal(timeseries, "root.tsg1.dev1.status")
 }
 
+func (s *e2eTestSuite) Test_CreateAlignedTimeseries() {
+	var (
+		prefixPath       = "root.tsg1.dev1"
+		measurements     = []string{"status", "temperature"}
+		measurementAlias = []string{"sts", "temp"}
+		dataTypes        = []client.TSDataType{
+			client.FLOAT,
+			client.FLOAT,
+		}
+		encodings = []client.TSEncoding{
+			client.PLAIN,
+			client.PLAIN,
+		}
+		compressors = []client.TSCompressionType{
+			client.LZ4,
+			client.LZ4,
+		}
+	)
+	s.checkError(s.session.CreateAlignedTimeseries(prefixPath, measurements, dataTypes, encodings, compressors, measurementAlias))
+	for i := range measurements {
+		fullPath := fmt.Sprintf("root.tsg1.dev1.%s", measurements[i])
+		ds, err := s.session.ExecuteQueryStatement(fmt.Sprintf("show timeseries %s", fullPath), nil)
+
+		assert := s.Require()
+
+		assert.NoError(err)
+		defer ds.Close()
+		assert.True(ds.Next())
+		var timeseries string
+		assert.NoError(ds.Scan(&timeseries))
+		assert.Equal(timeseries, fullPath)
+	}
+}
+
 func (s *e2eTestSuite) Test_InsertRecords() {
 	var (
 		deviceId     = []string{"root.tsg1.dev1"}
