@@ -255,6 +255,53 @@ func (s *Session) CreateTimeseries(path string, dataType TSDataType, encoding TS
 }
 
 /*
+ *create single aligned time series
+ *params
+ *prefixPath: string, time series prefix path (starts from root)
+ *measurements: []string, sensor names
+ *dataTypes: []int32, data types for time series
+ *encodings: []int32, encodings for time series
+ *compressors: []int32, compressing types for time series
+ *measurementAlias: []string, sensor names alias
+ *return
+ *error: correctness of operation
+ */
+func (s *Session) CreateAlignedTimeseries(prefixPath string, measurements []string, dataTypes []TSDataType, encodings []TSEncoding, compressors []TSCompressionType, measurementAlias []string) (r *rpc.TSStatus, err error) {
+	destTypes := make([]int32, len(dataTypes))
+	for i, t := range dataTypes {
+		destTypes[i] = int32(t)
+	}
+
+	destEncodings := make([]int32, len(encodings))
+	for i, e := range encodings {
+		destEncodings[i] = int32(e)
+	}
+
+	destCompressions := make([]int32, len(compressors))
+	for i, e := range compressors {
+		destCompressions[i] = int32(e)
+	}
+
+	request := rpc.TSCreateAlignedTimeseriesReq{
+		SessionId:        s.sessionId,
+		PrefixPath:       prefixPath,
+		Measurements:     measurements,
+		DataTypes:        destTypes,
+		Encodings:        destEncodings,
+		Compressors:      destCompressions,
+		MeasurementAlias: measurementAlias,
+	}
+	status, err := s.client.CreateAlignedTimeseries(context.Background(), &request)
+	if err != nil && status == nil {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			status, err = s.client.CreateAlignedTimeseries(context.Background(), &request)
+		}
+	}
+	return status, err
+}
+
+/*
  *create multiple time series
  *params
  *paths: []string, complete time series paths (starts from root)
