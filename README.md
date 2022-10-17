@@ -92,3 +92,19 @@ go run session_example.go
 * make >= 3.0
 * curl >= 7.1.1
 * thrift 0.15.0
+
+## Troubleshooting
+
+### Thrift version compatibility issues
+
+In the branch `rel/0.13.0` and earlier versions, the version of apache/thrift is `v0.14.1`.
+In the latest version, apache/thrift has been upgraded to `v0.15.0`.
+
+The two versions are not compatible on some interfaces. Using mismatched version will cause compilation errors.
+
+The interfaces changed in the two versions are as follows:
+
+1. `NewTSocketConf`. This function returns two values in the version `v0.14.1` and only one value in the version `v0.15.0`.
+2. `NewTFramedTransport` has been deprecated, use `NewTFramedTransportConf` instead.
+
+For more details, please take a look at this PR: [update thrift to 0.15.0 to fit IoTDB 0.13.0](https://github.com/apache/iotdb-client-go/pull/41)
