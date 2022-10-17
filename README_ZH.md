@@ -94,7 +94,7 @@ go run session_example.go
 
 ### thrift 版本兼容性问题
 
-分支`rel/0.13.0`以及更早前的版本中，apache/thrift的版本为`v0.14.1`。
+分支`rel/0.13`以及更早前的版本中，apache/thrift的版本为`v0.14.1`。
 在更新的版本中，apache/thrift已经升级为`v0.15.0`。
 这两个版本在一些接口上并不兼容，使用不对应的版本，会导致编译报错。
 

@@ -97,7 +97,7 @@ go run session_example.go
 
 ### Thrift version compatibility issues
 
-In the branch `rel/0.13.0` and earlier versions, the version of apache/thrift is `v0.14.1`.
+In the branch `rel/0.13` and earlier versions, the version of apache/thrift is `v0.14.1`.
 In the latest version, apache/thrift has been upgraded to `v0.15.0`.
 
 The two versions are not compatible on some interfaces. Using mismatched version will cause compilation errors.
