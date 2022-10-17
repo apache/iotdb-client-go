@@ -89,3 +89,18 @@ go run session_example.go
 * make   >= 3.0
 * curl   >= 7.1.1
 * thrift 0.15.0
+
+## 疑难解答
+
+### thrift 版本兼容性问题
+
+分支`rel/0.13`以及更早前的版本中，apache/thrift的版本为`v0.14.1`。
+在更新的版本中，apache/thrift已经升级为`v0.15.0`。
+这两个版本在一些接口上并不兼容，使用不对应的版本，会导致编译报错。
+
+两个版本中有改动的接口如下：
+
+1. `NewTSocketConf`。该接口在`v0.14.1`版本中返回2个值，在`v0.15.0`版本中返回1个值。
+2. `NewTFramedTransport`已弃用，改用为`NewTFramedTransportConf`。
+
+更多相关的内容可以参考这个PR：[update thrift to 0.15.0 to fit IoTDB 0.13.0](https://github.com/apache/iotdb-client-go/pull/41)
