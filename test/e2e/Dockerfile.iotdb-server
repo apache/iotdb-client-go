@@ -26,4 +26,4 @@ ADD test/e2e/start-1c1d.sh /
 RUN mv /start-1c1d.sh /usr/local/iotdb/sbin
 WORKDIR /usr/local/iotdb
 EXPOSE 6667
-CMD [ "/usr/local/iotdb/sbin/start-1c1d.sh" ]
+ENTRYPOINT ["/usr/local/iotdb/sbin/start-1c1d.sh"]
