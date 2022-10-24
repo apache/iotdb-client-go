@@ -51,7 +51,7 @@ e2e_test:
 	sh -c "cd /tmp/ && rm -rf iotdb && git clone https://github.com/apache/iotdb.git && cd iotdb && mvn clean package -pl distribution -am -DskipTests"
 	mkdir -p target/iotdb
 	unzip -o -q /tmp/iotdb/distribution/target/apache-iotdb-*-all-bin.zip -d target/iotdb
-	cp /tmp/iotdb/docker/src/main/DockerCompose/start-1c1d.sh target/iotdb/sbin
+	mv /tmp/iotdb/docker/src/main/DockerCompose/start-1c1d.sh target/iotdb/sbin
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean:
@@ -62,7 +62,7 @@ e2e_test_clean:
 e2e_test_for_parent_git_repo:
 	mkdir -p target/iotdb
 	unzip -o -q ../distribution/target/apache-iotdb-*-all-bin.zip -d target/iotdb
-	cp /tmp/iotdb/docker/src/main/DockerCompose/start-1c1d.sh target/iotdb/sbin
+	mv ../docker/src/main/DockerCompose/start-1c1d.sh target/iotdb/sbin
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean_for_parent_git_repo:
