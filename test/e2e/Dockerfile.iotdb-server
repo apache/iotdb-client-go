@@ -24,4 +24,4 @@ RUN apt update \
 ADD target /usr/local
 WORKDIR /usr/local/iotdb
 EXPOSE 6667
-CMD [ "/usr/local/iotdb/sbin/start-server.sh" ]
+CMD [ "/usr/local/iotdb/sbin/start-1c1d.sh" ]
