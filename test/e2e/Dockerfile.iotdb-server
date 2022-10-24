@@ -22,7 +22,8 @@ FROM openjdk:11-jre-slim
 RUN apt update \
   && apt install -y procps && apt clean
 ADD target /usr/local
-ADD test/e2e/start-1c1d.sh /usr/local/iotdb/sbin
+ADD test/e2e/start-1c1d.sh /
+RUN mv /start-1c1d.sh /usr/local/iotdb/sbin
 WORKDIR /usr/local/iotdb
 EXPOSE 6667
 CMD [ "/usr/local/iotdb/sbin/start-1c1d.sh" ]
