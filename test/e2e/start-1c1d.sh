@@ -19,4 +19,5 @@
 #
 nohup /usr/local/iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
 sleep 5
-/usr/local/iotdb/sbin/start-datanode.sh
+ls /usr/local/iotdb/sbin
+./usr/local/iotdb/sbin/start-datanode.sh
