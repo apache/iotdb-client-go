@@ -23,7 +23,7 @@ RUN apt update \
   && apt install -y procps && apt clean
 ADD target /usr/local
 ADD test/e2e/start-1c1d.sh /
-ls /usr/local
+RUN ls /usr/local
 WORKDIR /usr/local/iotdb
 EXPOSE 6667
 CMD ["/start-1c1d.sh"]
