@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,13 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-FROM openjdk:11-jre-slim
-
-RUN apt update \
-  && apt install -y procps && apt clean
-ADD target /usr/local
-ADD test/e2e/start-1c1d.sh /
-WORKDIR /usr/local/iotdb
-EXPOSE 6667
-CMD ["/start-1c1d.sh"]
+nohup /usr/local/iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
+sleep 5
+ls /usr/local/iotdb/sbin
+/usr/local/iotdb/sbin/start-datanode.sh

@@ -29,7 +29,7 @@ services:
     healthcheck:
       test: ["CMD", "ls", "/usr/local/iotdb/data"]
       interval: 3s
-      timeout: 5s
+      timeout: 15s
       retries: 30
       start_period: 30s
   iotdb_client_go:
