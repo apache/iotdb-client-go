@@ -21,8 +21,10 @@ FROM openjdk:11-jre-slim
 
 RUN apt update \
   && apt install -y procps && apt clean
+RUN apt install tree
 ADD target /usr/local
 ADD test/e2e/start-1c1d.sh /
+RUN tree
 WORKDIR /usr/local/iotdb
 EXPOSE 6667
 CMD ["/start-1c1d.sh"]
