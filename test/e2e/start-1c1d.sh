@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-nohup target/iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
+nohup /usr/local/iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
 sleep 5
-ls target/iotdb/sbin
-./target/iotdb/sbin/start-datanode.sh
+ls /usr/local/iotdb/sbin
+/usr/local/iotdb/sbin/start-datanode.sh
