@@ -24,6 +24,7 @@ RUN apt update \
 ADD target /usr/local
 ADD test/e2e/start-1c1d.sh /
 RUN ls /usr/local
+RUN ls /usr/local/iotdb
 WORKDIR /usr/local/iotdb
 EXPOSE 6667
 CMD ["/start-1c1d.sh"]
