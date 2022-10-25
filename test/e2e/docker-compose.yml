@@ -31,11 +31,11 @@ services:
       interval: 3s
       timeout: 15s
       retries: 30
-      start_period: 30s
+#      start_period: 30s
   iotdb_client_go:
     build:
       context: ../..
       dockerfile: test/e2e/Dockerfile.iotdb-client-go
-    depends_on:
-      iotdb:
-        condition: service_healthy
+#    depends_on:
+#      iotdb:
+#        condition: service_healthy
