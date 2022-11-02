@@ -108,3 +108,12 @@ The interfaces changed in the two versions are as follows:
 2. `NewTFramedTransport` has been deprecated, use `NewTFramedTransportConf` instead.
 
 For more details, please take a look at this PR: [update thrift to 0.15.0 to fit IoTDB 0.13.0](https://github.com/apache/iotdb-client-go/pull/41)
+
+### Parameter name mismatch with actual usage in function 'Open'
+
+The implementation of the function ```client/session.go/Open()``` is mismatched with the description.
+The parameter `connectionTimeoutInMs` represents connection timeout in milliseconds.
+However, in the older version, this function did not implement correctly, regarding it as nanosecond instead.
+The bug is now fixed.
+Positive value of this parameter means connection timeout in milliseconds.
+Set 0 for no timeout.
