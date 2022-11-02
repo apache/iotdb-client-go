@@ -48,7 +48,7 @@ test:
 	go test -v ./client/...
 
 e2e_test:
-	sh -c "cd /tmp/ && rm -rf iotdb && git clone https://github.com/apache/iotdb.git && cd iotdb && mvn -Dmaven.test.skip=true package -am -pl server"
+	sh -c "cd /tmp/ && rm -rf iotdb && git clone https://github.com/apache/iotdb.git && cd iotdb && git checkout rel/0.13 && mvn -Dmaven.test.skip=true package -am -pl server"
 	mkdir -p target/iotdb
 	unzip -o -q /tmp/iotdb/server/target/iotdb-server-*.zip -d target/iotdb
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
