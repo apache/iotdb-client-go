@@ -93,3 +93,14 @@ go run session_example.go
 * make >= 3.0
 * curl >= 7.1.1
 * thrift 0.14.1
+
+## Troubleshooting
+
+### Parameter name mismatch with actual usage in function 'Open'
+
+The implementation of the function ```client/session.go/Open()``` is mismatched with the description.
+The parameter `connectionTimeoutInMs` represents connection timeout in milliseconds.
+However, in the older version, this function did not implement correctly, regarding it as nanosecond instead.
+The bug is now fixed.
+Positive value of this parameter means connection timeout in milliseconds.
+Set 0 for no timeout.
