@@ -104,3 +104,9 @@ go run session_example.go
 2. `NewTFramedTransport`已弃用，改用为`NewTFramedTransportConf`。
 
 更多相关的内容可以参考这个PR：[update thrift to 0.15.0 to fit IoTDB 0.13.0](https://github.com/apache/iotdb-client-go/pull/41)
+
+### Open函数参数名称与实际功能不匹配的问题
+
+函数```client/session.go/Open()```有一个参数`connectionTimeoutInMs`，表示了以毫秒为单位的连接超时时间。
+但旧版本中，该函数在实现时并未正确进行单位转换，而是将其看作了纳秒。现在该问题已修复。
+当该参数为0时，表示不设置超时时间；当设置为正数时表示以毫秒为单位的超时时间。
