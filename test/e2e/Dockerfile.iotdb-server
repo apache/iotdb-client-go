@@ -21,11 +21,11 @@ FROM openjdk:11-jre-slim
 
 RUN apt update \
   && apt install -y procps && apt clean
+RUN sed -i 's/dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' target/iotdb/conf/iotdb-datanode.properties \
+  && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' target/iotdb/conf/iotdb-datanode.properties \
+  && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' target/iotdb/conf/iotdb-confignode.properties \
 ADD target /usr/local
 ADD test/e2e/start-1c1d.sh /
 WORKDIR /usr/local/iotdb
-RUN sed -i 's/dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' /usr/local/iotdb/conf/iotdb-datanode.properties \
-  && sed -i 's/dn_internal_address=127.0.0.1/dn_internal_address=0.0.0.0/g' /usr/local/iotdb/conf/iotdb-datanode.properties \
-  && sed -i 's/cn_internal_address=127.0.0.1/cn_internal_address=0.0.0.0/g' /usr/local/iotdb/conf/iotdb-confignode.properties \
 EXPOSE 6667
 CMD ["/start-1c1d.sh"]
