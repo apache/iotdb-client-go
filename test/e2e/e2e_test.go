@@ -231,7 +231,7 @@ func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	var status string
 	assert.NoError(ds.Scan(&status))
 	assert.Equal(status, "12")
-	s.session.DeleteStorageGroup("root.ln.**")
+	s.session.DeleteStorageGroup("root.ln")
 }
 func createTablet(rowCount int) (*client.Tablet, error) {
 	tablet, err := client.NewTablet("root.ln.device1", []*client.MeasurementSchema{
@@ -308,5 +308,5 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	var status string
 	assert.NoError(ds.Scan(&status))
 	assert.Equal(status, "8")
-	s.session.DeleteStorageGroup("root.ln.**")
+	s.session.DeleteStorageGroup("root.ln")
 }
