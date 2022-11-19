@@ -96,7 +96,7 @@ func (s *e2eTestSuite) Test_CreateTimeseries() {
 
 func (s *e2eTestSuite) Test_CreateAlignedTimeseries() {
 	var (
-		prefixPath       = "root.tsg1.dev1"
+		prefixPath       = "root.tsg2.dev1"
 		measurements     = []string{"status", "temperature"}
 		measurementAlias = []string{"sts", "temp"}
 		dataTypes        = []client.TSDataType{
@@ -114,7 +114,7 @@ func (s *e2eTestSuite) Test_CreateAlignedTimeseries() {
 	)
 	s.checkError(s.session.CreateAlignedTimeseries(prefixPath, measurements, dataTypes, encodings, compressors, measurementAlias))
 	for i := range measurements {
-		fullPath := fmt.Sprintf("root.tsg1.dev1.%s", measurements[i])
+		fullPath := fmt.Sprintf("root.tsg2.dev1.%s", measurements[i])
 		ds, err := s.session.ExecuteQueryStatement(fmt.Sprintf("show timeseries %s", fullPath), nil)
 
 		assert := s.Require()
