@@ -287,7 +287,6 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 }
 
 func (s *e2eTestSuite) Test_InsertAlignedTablets() {
-	s.session.DeleteStorageGroup("root.ln")
 	tablet1, err := createTablet(8)
 	if err != nil {
 		log.Fatal(err)
