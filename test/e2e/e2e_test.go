@@ -216,7 +216,7 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 	assert.Equal(status, "12.1")
 }
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
-	var timeseries = []string{"root.ln.device1.**"}
+	var timeseries = []string{"root.ln.device1.*"}
 	s.session.DeleteTimeseries(timeseries)
 	if tablet, err := createTablet(12); err == nil {
 		status, err := s.session.InsertAlignedTablet(tablet, false)
@@ -289,7 +289,7 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 }
 
 func (s *e2eTestSuite) Test_InsertAlignedTablets() {
-	var timeseries = []string{"root.ln.device1.**"}
+	var timeseries = []string{"root.ln.device1.*"}
 	s.session.DeleteTimeseries(timeseries)
 	tablet1, err := createTablet(8)
 	if err != nil {
