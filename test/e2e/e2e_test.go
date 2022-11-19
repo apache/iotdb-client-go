@@ -216,7 +216,6 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 	assert.Equal(status, "12.1")
 }
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
-	s.session.DeleteStorageGroup("root.ln")
 	if tablet, err := createTablet(12); err == nil {
 		status, err := s.session.InsertAlignedTablet(tablet, false)
 		s.checkError(status, err)
