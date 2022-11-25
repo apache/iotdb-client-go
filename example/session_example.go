@@ -67,6 +67,9 @@ func main() {
 	createTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.sg1.dev1.status")
 
+	createTimeseriesByNonQueryStatement("create timeseries root.sg1.dev1.status with datatype = int32")
+	deleteTimeseries("root.sg1.dev1.status")
+
 	createMultiTimeseries()
 	deleteTimeseries("root.sg1.dev1.temperature")
 
@@ -293,6 +296,10 @@ func createTimeseries(path string) {
 		compressor = client.SNAPPY
 	)
 	checkError(session.CreateTimeseries(path, dataType, encoding, compressor, nil, nil))
+}
+
+func createTimeseriesByNonQueryStatement(sql string) {
+	checkError(session.ExecuteNonQueryStatement(sql))
 }
 
 func createAlignedTimeseries(prefixPath string, measurements, measurementAlias []string) {

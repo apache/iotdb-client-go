@@ -439,6 +439,25 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 	return s.genDataSet(sql, resp), err
 }
 
+func (s *Session) ExecuteNonQueryStatement(sql string) (r *rpc.TSStatus, err error) {
+	request := rpc.TSExecuteStatementReq{
+		SessionId:   s.sessionId,
+		Statement:   sql,
+		StatementId: s.requestStatementId,
+		FetchSize:   &s.config.FetchSize,
+	}
+	resp, err := s.client.ExecuteStatement(context.Background(), &request)
+
+	if err != nil && resp == nil {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			resp, err = s.client.ExecuteStatement(context.Background(), &request)
+		}
+	}
+
+	return resp.Status, err
+}
+
 func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.config.FetchSize, Timeout: timeoutMs}
