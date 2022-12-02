@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/apache/iotdb-client-go/client"
@@ -36,7 +37,7 @@ var (
 	user     string
 	password string
 )
-var session *client.Session
+var session client.Session
 
 func main() {
 	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
@@ -66,7 +67,14 @@ func main() {
 	createTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.sg1.dev1.status")
 
+	createTimeseriesByNonQueryStatement("create timeseries root.sg1.dev1.status with datatype = int32")
+	deleteTimeseries("root.sg1.dev1.status")
+
 	createMultiTimeseries()
+	deleteTimeseries("root.sg1.dev1.temperature")
+
+	createAlignedTimeseries("root.sg1.dev1", []string{"status", "temperature"}, []string{"sts", "temp"})
+	deleteTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.sg1.dev1.temperature")
 
 	insertStringRecord()
@@ -86,7 +94,7 @@ func main() {
 	} else {
 		log.Fatal(err)
 	}
-
+	deleteTimeseries("root.ln.device1.restart_count", "root.ln.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
 	insertTablets()
 	deleteTimeseries("root.ln.device1.restart_count", "root.ln.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
 
@@ -109,6 +117,23 @@ func main() {
 	//0.12.x and newer
 	insertRecordsOfOneDevice()
 	deleteTimeseries("root.sg1.dev0.*")
+
+	insertAlignedRecord()
+	deleteTimeseries("root.al1.dev1.*")
+
+	insertAlignedRecords()
+	deleteTimeseries("root.al1.**")
+
+	insertAlignedRecordsOfOneDevice()
+	deleteTimeseries("root.al1.dev4.*")
+
+	deleteStorageGroup("root.ln")
+	insertAlignedTablet()
+	deleteTimeseries("root.ln.device1.*")
+
+	deleteStorageGroup("root.ln")
+	insertAlignedTablets()
+	deleteTimeseries("root.ln.device1.*")
 }
 
 func printDevice1(sds *client.SessionDataSet) {
@@ -273,6 +298,28 @@ func createTimeseries(path string) {
 	checkError(session.CreateTimeseries(path, dataType, encoding, compressor, nil, nil))
 }
 
+func createTimeseriesByNonQueryStatement(sql string) {
+	checkError(session.ExecuteNonQueryStatement(sql))
+}
+
+func createAlignedTimeseries(prefixPath string, measurements, measurementAlias []string) {
+	var (
+		dataTypes = []client.TSDataType{
+			client.FLOAT,
+			client.FLOAT,
+		}
+		encodings = []client.TSEncoding{
+			client.PLAIN,
+			client.PLAIN,
+		}
+		compressors = []client.TSCompressionType{
+			client.LZ4,
+			client.LZ4,
+		}
+	)
+	checkError(session.CreateAlignedTimeseries(prefixPath, measurements, dataTypes, encodings, compressors, measurementAlias))
+}
+
 func createMultiTimeseries() {
 	var (
 		paths       = []string{"root.sg1.dev1.temperature"}
@@ -308,6 +355,25 @@ func insertRecord() {
 	checkError(session.InsertRecord(deviceId, measurements, dataTypes, values, timestamp))
 }
 
+func insertAlignedRecord() {
+	var (
+		deviceId           = "root.al1.dev1"
+		measurements       = []string{"status"}
+		values             = []interface{}{"123"}
+		dataTypes          = []client.TSDataType{client.TEXT}
+		timestamp    int64 = 12
+	)
+	checkError(session.InsertAlignedRecord(deviceId, measurements, dataTypes, values, timestamp))
+	sessionDataSet, err := session.ExecuteStatement("show devices")
+	if err == nil {
+		printDataSet0(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+	fmt.Println()
+}
+
 func insertRecords() {
 	var (
 		deviceId     = []string{"root.sg1.dev1"}
@@ -317,6 +383,25 @@ func insertRecords() {
 		timestamp    = []int64{12}
 	)
 	checkError(session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp))
+}
+
+func insertAlignedRecords() {
+	var (
+		deviceIds    = []string{"root.al1.dev2", "root.al1.dev3"}
+		measurements = [][]string{{"status"}, {"temperature"}}
+		dataTypes    = [][]client.TSDataType{{client.TEXT}, {client.TEXT}}
+		values       = [][]interface{}{{"33"}, {"44"}}
+		timestamps   = []int64{12, 13}
+	)
+	checkError(session.InsertAlignedRecords(deviceIds, measurements, dataTypes, values, timestamps))
+	sessionDataSet, err := session.ExecuteStatement("show devices")
+	if err == nil {
+		printDataSet0(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+	fmt.Println()
 }
 
 func insertRecordsOfOneDevice() {
@@ -340,6 +425,42 @@ func insertRecordsOfOneDevice() {
 	checkError(session.InsertRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
 }
 
+func insertAlignedRecordsOfOneDevice() {
+	ts := time.Now().UTC().UnixNano() / 1000000
+	var (
+		deviceId          = "root.al1.dev4"
+		measurementsSlice = [][]string{
+			{"restart_count", "tick_count", "price"},
+			{"temperature", "description", "status"},
+		}
+		dataTypes = [][]client.TSDataType{
+			{client.INT32, client.INT64, client.DOUBLE},
+			{client.FLOAT, client.TEXT, client.BOOLEAN},
+		}
+		values = [][]interface{}{
+			{int32(1), int64(2018), float64(1988.1)},
+			{float32(12.1), "Test Device 1", false},
+		}
+		timestamps = []int64{ts, ts - 1}
+	)
+	checkError(session.InsertAlignedRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
+	sessionDataSet, err := session.ExecuteStatement("show devices")
+	if err == nil {
+		printDataSet0(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+	sessionDataSetNew, err := session.ExecuteStatement("select restart_count,tick_count,price,temperature,description,status from  root.al1.dev4")
+	if err == nil {
+		printDataSet0(sessionDataSetNew)
+		sessionDataSetNew.Close()
+	} else {
+		log.Println(err)
+	}
+	fmt.Println()
+}
+
 func deleteData() {
 	var (
 		paths           = []string{"root.sg1.dev1.status"}
@@ -353,6 +474,22 @@ func insertTablet() {
 	if tablet, err := createTablet(12); err == nil {
 		status, err := session.InsertTablet(tablet, false)
 		checkError(status, err)
+	} else {
+		log.Fatal(err)
+	}
+}
+
+func insertAlignedTablet() {
+	if tablet, err := createTablet(12); err == nil {
+		status, err := session.InsertAlignedTablet(tablet, false)
+		checkError(status, err)
+	} else {
+		log.Fatal(err)
+	}
+	var timeout int64 = 1000
+	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1", &timeout); err == nil {
+		printDevice1(ds)
+		ds.Close()
 	} else {
 		log.Fatal(err)
 	}
@@ -425,6 +562,20 @@ func insertTablets() {
 	checkError(session.InsertTablets(tablets, false))
 }
 
+func insertAlignedTablets() {
+	tablet1, err := createTablet(8)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tablet2, err := createTablet(4)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tablets := []*client.Tablet{tablet1, tablet2}
+	checkError(session.InsertAlignedTablets(tablets, false))
+}
+
 func setTimeZone() {
 	var timeZone = "GMT"
 	session.SetTimeZone(timeZone)
@@ -476,6 +627,18 @@ func executeBatchStatement() {
 	var sqls = []string{"insert into root.ln.wf02.wt02(time,s5) values(1,true)",
 		"insert into root.ln.wf02.wt02(time,s5) values(2,true)"}
 	checkError(session.ExecuteBatchStatement(sqls))
+	var (
+		paths     []string = []string{"root.ln.wf02.wt02.s5"}
+		startTime int64    = 1
+		endTime   int64    = 200
+	)
+	sessionDataSet, err := session.ExecuteRawDataQuery(paths, startTime, endTime)
+	if err == nil {
+		printDataSet2(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
 }
 
 func checkError(status *rpc.TSStatus, err error) {
@@ -487,5 +650,18 @@ func checkError(status *rpc.TSStatus, err error) {
 		if err = client.VerifySuccess(status); err != nil {
 			log.Println(err)
 		}
+	}
+}
+
+// If your IotDB is a cluster version, you can use the following code for multi node connection
+func connectCluster() {
+	config := &client.ClusterConfig{
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669", ","),
+		UserName: "root",
+		Password: "root",
+	}
+	session = client.NewClusterSession(config)
+	if err := session.OpenCluster(false); err != nil {
+		log.Fatal(err)
 	}
 }

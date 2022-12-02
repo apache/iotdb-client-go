@@ -17,25 +17,18 @@
 # under the License.
 #
 
-version: "3.1"
-
-services:
-  iotdb:
-    build:
-      context: ../..
-      dockerfile: test/e2e/Dockerfile.iotdb-server
-    ports:
-      - 6667:6667
-    healthcheck:
-      test: ["CMD", "ls", "/usr/local/iotdb/data"]
-      interval: 3s
-      timeout: 15s
-      retries: 30
-      start_period: 30s
-  iotdb_client_go:
-    build:
-      context: ../..
-      dockerfile: test/e2e/Dockerfile.iotdb-client-go
-    depends_on:
-      iotdb:
-        condition: service_healthy
+github:
+  description: "Apache IoTDB Client for Go"
+  homepage: https://iotdb.apache.org/
+  labels:
+    - timeseries
+    - database
+    - go
+    - client
+  features:
+    wiki: true
+    issues: true
+  enabled_merge_buttons:
+    squash:  true
+    merge:   false
+    rebase:  false

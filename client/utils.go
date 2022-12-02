@@ -73,7 +73,7 @@ func bytesToInt64(bys []byte) int64 {
 func verifySuccesses(statuses []*rpc.TSStatus) error {
 	buff := bytes.Buffer{}
 	for _, status := range statuses {
-		if status.Code != SuccessStatus && status.Code != NeedRedirection {
+		if status.Code != SuccessStatus && status.Code != RedirectionRecommend {
 			buff.WriteString(*status.Message + ";")
 		}
 	}
@@ -85,7 +85,7 @@ func verifySuccesses(statuses []*rpc.TSStatus) error {
 }
 
 func VerifySuccess(status *rpc.TSStatus) error {
-	if status.Code == NeedRedirection {
+	if status.Code == RedirectionRecommend {
 		return nil
 	}
 

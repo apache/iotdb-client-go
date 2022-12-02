@@ -24,12 +24,12 @@ generate:
 	fi
 
 	@if ! command -v thrift &> /dev/null; then \
-		echo "thrift could not be found, please install thrift 0.14.1"; \
+		echo "thrift could not be found, please install thrift 0.15.0"; \
 		exit 1; \
 	fi
 
-	@if [[ "`thrift --version|grep -o '0.14.[0-9]'`" == "" ]]; then \
-		echo "please install thrift 0.14.1"; \
+	@if [[ "`thrift --version|grep -o '0.15.[0-9]'`" == "" ]]; then \
+		echo "please install thrift 0.15.0"; \
 		exit 1; \
 	fi
 
@@ -48,9 +48,10 @@ test:
 	go test -v ./client/...
 
 e2e_test:
-	sh -c "cd /tmp/ && rm -rf iotdb && git clone https://github.com/apache/iotdb.git && cd iotdb && mvn -Dmaven.test.skip=true package -am -pl server"
+	sh -c "cd /tmp/ && rm -rf iotdb && git clone https://github.com/apache/iotdb.git && cd iotdb && mvn clean package -pl distribution -am -DskipTests"
 	mkdir -p target/iotdb
-	unzip -o -q /tmp/iotdb/server/target/iotdb-server-*.zip -d target/iotdb
+	unzip -o -q /tmp/iotdb/distribution/target/apache-iotdb-*-all-bin.zip -d target
+	mv target/*/* target/iotdb
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean:
@@ -60,7 +61,8 @@ e2e_test_clean:
 #only used for project structure that the iotdb main project is in the parent folder of this project.
 e2e_test_for_parent_git_repo:
 	mkdir -p target/iotdb
-	unzip -o -q ../server/target/iotdb-server-*.zip -d target/iotdb
+	unzip -o -q ../distribution/target/apache-iotdb-*-all-bin.zip -d target
+	mv target/*/* target/iotdb
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean_for_parent_git_repo:

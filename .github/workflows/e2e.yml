@@ -2,9 +2,19 @@ name: E2E Tests
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - 'rel/*'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - 'rel/*'
+  # allow manually run the action:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
 
@@ -17,10 +27,10 @@ jobs:
     steps:
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache local Maven repository
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: ~/.m2/repository
         key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}

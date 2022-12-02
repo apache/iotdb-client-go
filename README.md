@@ -22,18 +22,6 @@
 
 # Apache IoTDB
 
-[![Main Mac and Linux](https://github.com/apache/iotdb/actions/workflows/main-unix.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-unix.yml)
-[![Main Win](https://github.com/apache/iotdb/actions/workflows/main-win.yml/badge.svg)](https://github.com/apache/iotdb/actions/workflows/main-win.yml)
-[![coveralls](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/iotdb/badge.svg?branch=master)
-[![GitHub release](https://img.shields.io/github/release/apache/iotdb.svg)](https://github.com/apache/iotdb/releases)
-[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
-![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
-![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
-![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8-blue.svg)
-[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
-
-
 Apache IoTDB (Database for Internet of Things) is an IoT native database with high performance for 
 data management and analysis, deployable on the edge and the cloud. Due to its light-weight 
 architecture, high performance and rich feature set together with its deep integration with 
@@ -41,6 +29,13 @@ Apache Hadoop, Spark and Flink, Apache IoTDB can meet the requirements of massiv
 high-speed data ingestion and complex data analysis in the IoT industrial fields.
 
 # Apache IoTDB Client for Go
+
+[![E2E Tests](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml/badge.svg)](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb-client-go.svg)](https://github.com/apache/iotdb-client-go/releases)
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+![](https://github-size-badge.herokuapp.com/apache/iotdb-client-go.svg)
+![](https://img.shields.io/badge/platform-win10%20%7C%20macos%20%7C%20linux-yellow.svg)
+[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 ## Overview
 
@@ -72,10 +67,10 @@ go run session_example.go
 Without go mod
 
 ```sh
-# get thrift 0.14.1
+# get thrift 0.15.0
 go get github.com/apache/thrift
 cd $GOPATH/src/github.com/apache/thrift
-git checkout 0.14.1
+git checkout 0.15.0
 
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
 cd $GOPATH/src/iotdb-client-go-example/session_example
@@ -96,4 +91,29 @@ go run session_example.go
 * golang >= 1.13
 * make >= 3.0
 * curl >= 7.1.1
-* thrift 0.14.1
+* thrift 0.15.0
+
+## Troubleshooting
+
+### Thrift version compatibility issues
+
+In the branch `rel/0.13` and earlier versions, the version of apache/thrift is `v0.14.1`.
+In the latest version, apache/thrift has been upgraded to `v0.15.0`.
+
+The two versions are not compatible on some interfaces. Using mismatched version will cause compilation errors.
+
+The interfaces changed in the two versions are as follows:
+
+1. `NewTSocketConf`. This function returns two values in the version `v0.14.1` and only one value in the version `v0.15.0`.
+2. `NewTFramedTransport` has been deprecated, use `NewTFramedTransportConf` instead.
+
+For more details, please take a look at this PR: [update thrift to 0.15.0 to fit IoTDB 0.13.0](https://github.com/apache/iotdb-client-go/pull/41)
+
+### Parameter name mismatch with actual usage in function 'Open'
+
+The implementation of the function ```client/session.go/Open()``` is mismatched with the description.
+The parameter `connectionTimeoutInMs` represents connection timeout in milliseconds.
+However, in the older version, this function did not implement correctly, regarding it as nanosecond instead.
+The bug is now fixed.
+Positive value of this parameter means connection timeout in milliseconds.
+Set 0 for no timeout.

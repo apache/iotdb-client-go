@@ -192,10 +192,10 @@ func Test_verifySuccess(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "NeedRedirection",
+			name: "RedirectionRecommend",
 			args: args{
 				status: &rpc.TSStatus{
-					Code:      NeedRedirection,
+					Code:      RedirectionRecommend,
 					Message:   &errMsg,
 					SubStatus: []*rpc.TSStatus{},
 				},
@@ -253,7 +253,7 @@ func Test_verifySuccesses(t *testing.T) {
 	}
 	var internalServerError string = "InternalServerError"
 	var success string = "Success"
-	var needRedirection string = "NeedRedirection"
+	var redirectionRecommend string = "RedirectionRecommend"
 	tests := []struct {
 		name    string
 		args    args
@@ -285,12 +285,12 @@ func Test_verifySuccesses(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "NeedRedirection",
+			name: "RedirectionRecommend",
 			args: args{
 				statuses: []*rpc.TSStatus{
 					&rpc.TSStatus{
-						Code:      NeedRedirection,
-						Message:   &needRedirection,
+						Code:      RedirectionRecommend,
+						Message:   &redirectionRecommend,
 						SubStatus: []*rpc.TSStatus{},
 					},
 				},

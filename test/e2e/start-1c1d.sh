@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,26 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-version: "3.1"
-
-services:
-  iotdb:
-    build:
-      context: ../..
-      dockerfile: test/e2e/Dockerfile.iotdb-server
-    ports:
-      - 6667:6667
-    healthcheck:
-      test: ["CMD", "ls", "/usr/local/iotdb/data"]
-      interval: 3s
-      timeout: 15s
-      retries: 30
-      start_period: 30s
-  iotdb_client_go:
-    build:
-      context: ../..
-      dockerfile: test/e2e/Dockerfile.iotdb-client-go
-    depends_on:
-      iotdb:
-        condition: service_healthy
+nohup /usr/local/iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
+sleep 5
+ls /usr/local/iotdb/sbin
+/usr/local/iotdb/sbin/start-datanode.sh

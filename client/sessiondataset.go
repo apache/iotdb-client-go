@@ -19,7 +19,9 @@
 
 package client
 
-import "github.com/apache/iotdb-client-go/rpc"
+import (
+	"github.com/apache/iotdb-client-go/rpc"
+)
 
 const (
 	TimestampColumnName = "Time"

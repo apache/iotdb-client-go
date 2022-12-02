@@ -20,7 +20,20 @@
 -->
 [English](./README.md) | [中文](./README_ZH.md)
 
+# Apache IoTDB
+
+Apache IoTDB（物联网数据库）是一个物联网原生数据库，在数据管理和分析方面表现良好，可部署在边缘设备和云上。
+由于其轻量级架构、高性能和丰富的功能集，以及与Apache Hadoop、Spark和Flink的深度集成，
+Apache IoTDB可以满足物联网工业领域的海量数据存储、高速数据摄取和复杂数据分析的要求。
+
 # Apache IoTDB Go语言客户端
+
+[![E2E Tests](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml/badge.svg)](https://github.com/apache/iotdb-client-go/actions/workflows/e2e.yml)
+[![GitHub release](https://img.shields.io/github/release/apache/iotdb-client-go.svg)](https://github.com/apache/iotdb-client-go/releases)
+[![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
+![](https://github-size-badge.herokuapp.com/apache/iotdb-client-go.svg)
+![](https://img.shields.io/badge/platform-win10%20%7C%20macos%20%7C%20linux-yellow.svg)
+[![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 
 ## 概览
 
@@ -28,8 +41,6 @@
 
 Apache IoTDB website: https://iotdb.apache.org
 Apache IoTDB Github: https://github.com/apache/iotdb
-
-## 如何编译
 
 ## 环境准备
 
@@ -54,10 +65,10 @@ go run session_example.go
 不使用go mod，采用GOPATH
 
 ```sh
-# get thrift 0.14.1
+# get thrift 0.15.0
 go get github.com/apache/thrift
 cd $GOPATH/src/github.com/apache/thrift
-git checkout 0.14.1
+git checkout 0.15.0
 
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
 cd $GOPATH/src/iotdb-client-go-example/session_example
@@ -77,4 +88,25 @@ go run session_example.go
 * golang >= 1.13
 * make   >= 3.0
 * curl   >= 7.1.1
-* thrift 0.14.1
+* thrift 0.15.0
+
+## 疑难解答
+
+### thrift 版本兼容性问题
+
+分支`rel/0.13`以及更早前的版本中，apache/thrift的版本为`v0.14.1`。
+在更新的版本中，apache/thrift已经升级为`v0.15.0`。
+这两个版本在一些接口上并不兼容，使用不对应的版本，会导致编译报错。
+
+两个版本中有改动的接口如下：
+
+1. `NewTSocketConf`。该接口在`v0.14.1`版本中返回2个值，在`v0.15.0`版本中返回1个值。
+2. `NewTFramedTransport`已弃用，改用为`NewTFramedTransportConf`。
+
+更多相关的内容可以参考这个PR：[update thrift to 0.15.0 to fit IoTDB 0.13.0](https://github.com/apache/iotdb-client-go/pull/41)
+
+### Open函数参数名称与实际功能不匹配的问题
+
+函数```client/session.go/Open()```有一个参数`connectionTimeoutInMs`，表示了以毫秒为单位的连接超时时间。
+但旧版本中，该函数在实现时并未正确进行单位转换，而是将其看作了纳秒。现在该问题已修复。
+当该参数为0时，表示不设置超时时间；当设置为正数时表示以毫秒为单位的超时时间。
