@@ -26,7 +26,7 @@ type TSEncoding uint8
 type TSCompressionType uint8
 
 const (
-	UNKNOW  TSDataType = -1
+	UNKNOWN TSDataType = -1
 	BOOLEAN TSDataType = 0
 	INT32   TSDataType = 1
 	INT64   TSDataType = 2
@@ -58,7 +58,7 @@ const (
 	LZ4          TSCompressionType = 7
 )
 
-//TSStatusCode
+// TSStatusCode
 const (
 	SuccessStatus       int32 = 200
 	IncompatibleVersion int32 = 201
