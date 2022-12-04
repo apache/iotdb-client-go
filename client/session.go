@@ -182,7 +182,7 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 func (s *Session) Close() (r *rpc.TSStatus, err error) {
 	req := rpc.NewTSCloseSessionReq()
 	req.SessionId = s.sessionId
-	r, err = s.client.CloseSession(context.Background(), req)
+	_, err = s.client.CloseSession(context.Background(), req)
 	if err != nil {
 		return nil, err
 	}
@@ -1064,7 +1064,7 @@ func (s *Session) initClusterConn(node endPoint) error {
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iprot, oprot))
 	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: &s.config.UserName,
 		Password: &s.config.Password}
-	fmt.Println(req)
+
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
 		return err

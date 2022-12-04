@@ -288,7 +288,7 @@ func Test_verifySuccesses(t *testing.T) {
 			name: "RedirectionRecommend",
 			args: args{
 				statuses: []*rpc.TSStatus{
-					&rpc.TSStatus{
+					{
 						Code:      RedirectionRecommend,
 						Message:   &redirectionRecommend,
 						SubStatus: []*rpc.TSStatus{},
