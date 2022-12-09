@@ -1049,6 +1049,19 @@ func (s *Session) initClusterConn(node endPoint) error {
 			}
 		}
 	}
+
+	if s.config.FetchSize < 1 {
+		s.config.FetchSize = DefaultFetchSize
+	}
+
+	if s.config.TimeZone == "" {
+		s.config.TimeZone = DefaultTimeZone
+	}
+
+	if s.config.ConnectRetryMax < 1 {
+		s.config.ConnectRetryMax = DefualtConnectRetryMax
+	}
+
 	var protocolFactory thrift.TProtocolFactory
 	protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
 	iprot := protocolFactory.GetProtocol(s.trans)
