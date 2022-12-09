@@ -117,12 +117,6 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	}
 	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	if err != nil {
-		return err
-	}
-
-	s.SetTimeZone(s.config.TimeZone)
-	s.config.TimeZone, err = s.GetTimeZone()
 	return err
 }
 
@@ -150,6 +144,10 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 		s.config.TimeZone = DefaultTimeZone
 	}
 
+	if s.config.ConnectRetryMax <= 0 {
+		s.config.ConnectRetryMax = DefualtConnectRetryMax
+	}
+
 	var protocolFactory thrift.TProtocolFactory
 	var err error
 
@@ -163,19 +161,13 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iprot, oprot))
 	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: &s.config.UserName,
 		Password: &s.config.Password}
-	fmt.Println(req)
+
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
 		return err
 	}
 	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	if err != nil {
-		return err
-	}
-
-	s.SetTimeZone(s.config.TimeZone)
-	s.config.TimeZone, err = s.GetTimeZone()
 	return err
 }
 
@@ -1057,6 +1049,19 @@ func (s *Session) initClusterConn(node endPoint) error {
 			}
 		}
 	}
+
+	if s.config.FetchSize < 1 {
+		s.config.FetchSize = DefaultFetchSize
+	}
+
+	if s.config.TimeZone == "" {
+		s.config.TimeZone = DefaultTimeZone
+	}
+
+	if s.config.ConnectRetryMax < 1 {
+		s.config.ConnectRetryMax = DefualtConnectRetryMax
+	}
+
 	var protocolFactory thrift.TProtocolFactory
 	protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
 	iprot := protocolFactory.GetProtocol(s.trans)
@@ -1071,12 +1076,6 @@ func (s *Session) initClusterConn(node endPoint) error {
 	}
 	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	if err != nil {
-		return err
-	}
-
-	s.SetTimeZone(s.config.TimeZone)
-	s.config.TimeZone, err = s.GetTimeZone()
 	return err
 
 }
