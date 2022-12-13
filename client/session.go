@@ -406,7 +406,7 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
 func (s *Session) GetTimeZone() (string, error) {
 	resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
 	if err != nil {
-		return "", err
+		return DefaultTimeZone, err
 	}
 	return resp.TimeZone, nil
 }
