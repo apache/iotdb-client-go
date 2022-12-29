@@ -99,8 +99,10 @@ func main() {
 	deleteData()
 
 	setTimeZone()
-	if tz, err := getTimeZone(); err != nil {
-		fmt.Printf("TimeZone: %s", tz)
+	if tz, err := getTimeZone(); err == nil {
+		fmt.Printf("TimeZone: %s\n", tz)
+	} else {
+		fmt.Printf("getTimeZone ERROR: %v\n", err)
 	}
 
 	executeStatement()
