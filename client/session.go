@@ -108,12 +108,7 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	}
 	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	if err != nil {
-		return err
-	}
 
-	s.SetTimeZone(s.config.TimeZone)
-	s.config.TimeZone, err = s.GetTimeZone()
 	return err
 }
 
@@ -154,19 +149,14 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iprot, oprot))
 	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: &s.config.UserName,
 		Password: &s.config.Password}
-	fmt.Println(req)
+
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
 		return err
 	}
 	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	if err != nil {
-		return err
-	}
 
-	s.SetTimeZone(s.config.TimeZone)
-	s.config.TimeZone, err = s.GetTimeZone()
 	return err
 }
 
@@ -405,7 +395,7 @@ func (s *Session) InsertStringRecord(deviceId string, measurements []string, val
 func (s *Session) GetTimeZone() (string, error) {
 	resp, err := s.client.GetTimeZone(context.Background(), s.sessionId)
 	if err != nil {
-		return "", err
+		return DefaultTimeZone, err
 	}
 	return resp.TimeZone, nil
 }
@@ -1025,8 +1015,15 @@ func (s *Session) initClusterConn(node endPoint) error {
 			}
 		}
 	}
-	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
+
+	if s.config.FetchSize <= 0 {
+		s.config.FetchSize = DefaultFetchSize
+	}
+	if s.config.TimeZone == "" {
+		s.config.TimeZone = DefaultTimeZone
+	}
+
+	protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
 	iprot := protocolFactory.GetProtocol(s.trans)
 	oprot := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewTSIServiceClient(thrift.NewTStandardClient(iprot, oprot))
@@ -1039,12 +1036,7 @@ func (s *Session) initClusterConn(node endPoint) error {
 	}
 	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
-	if err != nil {
-		return err
-	}
 
-	s.SetTimeZone(s.config.TimeZone)
-	s.config.TimeZone, err = s.GetTimeZone()
 	return err
 
 }
