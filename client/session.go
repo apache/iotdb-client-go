@@ -40,7 +40,7 @@ import (
 const (
 	DefaultTimeZone        = "Asia/Shanghai"
 	DefaultFetchSize       = 1024
-	DefualtConnectRetryMax = 3
+	DefaultConnectRetryMax = 3
 )
 
 var errLength = errors.New("deviceIds, times, measurementsList and valuesList's size should be equal")
@@ -79,7 +79,7 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	}
 
 	if s.config.ConnectRetryMax <= 0 {
-		s.config.ConnectRetryMax = DefualtConnectRetryMax
+		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
 	var protocolFactory thrift.TProtocolFactory
@@ -145,7 +145,7 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 	}
 
 	if s.config.ConnectRetryMax <= 0 {
-		s.config.ConnectRetryMax = DefualtConnectRetryMax
+		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
 	var protocolFactory thrift.TProtocolFactory
@@ -1059,7 +1059,7 @@ func (s *Session) initClusterConn(node endPoint) error {
 	}
 
 	if s.config.ConnectRetryMax < 1 {
-		s.config.ConnectRetryMax = DefualtConnectRetryMax
+		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
 	var protocolFactory thrift.TProtocolFactory
