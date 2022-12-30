@@ -26,7 +26,7 @@ type TSEncoding uint8
 type TSCompressionType uint8
 
 const (
-	UNKNOW  TSDataType = -1
+	UNKNOWN TSDataType = -1
 	BOOLEAN TSDataType = 0
 	INT32   TSDataType = 1
 	INT64   TSDataType = 2

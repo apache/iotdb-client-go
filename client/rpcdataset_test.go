@@ -76,7 +76,7 @@ func TestIoTDBRpcDataSet_getColumnType(t *testing.T) {
 			args: args{
 				columnName: "root.ln.device1.tick_count",
 			},
-			want: UNKNOW,
+			want: UNKNOWN,
 		},
 	}
 	for _, tt := range tests {

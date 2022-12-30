@@ -79,7 +79,7 @@ func (s *IoTDBRpcDataSet) getColumnIndex(columnName string) int32 {
 
 func (s *IoTDBRpcDataSet) getColumnType(columnName string) TSDataType {
 	if s.closed {
-		return UNKNOW
+		return UNKNOWN
 	}
 	return s.columnTypeDeduplicatedList[s.getColumnIndex(columnName)]
 }

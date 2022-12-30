@@ -38,19 +38,21 @@ import (
 )
 
 const (
-	DefaultTimeZone  = "Asia/Shanghai"
-	DefaultFetchSize = 1024
+	DefaultTimeZone        = "Asia/Shanghai"
+	DefaultFetchSize       = 1024
+	DefaultConnectRetryMax = 3
 )
 
 var errLength = errors.New("deviceIds, times, measurementsList and valuesList's size should be equal")
 
 type Config struct {
-	Host      string
-	Port      string
-	UserName  string
-	Password  string
-	FetchSize int32
-	TimeZone  string
+	Host            string
+	Port            string
+	UserName        string
+	Password        string
+	FetchSize       int32
+	TimeZone        string
+	ConnectRetryMax int
 }
 
 type Session struct {
@@ -74,6 +76,9 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	}
 	if s.config.TimeZone == "" {
 		s.config.TimeZone = DefaultTimeZone
+	}
+	if s.config.ConnectRetryMax <= 0 {
+		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
 	var protocolFactory thrift.TProtocolFactory
@@ -134,6 +139,9 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 	}
 	if s.config.TimeZone == "" {
 		s.config.TimeZone = DefaultTimeZone
+	}
+	if s.config.ConnectRetryMax <= 0 {
+		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
 	var protocolFactory thrift.TProtocolFactory
@@ -1022,6 +1030,9 @@ func (s *Session) initClusterConn(node endPoint) error {
 	if s.config.TimeZone == "" {
 		s.config.TimeZone = DefaultTimeZone
 	}
+	if s.config.ConnectRetryMax <= 0 {
+		s.config.ConnectRetryMax = DefaultConnectRetryMax
+	}
 
 	protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
 	iprot := protocolFactory.GetProtocol(s.trans)
@@ -1056,7 +1067,7 @@ func (s *Session) reconnect() bool {
 	var err error
 	var connectedSuccess = false
 
-	for i := 0; i < 3; i++ {
+	for i := 0; i < s.config.ConnectRetryMax; i++ {
 		for e := endPointList.Front(); e != nil; e = e.Next() {
 			err = s.initClusterConn(e.Value.(endPoint))
 			if err == nil {
