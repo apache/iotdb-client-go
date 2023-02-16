@@ -133,9 +133,18 @@ func main() {
 	deleteStorageGroup("root.ln")
 	insertAlignedTablets()
 	deleteTimeseries("root.ln.device1.*")
-	// for i := 0; i < 10; i++ {
 	executeQueryStatement("show timeseries root.**")
-	// }
+	for i := 0; i < 10000; i++ {
+		var j = i
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			setStorageGroup(fmt.Sprintf("root.ln%d", j))
+			deleteStorageGroup(fmt.Sprintf("root.ln%d", j))
+
+		}()
+
+	}
 	wg.Wait()
 
 }
