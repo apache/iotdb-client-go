@@ -78,7 +78,7 @@ func (spool *SessionPool) GetSession() (session Session, err error) {
 				if ok {
 					return session, nil
 				} else {
-					log.Println("sessonpool has closed")
+					log.Println("sessionpool has closed")
 					return session, errPoolClosed
 				}
 			default:
