@@ -80,6 +80,58 @@ curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main
 go run session_example.go
 ```
 
+## How to Use the SessionPool (Example)
+
+### New sessionPool
+
+```golang
+
+config := &client.PoolConfig{
+    Host:     host,
+    Port:     port,
+    UserName: user,
+    Password: password,
+}
+sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
+
+```
+
+### Get session through sessionPool, putback after use
+
+set storage group
+
+```golang
+
+session, err := sessionPool.GetSession()
+defer sessionPool.PutBack(session)
+if err == nil {
+    session.SetStorageGroup(sg)
+}
+
+```
+
+query statement
+
+```golang
+
+var timeout int64 = 1000
+session, err := sessionPool.GetSession()
+defer sessionPool.PutBack(session)
+if err != nil {
+    log.Print(err)
+    return
+}
+sessionDataSet, err := session.ExecuteQueryStatement(sql, &timeout)
+if err == nil {
+    defer sessionDataSet.Close()
+    printDataSet1(sessionDataSet)
+} else {
+    log.Println(err)
+}
+
+```
+
+
 ## Developer environment requirements for iotdb-client-go
 
 ### OS
