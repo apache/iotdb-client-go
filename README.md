@@ -80,7 +80,10 @@ curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main
 go run session_example.go
 ```
 
-## How to Use the SessionPool (Example)
+## How to Use the SessionPool
+SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider how to reuse a session connection.
+If there is no available connections and the pool reaches its max size, the all methods will hang until there is a available connection.
+The PutBack method must be called after use
 
 ### New sessionPool
 
