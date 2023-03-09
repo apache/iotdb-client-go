@@ -78,7 +78,7 @@ func (spool *SessionPool) GetSession() (session Session, err error) {
 				if ok {
 					return session, nil
 				} else {
-					log.Println("sessionpool has closed")
+					log.Println("sessionPool has closed")
 					return session, errPoolClosed
 				}
 			default:
@@ -93,11 +93,19 @@ func (spool *SessionPool) GetSession() (session Session, err error) {
 	}
 }
 
-func (spool *SessionPool) ConstructSession(config *PoolConfig) (Session, error) {
-	session := NewSession(getSessionConfig(config))
-	if err := session.Open(spool.enableCompression, spool.connectionTimeoutInMs); err != nil {
-		log.Print(err)
-		return session, err
+func (spool *SessionPool) ConstructSession(config *PoolConfig) (session Session, err error) {
+	if len(config.NodeUrls) > 0 {
+		session = NewClusterSession(getClusterSessionConfig(config))
+		if err := session.OpenCluster(spool.enableCompression); err != nil {
+			log.Print(err)
+			return session, err
+		}
+	} else {
+		session = NewSession(getSessionConfig(config))
+		if err := session.Open(spool.enableCompression, spool.connectionTimeoutInMs); err != nil {
+			log.Print(err)
+			return session, err
+		}
 	}
 	return session, nil
 }
@@ -106,6 +114,17 @@ func getSessionConfig(config *PoolConfig) *Config {
 	return &Config{
 		Host:            config.Host,
 		Port:            config.Port,
+		UserName:        config.UserName,
+		Password:        config.Password,
+		FetchSize:       config.FetchSize,
+		TimeZone:        config.TimeZone,
+		ConnectRetryMax: config.ConnectRetryMax,
+	}
+}
+
+func getClusterSessionConfig(config *PoolConfig) *ClusterConfig {
+	return &ClusterConfig{
+		NodeUrls:        config.NodeUrls,
 		UserName:        config.UserName,
 		Password:        config.Password,
 		FetchSize:       config.FetchSize,

@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -60,8 +61,8 @@ func main() {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			setStorageGroup(fmt.Sprintf("root.ln%d", j))
-			deleteStorageGroup(fmt.Sprintf("root.ln%d", j))
+			setStorageGroup(fmt.Sprintf("root.ln-%d", j))
+			deleteStorageGroup(fmt.Sprintf("root.ln-%d", j))
 
 		}()
 
@@ -134,17 +135,6 @@ func main() {
 	insertAlignedTablets()
 	deleteTimeseries("root.ln.device1.*")
 	executeQueryStatement("show timeseries root.**")
-	for i := 0; i < 10000; i++ {
-		var j = i
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			setStorageGroup(fmt.Sprintf("root.ln%d", j))
-			deleteStorageGroup(fmt.Sprintf("root.ln%d", j))
-
-		}()
-
-	}
 	wg.Wait()
 
 }
@@ -772,4 +762,23 @@ func checkError(status *rpc.TSStatus, err error) {
 			log.Println(err)
 		}
 	}
+}
+
+// If your IotDB is a cluster version or doubleLive, you can use the following code for session pool connection
+func useSessionPool() {
+
+	config := &client.PoolConfig{
+		UserName: user,
+		Password: password,
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668", ","),
+	}
+	sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
+	defer sessionPool.Close()
+	session, err := sessionPool.GetSession()
+	defer sessionPool.PutBack(session)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
 }

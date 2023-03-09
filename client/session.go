@@ -118,11 +118,12 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 }
 
 type ClusterConfig struct {
-	NodeUrls  []string //ip:port
-	UserName  string
-	Password  string
-	FetchSize int32
-	TimeZone  string
+	NodeUrls        []string //ip:port
+	UserName        string
+	Password        string
+	FetchSize       int32
+	TimeZone        string
+	ConnectRetryMax int
 }
 
 type ClusterSession struct {
@@ -975,12 +976,12 @@ func NewSession(config *Config) Session {
 	return Session{config: config}
 }
 
-func NewClusterSession(ClusterConfig *ClusterConfig) Session {
+func NewClusterSession(clusterConfig *ClusterConfig) Session {
 	session := Session{}
 	node := endPoint{}
-	for i := 0; i < len(ClusterConfig.NodeUrls); i++ {
-		node.Host = strings.Split(ClusterConfig.NodeUrls[i], ":")[0]
-		node.Port = strings.Split(ClusterConfig.NodeUrls[i], ":")[1]
+	for i := 0; i < len(clusterConfig.NodeUrls); i++ {
+		node.Host = strings.Split(clusterConfig.NodeUrls[i], ":")[0]
+		node.Port = strings.Split(clusterConfig.NodeUrls[i], ":")[1]
 		endPointList.PushBack(node)
 	}
 	var err error
@@ -996,7 +997,7 @@ func NewClusterSession(ClusterConfig *ClusterConfig) Session {
 					log.Println(err)
 				} else {
 					session.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
-						ClusterConfig.UserName, ClusterConfig.Password, ClusterConfig.FetchSize, ClusterConfig.TimeZone)
+						clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax)
 					break
 				}
 			}
@@ -1052,14 +1053,15 @@ func (s *Session) initClusterConn(node endPoint) error {
 
 }
 
-func getConfig(host string, port string, userName string, passWord string, fetchSize int32, timeZone string) *Config {
+func getConfig(host string, port string, userName string, passWord string, fetchSize int32, timeZone string, connectRetryMax int) *Config {
 	return &Config{
-		Host:      host,
-		Port:      port,
-		UserName:  userName,
-		Password:  passWord,
-		FetchSize: fetchSize,
-		TimeZone:  timeZone,
+		Host:            host,
+		Port:            port,
+		UserName:        userName,
+		Password:        passWord,
+		FetchSize:       fetchSize,
+		TimeZone:        timeZone,
+		ConnectRetryMax: connectRetryMax,
 	}
 }
 

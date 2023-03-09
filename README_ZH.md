@@ -69,6 +69,7 @@ go run session_example.go
 
 ### 创建sessionPool
 
+单实例
 ```golang
 
 config := &client.PoolConfig{
@@ -80,6 +81,20 @@ config := &client.PoolConfig{
 sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
 
 ```
+
+分布式或双活
+
+```golang
+
+config := &client.PoolConfig{
+		UserName: user,
+		Password: password,
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668", ","),
+	}
+sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
+
+```
+
 
 ### 使用sessionPool获取session，使用完手动调用PutBack
 
