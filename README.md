@@ -86,6 +86,7 @@ If there is no available connections and the pool reaches its max size, the all 
 The PutBack method must be called after use
 
 ### New sessionPool
+standalone
 
 ```golang
 
@@ -95,6 +96,18 @@ config := &client.PoolConfig{
     UserName: user,
     Password: password,
 }
+sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
+
+```
+cluster or doubleLive
+
+```golang
+
+config := &client.PoolConfig{
+		UserName: user,
+		Password: password,
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668", ","),
+	}
 sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
 
 ```
