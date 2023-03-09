@@ -76,6 +76,75 @@ curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main
 go run session_example.go
 ```
 
+## SessionPool
+通过SessionPool管理session，用户不需要考虑如何重用session，当到达pool的最大值时，获取session的请求会阻塞
+注意：session使用完成后需要调用PutBack方法
+
+### 创建sessionPool
+
+单实例
+```golang
+
+config := &client.PoolConfig{
+    Host:     host,
+    Port:     port,
+    UserName: user,
+    Password: password,
+}
+sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
+
+```
+
+分布式或双活
+
+```golang
+
+config := &client.PoolConfig{
+		UserName: user,
+		Password: password,
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668", ","),
+	}
+sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
+
+```
+
+
+### 使用sessionPool获取session，使用完手动调用PutBack
+
+例1：设置存储组
+
+```golang
+
+session, err := sessionPool.GetSession()
+defer sessionPool.PutBack(session)
+if err == nil {
+    session.SetStorageGroup(sg)
+}
+
+```
+
+例2：查询
+
+```golang
+
+var timeout int64 = 1000
+session, err := sessionPool.GetSession()
+defer sessionPool.PutBack(session)
+if err != nil {
+    log.Print(err)
+    return
+}
+sessionDataSet, err := session.ExecuteQueryStatement(sql, &timeout)
+if err == nil {
+    defer sessionDataSet.Close()
+    printDataSet1(sessionDataSet)
+} else {
+    log.Println(err)
+}
+
+```
+
+
 ## iotdb-client-go的开发者环境要求
 
 ### 操作系统
