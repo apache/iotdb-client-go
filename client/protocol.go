@@ -56,6 +56,7 @@ const (
 	PAA          TSCompressionType = 5
 	PLA          TSCompressionType = 6
 	LZ4          TSCompressionType = 7
+	ZSTD		 TSCompressionType = 8
 )
 
 // TSStatusCode
