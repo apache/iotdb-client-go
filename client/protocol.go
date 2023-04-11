@@ -26,7 +26,7 @@ type TSEncoding uint8
 type TSCompressionType uint8
 
 const (
-	UNKNOWN TSDataType = -1
+	UNKNOW  TSDataType = -1
 	BOOLEAN TSDataType = 0
 	INT32   TSDataType = 1
 	INT64   TSDataType = 2
@@ -45,6 +45,11 @@ const (
 	GORILLA_V1       TSEncoding = 6
 	REGULAR          TSEncoding = 7
 	GORILLA          TSEncoding = 8
+	ZIGZAG           TSEncoding = 9
+	FREQ             TSEncoding = 10
+	CHIMP            TSEncoding = 11
+	SPRINTZ          TSEncoding = 12
+	RLBE             TSEncoding = 13
 )
 
 const (
@@ -56,10 +61,11 @@ const (
 	PAA          TSCompressionType = 5
 	PLA          TSCompressionType = 6
 	LZ4          TSCompressionType = 7
-	ZSTD		 TSCompressionType = 8
+	ZSTD         TSCompressionType = 8
+	LZMA2        TSCompressionType = 9
 )
 
-// TSStatusCode
+//TSStatusCode
 const (
 	SuccessStatus       int32 = 200
 	IncompatibleVersion int32 = 201
@@ -130,22 +136,14 @@ const (
 	InternalRequestTimeOut    int32 = 712
 	InternalRequestRetryError int32 = 713
 
-	InitAuthError             int32 = 800
+	AuthenticationError       int32 = 800
 	WrongLoginPassword        int32 = 801
 	NotLogin                  int32 = 802
 	NoPermission              int32 = 803
-	UserNotExist              int32 = 804
-	UserAlreadyExist          int32 = 805
-	UserAlreadyHasRole        int32 = 806
-	UserNotHasRole            int32 = 807
-	RoleNotExist              int32 = 808
-	RoleAlreadyExist          int32 = 809
-	AlreadyHasPrivilege       int32 = 810
-	NotHasPrivilege           int32 = 811
-	ClearPermissionCacheError int32 = 812
-	UnknownAuthPrivilege      int32 = 813
-	UnsupportedAuthOperation  int32 = 814
-	AuthIoException           int32 = 815
+	UninitializedAuthError    int32 = 804
+	UserNotExist              int32 = 805
+	RoleNotExist              int32 = 806
+	ClearPermissionCacheError int32 = 807
 
 	MigrateRegionError        int32 = 900
 	CreateRegionError         int32 = 901
