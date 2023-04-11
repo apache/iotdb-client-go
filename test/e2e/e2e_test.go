@@ -21,13 +21,13 @@ package e2e
 
 import (
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/rpc"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -67,7 +67,7 @@ func (s *e2eTestSuite) TearDownTest() {
 	s.checkError(r, err)
 }
 
-func (s *e2eTestSuite) checkError(status *rpc.TSStatus, err error) {
+func (s *e2eTestSuite) checkError(status *common.TSStatus, err error) {
 	s.Require().NoError(err)
 	if status != nil {
 		s.Require().NoError(client.VerifySuccess(status))

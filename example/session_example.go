@@ -22,13 +22,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/rpc"
 )
 
 var (
@@ -643,7 +643,7 @@ func executeBatchStatement() {
 	}
 }
 
-func checkError(status *rpc.TSStatus, err error) {
+func checkError(status *common.TSStatus, err error) {
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -23,9 +23,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"strconv"
-
-	"github.com/apache/iotdb-client-go/rpc"
 )
 
 func int32ToString(n int32) string {
@@ -70,7 +69,7 @@ func bytesToInt64(bys []byte) int64 {
 	return int64(data)
 }
 
-func verifySuccesses(statuses []*rpc.TSStatus) error {
+func verifySuccesses(statuses []*common.TSStatus) error {
 	buff := bytes.Buffer{}
 	for _, status := range statuses {
 		if status.Code != SuccessStatus && status.Code != RedirectionRecommend {
@@ -84,7 +83,7 @@ func verifySuccesses(statuses []*rpc.TSStatus) error {
 	return nil
 }
 
-func VerifySuccess(status *rpc.TSStatus) error {
+func VerifySuccess(status *common.TSStatus) error {
 	if status.Code == RedirectionRecommend {
 		return nil
 	}
