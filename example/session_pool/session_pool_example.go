@@ -642,7 +642,7 @@ func printDevice1(sds *client.SessionDataSet) {
 		// var description string
 		// var status string
 
-		if err := sds.Scan(&restartCount, &price, &tickCount, &temperature, &description, &status); err != nil {
+		if err := sds.Scan(&restartCount, &tickCount, &price, &temperature, &description, &status); err != nil {
 			log.Fatal(err)
 		}
 
