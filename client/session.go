@@ -110,7 +110,7 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	iprot := protocolFactory.GetProtocol(s.trans)
 	oprot := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewIClientRPCServiceClient(thrift.NewTStandardClient(iprot, oprot))
-	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: &s.config.UserName,
+	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password}
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
@@ -161,7 +161,7 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 	iprot := protocolFactory.GetProtocol(s.trans)
 	oprot := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewIClientRPCServiceClient(thrift.NewTStandardClient(iprot, oprot))
-	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: &s.config.UserName,
+	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password}
 
 	resp, err := s.client.OpenSession(context.Background(), &req)
@@ -473,6 +473,32 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 			resp, err = s.client.ExecuteQueryStatement(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 				return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			} else {
+				return nil, statusErr
+			}
+		}
+		return nil, err
+	}
+}
+
+func (s *Session) ExecuteAggregationQuery(paths []string, aggregations []common.TAggregationType,
+	startTime *int64, endTime *int64, interval *int64,
+	timeoutMs *int64) (*SessionDataSet, error) {
+
+	request := rpc.TSAggregationQueryReq{SessionId: s.sessionId, StatementId: s.requestStatementId, Paths: paths,
+		Aggregations: aggregations, StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize, Timeout: timeoutMs}
+	if resp, err := s.client.ExecuteAggregationQuery(context.Background(), &request); err == nil {
+		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+		} else {
+			return nil, statusErr
+		}
+	} else {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			resp, err = s.client.ExecuteAggregationQuery(context.Background(), &request)
+			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
 			} else {
 				return nil, statusErr
 			}
@@ -797,7 +823,14 @@ func (s *Session) ExecuteUpdateStatement(sql string) (*SessionDataSet, error) {
 }
 
 func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) *SessionDataSet {
-	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, nil)
+	var queryId int64
+	if resp.QueryId == nil {
+		queryId = 0
+	} else {
+		queryId = *resp.QueryId
+	}
+	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap,
+		queryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, nil)
 }
 
 func (s *Session) genInsertTabletsReq(tablets []*Tablet, isAligned bool) (*rpc.TSInsertTabletsReq, error) {
@@ -1069,7 +1102,7 @@ func (s *Session) initClusterConn(node endPoint) error {
 	iprot := protocolFactory.GetProtocol(s.trans)
 	oprot := protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewIClientRPCServiceClient(thrift.NewTStandardClient(iprot, oprot))
-	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: &s.config.UserName,
+	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password}
 
 	resp, err := s.client.OpenSession(context.Background(), &req)

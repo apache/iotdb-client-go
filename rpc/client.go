@@ -15441,24 +15441,24 @@ func (p *TSDropSchemaTemplateReq) String() string {
 // Attributes:
 //  - SessionId
 //  - DevicePathList
-type TCreateTimeseriesOfSchemaTemplateReq struct {
+type TCreateTimeseriesUsingSchemaTemplateReq struct {
   SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
   DevicePathList []string `thrift:"devicePathList,2,required" db:"devicePathList" json:"devicePathList"`
 }
 
-func NewTCreateTimeseriesOfSchemaTemplateReq() *TCreateTimeseriesOfSchemaTemplateReq {
-  return &TCreateTimeseriesOfSchemaTemplateReq{}
+func NewTCreateTimeseriesUsingSchemaTemplateReq() *TCreateTimeseriesUsingSchemaTemplateReq {
+  return &TCreateTimeseriesUsingSchemaTemplateReq{}
 }
 
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq) GetSessionId() int64 {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) GetSessionId() int64 {
   return p.SessionId
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq) GetDevicePathList() []string {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) GetDevicePathList() []string {
   return p.DevicePathList
 }
-func (p *TCreateTimeseriesOfSchemaTemplateReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
   if _, err := iprot.ReadStructBegin(ctx); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
   }
@@ -15516,7 +15516,7 @@ func (p *TCreateTimeseriesOfSchemaTemplateReq) Read(ctx context.Context, iprot t
   return nil
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
   if v, err := iprot.ReadI64(ctx); err != nil {
   return thrift.PrependError("error reading field 1: ", err)
 } else {
@@ -15525,7 +15525,7 @@ func (p *TCreateTimeseriesOfSchemaTemplateReq)  ReadField1(ctx context.Context, 
   return nil
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
   _, size, err := iprot.ReadListBegin(ctx)
   if err != nil {
     return thrift.PrependError("error reading list begin: ", err)
@@ -15547,8 +15547,8 @@ var _elem179 string
   return nil
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin(ctx, "TCreateTimeseriesOfSchemaTemplateReq"); err != nil {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TCreateTimeseriesUsingSchemaTemplateReq"); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
   if p != nil {
     if err := p.writeField1(ctx, oprot); err != nil { return err }
@@ -15561,7 +15561,7 @@ func (p *TCreateTimeseriesOfSchemaTemplateReq) Write(ctx context.Context, oprot 
   return nil
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
   if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
   if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
@@ -15571,7 +15571,7 @@ func (p *TCreateTimeseriesOfSchemaTemplateReq) writeField1(ctx context.Context, 
   return err
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
   if err := oprot.WriteFieldBegin(ctx, "devicePathList", thrift.LIST, 2); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:devicePathList: ", p), err) }
   if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.DevicePathList)); err != nil {
@@ -15589,7 +15589,7 @@ func (p *TCreateTimeseriesOfSchemaTemplateReq) writeField2(ctx context.Context, 
   return err
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq) Equals(other *TCreateTimeseriesOfSchemaTemplateReq) bool {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) Equals(other *TCreateTimeseriesUsingSchemaTemplateReq) bool {
   if p == other {
     return true
   } else if p == nil || other == nil {
@@ -15604,11 +15604,11 @@ func (p *TCreateTimeseriesOfSchemaTemplateReq) Equals(other *TCreateTimeseriesOf
   return true
 }
 
-func (p *TCreateTimeseriesOfSchemaTemplateReq) String() string {
+func (p *TCreateTimeseriesUsingSchemaTemplateReq) String() string {
   if p == nil {
     return "<nil>"
   }
-  return fmt.Sprintf("TCreateTimeseriesOfSchemaTemplateReq(%+v)", *p)
+  return fmt.Sprintf("TCreateTimeseriesUsingSchemaTemplateReq(%+v)", *p)
 }
 
 // Attributes:
@@ -16783,7 +16783,7 @@ type IClientRPCService interface {
   DropSchemaTemplate(ctx context.Context, req *TSDropSchemaTemplateReq) (_r *common.TSStatus, _err error)
   // Parameters:
   //  - Req
-  CreateTimeseriesOfSchemaTemplate(ctx context.Context, req *TCreateTimeseriesOfSchemaTemplateReq) (_r *common.TSStatus, _err error)
+  CreateTimeseriesUsingSchemaTemplate(ctx context.Context, req *TCreateTimeseriesUsingSchemaTemplateReq) (_r *common.TSStatus, _err error)
   // Parameters:
   //  - Info
   Handshake(ctx context.Context, info *TSyncIdentityInfo) (_r *common.TSStatus, _err error)
@@ -17633,12 +17633,12 @@ func (p *IClientRPCServiceClient) DropSchemaTemplate(ctx context.Context, req *T
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) CreateTimeseriesOfSchemaTemplate(ctx context.Context, req *TCreateTimeseriesOfSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args342 IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs
+func (p *IClientRPCServiceClient) CreateTimeseriesUsingSchemaTemplate(ctx context.Context, req *TCreateTimeseriesUsingSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args342 IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs
   _args342.Req = req
-  var _result344 IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult
+  var _result344 IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult
   var _meta343 thrift.ResponseMeta
-  _meta343, _err = p.Client_().Call(ctx, "createTimeseriesOfSchemaTemplate", &_args342, &_result344)
+  _meta343, _err = p.Client_().Call(ctx, "createTimeseriesUsingSchemaTemplate", &_args342, &_result344)
   p.SetLastResponseMeta_(_meta343)
   if _err != nil {
     return
@@ -17791,7 +17791,7 @@ func NewIClientRPCServiceProcessor(handler IClientRPCService) *IClientRPCService
   self360.processorMap["setSchemaTemplate"] = &iClientRPCServiceProcessorSetSchemaTemplate{handler:handler}
   self360.processorMap["unsetSchemaTemplate"] = &iClientRPCServiceProcessorUnsetSchemaTemplate{handler:handler}
   self360.processorMap["dropSchemaTemplate"] = &iClientRPCServiceProcessorDropSchemaTemplate{handler:handler}
-  self360.processorMap["createTimeseriesOfSchemaTemplate"] = &iClientRPCServiceProcessorCreateTimeseriesOfSchemaTemplate{handler:handler}
+  self360.processorMap["createTimeseriesUsingSchemaTemplate"] = &iClientRPCServiceProcessorCreateTimeseriesUsingSchemaTemplate{handler:handler}
   self360.processorMap["handshake"] = &iClientRPCServiceProcessorHandshake{handler:handler}
   self360.processorMap["sendPipeData"] = &iClientRPCServiceProcessorSendPipeData{handler:handler}
   self360.processorMap["sendFile"] = &iClientRPCServiceProcessorSendFile{handler:handler}
@@ -22004,17 +22004,17 @@ func (p *iClientRPCServiceProcessorDropSchemaTemplate) Process(ctx context.Conte
   return true, err
 }
 
-type iClientRPCServiceProcessorCreateTimeseriesOfSchemaTemplate struct {
+type iClientRPCServiceProcessorCreateTimeseriesUsingSchemaTemplate struct {
   handler IClientRPCService
 }
 
-func (p *iClientRPCServiceProcessorCreateTimeseriesOfSchemaTemplate) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
-  args := IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs{}
+func (p *iClientRPCServiceProcessorCreateTimeseriesUsingSchemaTemplate) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+  args := IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs{}
   var err2 error
   if err2 = args.Read(ctx, iprot); err2 != nil {
     iprot.ReadMessageEnd(ctx)
     x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err2.Error())
-    oprot.WriteMessageBegin(ctx, "createTimeseriesOfSchemaTemplate", thrift.EXCEPTION, seqId)
+    oprot.WriteMessageBegin(ctx, "createTimeseriesUsingSchemaTemplate", thrift.EXCEPTION, seqId)
     x.Write(ctx, oprot)
     oprot.WriteMessageEnd(ctx)
     oprot.Flush(ctx)
@@ -22048,15 +22048,15 @@ func (p *iClientRPCServiceProcessorCreateTimeseriesOfSchemaTemplate) Process(ctx
     }(tickerCtx, cancel)
   }
 
-  result := IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult{}
+  result := IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult{}
   var retval *common.TSStatus
-  if retval, err2 = p.handler.CreateTimeseriesOfSchemaTemplate(ctx, args.Req); err2 != nil {
+  if retval, err2 = p.handler.CreateTimeseriesUsingSchemaTemplate(ctx, args.Req); err2 != nil {
     tickerCancel()
     if err2 == thrift.ErrAbandonRequest {
       return false, thrift.WrapTException(err2)
     }
-    x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing createTimeseriesOfSchemaTemplate: " + err2.Error())
-    oprot.WriteMessageBegin(ctx, "createTimeseriesOfSchemaTemplate", thrift.EXCEPTION, seqId)
+    x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing createTimeseriesUsingSchemaTemplate: " + err2.Error())
+    oprot.WriteMessageBegin(ctx, "createTimeseriesUsingSchemaTemplate", thrift.EXCEPTION, seqId)
     x.Write(ctx, oprot)
     oprot.WriteMessageEnd(ctx)
     oprot.Flush(ctx)
@@ -22065,7 +22065,7 @@ func (p *iClientRPCServiceProcessorCreateTimeseriesOfSchemaTemplate) Process(ctx
     result.Success = retval
   }
   tickerCancel()
-  if err2 = oprot.WriteMessageBegin(ctx, "createTimeseriesOfSchemaTemplate", thrift.REPLY, seqId); err2 != nil {
+  if err2 = oprot.WriteMessageBegin(ctx, "createTimeseriesUsingSchemaTemplate", thrift.REPLY, seqId); err2 != nil {
     err = thrift.WrapTException(err2)
   }
   if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
@@ -33049,26 +33049,26 @@ func (p *IClientRPCServiceDropSchemaTemplateResult) String() string {
 
 // Attributes:
 //  - Req
-type IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs struct {
-  Req *TCreateTimeseriesOfSchemaTemplateReq `thrift:"req,1" db:"req" json:"req"`
+type IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs struct {
+  Req *TCreateTimeseriesUsingSchemaTemplateReq `thrift:"req,1" db:"req" json:"req"`
 }
 
-func NewIClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs() *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs {
-  return &IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs{}
+func NewIClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs() *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs {
+  return &IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs{}
 }
 
-var IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs_Req_DEFAULT *TCreateTimeseriesOfSchemaTemplateReq
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) GetReq() *TCreateTimeseriesOfSchemaTemplateReq {
+var IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs_Req_DEFAULT *TCreateTimeseriesUsingSchemaTemplateReq
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs) GetReq() *TCreateTimeseriesUsingSchemaTemplateReq {
   if !p.IsSetReq() {
-    return IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs_Req_DEFAULT
+    return IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs_Req_DEFAULT
   }
 return p.Req
 }
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) IsSetReq() bool {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs) IsSetReq() bool {
   return p.Req != nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) Read(ctx context.Context, iprot thrift.TProtocol) error {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs) Read(ctx context.Context, iprot thrift.TProtocol) error {
   if _, err := iprot.ReadStructBegin(ctx); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
   }
@@ -33106,16 +33106,16 @@ func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) Read(ctx context
   return nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-  p.Req = &TCreateTimeseriesOfSchemaTemplateReq{}
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  p.Req = &TCreateTimeseriesUsingSchemaTemplateReq{}
   if err := p.Req.Read(ctx, iprot); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Req), err)
   }
   return nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) Write(ctx context.Context, oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin(ctx, "createTimeseriesOfSchemaTemplate_args"); err != nil {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "createTimeseriesUsingSchemaTemplate_args"); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
   if p != nil {
     if err := p.writeField1(ctx, oprot); err != nil { return err }
@@ -33127,7 +33127,7 @@ func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) Write(ctx contex
   return nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
   if err := oprot.WriteFieldBegin(ctx, "req", thrift.STRUCT, 1); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:req: ", p), err) }
   if err := p.Req.Write(ctx, oprot); err != nil {
@@ -33138,35 +33138,35 @@ func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) writeField1(ctx 
   return err
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs) String() string {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs) String() string {
   if p == nil {
     return "<nil>"
   }
-  return fmt.Sprintf("IClientRPCServiceCreateTimeseriesOfSchemaTemplateArgs(%+v)", *p)
+  return fmt.Sprintf("IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs(%+v)", *p)
 }
 
 // Attributes:
 //  - Success
-type IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult struct {
+type IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult struct {
   Success *common.TSStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
 }
 
-func NewIClientRPCServiceCreateTimeseriesOfSchemaTemplateResult() *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult {
-  return &IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult{}
+func NewIClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult() *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult {
+  return &IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult{}
 }
 
-var IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult_Success_DEFAULT *common.TSStatus
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) GetSuccess() *common.TSStatus {
+var IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult_Success_DEFAULT *common.TSStatus
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult) GetSuccess() *common.TSStatus {
   if !p.IsSetSuccess() {
-    return IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult_Success_DEFAULT
+    return IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult_Success_DEFAULT
   }
 return p.Success
 }
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) IsSetSuccess() bool {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult) IsSetSuccess() bool {
   return p.Success != nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) Read(ctx context.Context, iprot thrift.TProtocol) error {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult) Read(ctx context.Context, iprot thrift.TProtocol) error {
   if _, err := iprot.ReadStructBegin(ctx); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
   }
@@ -33204,7 +33204,7 @@ func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) Read(ctx conte
   return nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult)  ReadField0(ctx context.Context, iprot thrift.TProtocol) error {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult)  ReadField0(ctx context.Context, iprot thrift.TProtocol) error {
   p.Success = &common.TSStatus{}
   if err := p.Success.Read(ctx, iprot); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
@@ -33212,8 +33212,8 @@ func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult)  ReadField0(ct
   return nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) Write(ctx context.Context, oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin(ctx, "createTimeseriesOfSchemaTemplate_result"); err != nil {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "createTimeseriesUsingSchemaTemplate_result"); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
   if p != nil {
     if err := p.writeField0(ctx, oprot); err != nil { return err }
@@ -33225,7 +33225,7 @@ func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) Write(ctx cont
   return nil
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) writeField0(ctx context.Context, oprot thrift.TProtocol) (err error) {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult) writeField0(ctx context.Context, oprot thrift.TProtocol) (err error) {
   if p.IsSetSuccess() {
     if err := oprot.WriteFieldBegin(ctx, "success", thrift.STRUCT, 0); err != nil {
       return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
@@ -33238,11 +33238,11 @@ func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) writeField0(ct
   return err
 }
 
-func (p *IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult) String() string {
+func (p *IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult) String() string {
   if p == nil {
     return "<nil>"
   }
-  return fmt.Sprintf("IClientRPCServiceCreateTimeseriesOfSchemaTemplateResult(%+v)", *p)
+  return fmt.Sprintf("IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult(%+v)", *p)
 }
 
 // Attributes:

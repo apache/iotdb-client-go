@@ -113,6 +113,11 @@ func main() {
 	executeRawDataQuery()
 	executeBatchStatement()
 
+	var startTime int64 = 1
+	var endTime int64 = 10
+	var interval int64 = 2
+	executeAggregationQueryStatement([]string{"root.ln.wf02.wt02.s5"}, []common.TAggregationType{common.TAggregationType_COUNT}, &startTime, &endTime, &interval)
+
 	deleteTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.ln.wf02.wt02.s5")
 
@@ -169,7 +174,7 @@ func printDevice1(sds *client.SessionDataSet) {
 		// var description string
 		// var status string
 
-		if err := sds.Scan(&restartCount, &price, &tickCount, &temperature, &description, &status); err != nil {
+		if err := sds.Scan(&restartCount, &tickCount, &price, &temperature, &description, &status); err != nil {
 			log.Fatal(err)
 		}
 
@@ -609,12 +614,26 @@ func executeQueryStatement(sql string) {
 	}
 }
 
+func executeAggregationQueryStatement(paths []string, aggregations []common.TAggregationType,
+	startTime *int64, endTime *int64, interval *int64) {
+	fmt.Printf("====ExecuteAggregationQuery Begin====\n")
+	var timeout int64 = 1000
+	sessionDataSet, err := session.ExecuteAggregationQuery(paths, aggregations, startTime, endTime, interval, &timeout)
+	if err == nil {
+		printDataSet1(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+	fmt.Printf("====ExecuteAggregationQuery End====\n")
+}
+
 func executeRawDataQuery() {
 	session.ExecuteUpdateStatement("insert into root.ln.wf02.wt02(time,s5) values(1,true)")
 	var (
-		paths     []string = []string{"root.ln.wf02.wt02.s5"}
-		startTime int64    = 1
-		endTime   int64    = 200
+		paths           = []string{"root.ln.wf02.wt02.s5"}
+		startTime int64 = 1
+		endTime   int64 = 200
 	)
 	sessionDataSet, err := session.ExecuteRawDataQuery(paths, startTime, endTime)
 	if err == nil {
