@@ -2,15 +2,16 @@
 
 package rpc
 
-import (
+import(
 	"bytes"
 	"context"
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
-	"github.com/apache/thrift/lib/go/thrift"
 	"time"
+	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/apache/iotdb-client-go/common"
+
 )
 
 // (needed to ensure safety because of naive import list construction.)
@@ -7255,6 +7256,314 @@ func (p *TSInsertTabletsReq) String() string {
 // Attributes:
 //  - SessionId
 //  - PrefixPaths
+//  - Timestamps
+//  - ValuesList
+type TSFastInsertRecordsReq struct {
+  SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
+  PrefixPaths []string `thrift:"prefixPaths,2,required" db:"prefixPaths" json:"prefixPaths"`
+  // unused field # 3
+  ValuesList [][]byte `thrift:"valuesList,4,required" db:"valuesList" json:"valuesList"`
+  Timestamps []int64 `thrift:"timestamps,5,required" db:"timestamps" json:"timestamps"`
+}
+
+func NewTSFastInsertRecordsReq() *TSFastInsertRecordsReq {
+  return &TSFastInsertRecordsReq{}
+}
+
+
+func (p *TSFastInsertRecordsReq) GetSessionId() int64 {
+  return p.SessionId
+}
+
+func (p *TSFastInsertRecordsReq) GetPrefixPaths() []string {
+  return p.PrefixPaths
+}
+
+func (p *TSFastInsertRecordsReq) GetTimestamps() []int64 {
+  return p.Timestamps
+}
+
+func (p *TSFastInsertRecordsReq) GetValuesList() [][]byte {
+  return p.ValuesList
+}
+func (p *TSFastInsertRecordsReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+  var issetSessionId bool = false;
+  var issetPrefixPaths bool = false;
+  var issetTimestamps bool = false;
+  var issetValuesList bool = false;
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.I64 {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+        issetSessionId = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 2:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+        issetPrefixPaths = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 5:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField5(ctx, iprot); err != nil {
+          return err
+        }
+        issetTimestamps = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 4:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField4(ctx, iprot); err != nil {
+          return err
+        }
+        issetValuesList = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  if !issetSessionId{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
+  }
+  if !issetPrefixPaths{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field PrefixPaths is not set"));
+  }
+  if !issetTimestamps{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Timestamps is not set"));
+  }
+  if !issetValuesList{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field ValuesList is not set"));
+  }
+  return nil
+}
+
+func (p *TSFastInsertRecordsReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadI64(ctx); err != nil {
+  return thrift.PrependError("error reading field 1: ", err)
+} else {
+  p.SessionId = v
+}
+  return nil
+}
+
+func (p *TSFastInsertRecordsReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]string, 0, size)
+  p.PrefixPaths =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem63 string
+    if v, err := iprot.ReadString(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem63 = v
+}
+    p.PrefixPaths = append(p.PrefixPaths, _elem63)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TSFastInsertRecordsReq)  ReadField5(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]int64, 0, size)
+  p.Timestamps =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem64 int64
+    if v, err := iprot.ReadI64(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem64 = v
+}
+    p.Timestamps = append(p.Timestamps, _elem64)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TSFastInsertRecordsReq)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([][]byte, 0, size)
+  p.ValuesList =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem65 []byte
+    if v, err := iprot.ReadBinary(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem65 = v
+}
+    p.ValuesList = append(p.ValuesList, _elem65)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TSFastInsertRecordsReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TSFastInsertRecordsReq"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+    if err := p.writeField2(ctx, oprot); err != nil { return err }
+    if err := p.writeField4(ctx, oprot); err != nil { return err }
+    if err := p.writeField5(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *TSFastInsertRecordsReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
+  if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.sessionId (1) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:sessionId: ", p), err) }
+  return err
+}
+
+func (p *TSFastInsertRecordsReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "prefixPaths", thrift.LIST, 2); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:prefixPaths: ", p), err) }
+  if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.PrefixPaths)); err != nil {
+    return thrift.PrependError("error writing list begin: ", err)
+  }
+  for _, v := range p.PrefixPaths {
+    if err := oprot.WriteString(ctx, string(v)); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+  }
+  if err := oprot.WriteListEnd(ctx); err != nil {
+    return thrift.PrependError("error writing list end: ", err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 2:prefixPaths: ", p), err) }
+  return err
+}
+
+func (p *TSFastInsertRecordsReq) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "valuesList", thrift.LIST, 4); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:valuesList: ", p), err) }
+  if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.ValuesList)); err != nil {
+    return thrift.PrependError("error writing list begin: ", err)
+  }
+  for _, v := range p.ValuesList {
+    if err := oprot.WriteBinary(ctx, v); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+  }
+  if err := oprot.WriteListEnd(ctx); err != nil {
+    return thrift.PrependError("error writing list end: ", err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 4:valuesList: ", p), err) }
+  return err
+}
+
+func (p *TSFastInsertRecordsReq) writeField5(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "timestamps", thrift.LIST, 5); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 5:timestamps: ", p), err) }
+  if err := oprot.WriteListBegin(ctx, thrift.I64, len(p.Timestamps)); err != nil {
+    return thrift.PrependError("error writing list begin: ", err)
+  }
+  for _, v := range p.Timestamps {
+    if err := oprot.WriteI64(ctx, int64(v)); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+  }
+  if err := oprot.WriteListEnd(ctx); err != nil {
+    return thrift.PrependError("error writing list end: ", err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 5:timestamps: ", p), err) }
+  return err
+}
+
+func (p *TSFastInsertRecordsReq) Equals(other *TSFastInsertRecordsReq) bool {
+  if p == other {
+    return true
+  } else if p == nil || other == nil {
+    return false
+  }
+  if p.SessionId != other.SessionId { return false }
+  if len(p.PrefixPaths) != len(other.PrefixPaths) { return false }
+  for i, _tgt := range p.PrefixPaths {
+    _src66 := other.PrefixPaths[i]
+    if _tgt != _src66 { return false }
+  }
+  if len(p.ValuesList) != len(other.ValuesList) { return false }
+  for i, _tgt := range p.ValuesList {
+    _src67 := other.ValuesList[i]
+    if bytes.Compare(_tgt, _src67) != 0 { return false }
+  }
+  if len(p.Timestamps) != len(other.Timestamps) { return false }
+  for i, _tgt := range p.Timestamps {
+    _src68 := other.Timestamps[i]
+    if _tgt != _src68 { return false }
+  }
+  return true
+}
+
+func (p *TSFastInsertRecordsReq) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("TSFastInsertRecordsReq(%+v)", *p)
+}
+
+// Attributes:
+//  - SessionId
+//  - PrefixPaths
 //  - MeasurementsList
 //  - ValuesList
 //  - Timestamps
@@ -7433,13 +7742,13 @@ func (p *TSInsertRecordsReq)  ReadField2(ctx context.Context, iprot thrift.TProt
   tSlice := make([]string, 0, size)
   p.PrefixPaths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem63 string
+var _elem69 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem63 = v
+    _elem69 = v
 }
-    p.PrefixPaths = append(p.PrefixPaths, _elem63)
+    p.PrefixPaths = append(p.PrefixPaths, _elem69)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -7460,20 +7769,20 @@ func (p *TSInsertRecordsReq)  ReadField3(ctx context.Context, iprot thrift.TProt
       return thrift.PrependError("error reading list begin: ", err)
     }
     tSlice := make([]string, 0, size)
-    _elem64 :=  tSlice
+    _elem70 :=  tSlice
     for i := 0; i < size; i ++ {
-var _elem65 string
+var _elem71 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _elem65 = v
+      _elem71 = v
 }
-      _elem64 = append(_elem64, _elem65)
+      _elem70 = append(_elem70, _elem71)
     }
     if err := iprot.ReadListEnd(ctx); err != nil {
       return thrift.PrependError("error reading list end: ", err)
     }
-    p.MeasurementsList = append(p.MeasurementsList, _elem64)
+    p.MeasurementsList = append(p.MeasurementsList, _elem70)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -7489,13 +7798,13 @@ func (p *TSInsertRecordsReq)  ReadField4(ctx context.Context, iprot thrift.TProt
   tSlice := make([][]byte, 0, size)
   p.ValuesList =  tSlice
   for i := 0; i < size; i ++ {
-var _elem66 []byte
+var _elem72 []byte
     if v, err := iprot.ReadBinary(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem66 = v
+    _elem72 = v
 }
-    p.ValuesList = append(p.ValuesList, _elem66)
+    p.ValuesList = append(p.ValuesList, _elem72)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -7511,13 +7820,13 @@ func (p *TSInsertRecordsReq)  ReadField5(ctx context.Context, iprot thrift.TProt
   tSlice := make([]int64, 0, size)
   p.Timestamps =  tSlice
   for i := 0; i < size; i ++ {
-var _elem67 int64
+var _elem73 int64
     if v, err := iprot.ReadI64(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem67 = v
+    _elem73 = v
 }
-    p.Timestamps = append(p.Timestamps, _elem67)
+    p.Timestamps = append(p.Timestamps, _elem73)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -7663,27 +7972,27 @@ func (p *TSInsertRecordsReq) Equals(other *TSInsertRecordsReq) bool {
   if p.SessionId != other.SessionId { return false }
   if len(p.PrefixPaths) != len(other.PrefixPaths) { return false }
   for i, _tgt := range p.PrefixPaths {
-    _src68 := other.PrefixPaths[i]
-    if _tgt != _src68 { return false }
+    _src74 := other.PrefixPaths[i]
+    if _tgt != _src74 { return false }
   }
   if len(p.MeasurementsList) != len(other.MeasurementsList) { return false }
   for i, _tgt := range p.MeasurementsList {
-    _src69 := other.MeasurementsList[i]
-    if len(_tgt) != len(_src69) { return false }
+    _src75 := other.MeasurementsList[i]
+    if len(_tgt) != len(_src75) { return false }
     for i, _tgt := range _tgt {
-      _src70 := _src69[i]
-      if _tgt != _src70 { return false }
+      _src76 := _src75[i]
+      if _tgt != _src76 { return false }
     }
   }
   if len(p.ValuesList) != len(other.ValuesList) { return false }
   for i, _tgt := range p.ValuesList {
-    _src71 := other.ValuesList[i]
-    if bytes.Compare(_tgt, _src71) != 0 { return false }
+    _src77 := other.ValuesList[i]
+    if bytes.Compare(_tgt, _src77) != 0 { return false }
   }
   if len(p.Timestamps) != len(other.Timestamps) { return false }
   for i, _tgt := range p.Timestamps {
-    _src72 := other.Timestamps[i]
-    if _tgt != _src72 { return false }
+    _src78 := other.Timestamps[i]
+    if _tgt != _src78 { return false }
   }
   if p.IsAligned != other.IsAligned {
     if p.IsAligned == nil || other.IsAligned == nil {
@@ -7896,20 +8205,20 @@ func (p *TSInsertRecordsOfOneDeviceReq)  ReadField3(ctx context.Context, iprot t
       return thrift.PrependError("error reading list begin: ", err)
     }
     tSlice := make([]string, 0, size)
-    _elem73 :=  tSlice
+    _elem79 :=  tSlice
     for i := 0; i < size; i ++ {
-var _elem74 string
+var _elem80 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _elem74 = v
+      _elem80 = v
 }
-      _elem73 = append(_elem73, _elem74)
+      _elem79 = append(_elem79, _elem80)
     }
     if err := iprot.ReadListEnd(ctx); err != nil {
       return thrift.PrependError("error reading list end: ", err)
     }
-    p.MeasurementsList = append(p.MeasurementsList, _elem73)
+    p.MeasurementsList = append(p.MeasurementsList, _elem79)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -7925,13 +8234,13 @@ func (p *TSInsertRecordsOfOneDeviceReq)  ReadField4(ctx context.Context, iprot t
   tSlice := make([][]byte, 0, size)
   p.ValuesList =  tSlice
   for i := 0; i < size; i ++ {
-var _elem75 []byte
+var _elem81 []byte
     if v, err := iprot.ReadBinary(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem75 = v
+    _elem81 = v
 }
-    p.ValuesList = append(p.ValuesList, _elem75)
+    p.ValuesList = append(p.ValuesList, _elem81)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -7947,13 +8256,13 @@ func (p *TSInsertRecordsOfOneDeviceReq)  ReadField5(ctx context.Context, iprot t
   tSlice := make([]int64, 0, size)
   p.Timestamps =  tSlice
   for i := 0; i < size; i ++ {
-var _elem76 int64
+var _elem82 int64
     if v, err := iprot.ReadI64(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem76 = v
+    _elem82 = v
 }
-    p.Timestamps = append(p.Timestamps, _elem76)
+    p.Timestamps = append(p.Timestamps, _elem82)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -8092,22 +8401,22 @@ func (p *TSInsertRecordsOfOneDeviceReq) Equals(other *TSInsertRecordsOfOneDevice
   if p.PrefixPath != other.PrefixPath { return false }
   if len(p.MeasurementsList) != len(other.MeasurementsList) { return false }
   for i, _tgt := range p.MeasurementsList {
-    _src77 := other.MeasurementsList[i]
-    if len(_tgt) != len(_src77) { return false }
+    _src83 := other.MeasurementsList[i]
+    if len(_tgt) != len(_src83) { return false }
     for i, _tgt := range _tgt {
-      _src78 := _src77[i]
-      if _tgt != _src78 { return false }
+      _src84 := _src83[i]
+      if _tgt != _src84 { return false }
     }
   }
   if len(p.ValuesList) != len(other.ValuesList) { return false }
   for i, _tgt := range p.ValuesList {
-    _src79 := other.ValuesList[i]
-    if bytes.Compare(_tgt, _src79) != 0 { return false }
+    _src85 := other.ValuesList[i]
+    if bytes.Compare(_tgt, _src85) != 0 { return false }
   }
   if len(p.Timestamps) != len(other.Timestamps) { return false }
   for i, _tgt := range p.Timestamps {
-    _src80 := other.Timestamps[i]
-    if _tgt != _src80 { return false }
+    _src86 := other.Timestamps[i]
+    if _tgt != _src86 { return false }
   }
   if p.IsAligned != other.IsAligned {
     if p.IsAligned == nil || other.IsAligned == nil {
@@ -8320,20 +8629,20 @@ func (p *TSInsertStringRecordsOfOneDeviceReq)  ReadField3(ctx context.Context, i
       return thrift.PrependError("error reading list begin: ", err)
     }
     tSlice := make([]string, 0, size)
-    _elem81 :=  tSlice
+    _elem87 :=  tSlice
     for i := 0; i < size; i ++ {
-var _elem82 string
+var _elem88 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _elem82 = v
+      _elem88 = v
 }
-      _elem81 = append(_elem81, _elem82)
+      _elem87 = append(_elem87, _elem88)
     }
     if err := iprot.ReadListEnd(ctx); err != nil {
       return thrift.PrependError("error reading list end: ", err)
     }
-    p.MeasurementsList = append(p.MeasurementsList, _elem81)
+    p.MeasurementsList = append(p.MeasurementsList, _elem87)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -8354,20 +8663,20 @@ func (p *TSInsertStringRecordsOfOneDeviceReq)  ReadField4(ctx context.Context, i
       return thrift.PrependError("error reading list begin: ", err)
     }
     tSlice := make([]string, 0, size)
-    _elem83 :=  tSlice
+    _elem89 :=  tSlice
     for i := 0; i < size; i ++ {
-var _elem84 string
+var _elem90 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _elem84 = v
+      _elem90 = v
 }
-      _elem83 = append(_elem83, _elem84)
+      _elem89 = append(_elem89, _elem90)
     }
     if err := iprot.ReadListEnd(ctx); err != nil {
       return thrift.PrependError("error reading list end: ", err)
     }
-    p.ValuesList = append(p.ValuesList, _elem83)
+    p.ValuesList = append(p.ValuesList, _elem89)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -8383,13 +8692,13 @@ func (p *TSInsertStringRecordsOfOneDeviceReq)  ReadField5(ctx context.Context, i
   tSlice := make([]int64, 0, size)
   p.Timestamps =  tSlice
   for i := 0; i < size; i ++ {
-var _elem85 int64
+var _elem91 int64
     if v, err := iprot.ReadI64(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem85 = v
+    _elem91 = v
 }
-    p.Timestamps = append(p.Timestamps, _elem85)
+    p.Timestamps = append(p.Timestamps, _elem91)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -8536,26 +8845,26 @@ func (p *TSInsertStringRecordsOfOneDeviceReq) Equals(other *TSInsertStringRecord
   if p.PrefixPath != other.PrefixPath { return false }
   if len(p.MeasurementsList) != len(other.MeasurementsList) { return false }
   for i, _tgt := range p.MeasurementsList {
-    _src86 := other.MeasurementsList[i]
-    if len(_tgt) != len(_src86) { return false }
+    _src92 := other.MeasurementsList[i]
+    if len(_tgt) != len(_src92) { return false }
     for i, _tgt := range _tgt {
-      _src87 := _src86[i]
-      if _tgt != _src87 { return false }
+      _src93 := _src92[i]
+      if _tgt != _src93 { return false }
     }
   }
   if len(p.ValuesList) != len(other.ValuesList) { return false }
   for i, _tgt := range p.ValuesList {
-    _src88 := other.ValuesList[i]
-    if len(_tgt) != len(_src88) { return false }
+    _src94 := other.ValuesList[i]
+    if len(_tgt) != len(_src94) { return false }
     for i, _tgt := range _tgt {
-      _src89 := _src88[i]
-      if _tgt != _src89 { return false }
+      _src95 := _src94[i]
+      if _tgt != _src95 { return false }
     }
   }
   if len(p.Timestamps) != len(other.Timestamps) { return false }
   for i, _tgt := range p.Timestamps {
-    _src90 := other.Timestamps[i]
-    if _tgt != _src90 { return false }
+    _src96 := other.Timestamps[i]
+    if _tgt != _src96 { return false }
   }
   if p.IsAligned != other.IsAligned {
     if p.IsAligned == nil || other.IsAligned == nil {
@@ -8754,13 +9063,13 @@ func (p *TSInsertStringRecordsReq)  ReadField2(ctx context.Context, iprot thrift
   tSlice := make([]string, 0, size)
   p.PrefixPaths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem91 string
+var _elem97 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem91 = v
+    _elem97 = v
 }
-    p.PrefixPaths = append(p.PrefixPaths, _elem91)
+    p.PrefixPaths = append(p.PrefixPaths, _elem97)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -8781,20 +9090,20 @@ func (p *TSInsertStringRecordsReq)  ReadField3(ctx context.Context, iprot thrift
       return thrift.PrependError("error reading list begin: ", err)
     }
     tSlice := make([]string, 0, size)
-    _elem92 :=  tSlice
+    _elem98 :=  tSlice
     for i := 0; i < size; i ++ {
-var _elem93 string
+var _elem99 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _elem93 = v
+      _elem99 = v
 }
-      _elem92 = append(_elem92, _elem93)
+      _elem98 = append(_elem98, _elem99)
     }
     if err := iprot.ReadListEnd(ctx); err != nil {
       return thrift.PrependError("error reading list end: ", err)
     }
-    p.MeasurementsList = append(p.MeasurementsList, _elem92)
+    p.MeasurementsList = append(p.MeasurementsList, _elem98)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -8815,20 +9124,20 @@ func (p *TSInsertStringRecordsReq)  ReadField4(ctx context.Context, iprot thrift
       return thrift.PrependError("error reading list begin: ", err)
     }
     tSlice := make([]string, 0, size)
-    _elem94 :=  tSlice
+    _elem100 :=  tSlice
     for i := 0; i < size; i ++ {
-var _elem95 string
+var _elem101 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _elem95 = v
+      _elem101 = v
 }
-      _elem94 = append(_elem94, _elem95)
+      _elem100 = append(_elem100, _elem101)
     }
     if err := iprot.ReadListEnd(ctx); err != nil {
       return thrift.PrependError("error reading list end: ", err)
     }
-    p.ValuesList = append(p.ValuesList, _elem94)
+    p.ValuesList = append(p.ValuesList, _elem100)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -8844,13 +9153,13 @@ func (p *TSInsertStringRecordsReq)  ReadField5(ctx context.Context, iprot thrift
   tSlice := make([]int64, 0, size)
   p.Timestamps =  tSlice
   for i := 0; i < size; i ++ {
-var _elem96 int64
+var _elem102 int64
     if v, err := iprot.ReadI64(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem96 = v
+    _elem102 = v
 }
-    p.Timestamps = append(p.Timestamps, _elem96)
+    p.Timestamps = append(p.Timestamps, _elem102)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -9004,31 +9313,31 @@ func (p *TSInsertStringRecordsReq) Equals(other *TSInsertStringRecordsReq) bool 
   if p.SessionId != other.SessionId { return false }
   if len(p.PrefixPaths) != len(other.PrefixPaths) { return false }
   for i, _tgt := range p.PrefixPaths {
-    _src97 := other.PrefixPaths[i]
-    if _tgt != _src97 { return false }
+    _src103 := other.PrefixPaths[i]
+    if _tgt != _src103 { return false }
   }
   if len(p.MeasurementsList) != len(other.MeasurementsList) { return false }
   for i, _tgt := range p.MeasurementsList {
-    _src98 := other.MeasurementsList[i]
-    if len(_tgt) != len(_src98) { return false }
+    _src104 := other.MeasurementsList[i]
+    if len(_tgt) != len(_src104) { return false }
     for i, _tgt := range _tgt {
-      _src99 := _src98[i]
-      if _tgt != _src99 { return false }
+      _src105 := _src104[i]
+      if _tgt != _src105 { return false }
     }
   }
   if len(p.ValuesList) != len(other.ValuesList) { return false }
   for i, _tgt := range p.ValuesList {
-    _src100 := other.ValuesList[i]
-    if len(_tgt) != len(_src100) { return false }
+    _src106 := other.ValuesList[i]
+    if len(_tgt) != len(_src106) { return false }
     for i, _tgt := range _tgt {
-      _src101 := _src100[i]
-      if _tgt != _src101 { return false }
+      _src107 := _src106[i]
+      if _tgt != _src107 { return false }
     }
   }
   if len(p.Timestamps) != len(other.Timestamps) { return false }
   for i, _tgt := range p.Timestamps {
-    _src102 := other.Timestamps[i]
-    if _tgt != _src102 { return false }
+    _src108 := other.Timestamps[i]
+    if _tgt != _src108 { return false }
   }
   if p.IsAligned != other.IsAligned {
     if p.IsAligned == nil || other.IsAligned == nil {
@@ -9183,13 +9492,13 @@ func (p *TSDeleteDataReq)  ReadField2(ctx context.Context, iprot thrift.TProtoco
   tSlice := make([]string, 0, size)
   p.Paths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem103 string
+var _elem109 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem103 = v
+    _elem109 = v
 }
-    p.Paths = append(p.Paths, _elem103)
+    p.Paths = append(p.Paths, _elem109)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -9288,8 +9597,8 @@ func (p *TSDeleteDataReq) Equals(other *TSDeleteDataReq) bool {
   if p.SessionId != other.SessionId { return false }
   if len(p.Paths) != len(other.Paths) { return false }
   for i, _tgt := range p.Paths {
-    _src104 := other.Paths[i]
-    if _tgt != _src104 { return false }
+    _src110 := other.Paths[i]
+    if _tgt != _src110 { return false }
   }
   if p.StartTime != other.StartTime { return false }
   if p.EndTime != other.EndTime { return false }
@@ -9583,19 +9892,19 @@ func (p *TSCreateTimeseriesReq)  ReadField6(ctx context.Context, iprot thrift.TP
   tMap := make(map[string]string, size)
   p.Props =  tMap
   for i := 0; i < size; i ++ {
-var _key105 string
+var _key111 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _key105 = v
+    _key111 = v
 }
-var _val106 string
+var _val112 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _val106 = v
+    _val112 = v
 }
-    p.Props[_key105] = _val106
+    p.Props[_key111] = _val112
   }
   if err := iprot.ReadMapEnd(ctx); err != nil {
     return thrift.PrependError("error reading map end: ", err)
@@ -9611,19 +9920,19 @@ func (p *TSCreateTimeseriesReq)  ReadField7(ctx context.Context, iprot thrift.TP
   tMap := make(map[string]string, size)
   p.Tags =  tMap
   for i := 0; i < size; i ++ {
-var _key107 string
+var _key113 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _key107 = v
+    _key113 = v
 }
-var _val108 string
+var _val114 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _val108 = v
+    _val114 = v
 }
-    p.Tags[_key107] = _val108
+    p.Tags[_key113] = _val114
   }
   if err := iprot.ReadMapEnd(ctx); err != nil {
     return thrift.PrependError("error reading map end: ", err)
@@ -9639,19 +9948,19 @@ func (p *TSCreateTimeseriesReq)  ReadField8(ctx context.Context, iprot thrift.TP
   tMap := make(map[string]string, size)
   p.Attributes =  tMap
   for i := 0; i < size; i ++ {
-var _key109 string
+var _key115 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _key109 = v
+    _key115 = v
 }
-var _val110 string
+var _val116 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _val110 = v
+    _val116 = v
 }
-    p.Attributes[_key109] = _val110
+    p.Attributes[_key115] = _val116
   }
   if err := iprot.ReadMapEnd(ctx); err != nil {
     return thrift.PrependError("error reading map end: ", err)
@@ -9830,18 +10139,18 @@ func (p *TSCreateTimeseriesReq) Equals(other *TSCreateTimeseriesReq) bool {
   if p.Compressor != other.Compressor { return false }
   if len(p.Props) != len(other.Props) { return false }
   for k, _tgt := range p.Props {
-    _src111 := other.Props[k]
-    if _tgt != _src111 { return false }
+    _src117 := other.Props[k]
+    if _tgt != _src117 { return false }
   }
   if len(p.Tags) != len(other.Tags) { return false }
   for k, _tgt := range p.Tags {
-    _src112 := other.Tags[k]
-    if _tgt != _src112 { return false }
+    _src118 := other.Tags[k]
+    if _tgt != _src118 { return false }
   }
   if len(p.Attributes) != len(other.Attributes) { return false }
   for k, _tgt := range p.Attributes {
-    _src113 := other.Attributes[k]
-    if _tgt != _src113 { return false }
+    _src119 := other.Attributes[k]
+    if _tgt != _src119 { return false }
   }
   if p.MeasurementAlias != other.MeasurementAlias {
     if p.MeasurementAlias == nil || other.MeasurementAlias == nil {
@@ -10110,13 +10419,13 @@ func (p *TSCreateAlignedTimeseriesReq)  ReadField3(ctx context.Context, iprot th
   tSlice := make([]string, 0, size)
   p.Measurements =  tSlice
   for i := 0; i < size; i ++ {
-var _elem114 string
+var _elem120 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem114 = v
+    _elem120 = v
 }
-    p.Measurements = append(p.Measurements, _elem114)
+    p.Measurements = append(p.Measurements, _elem120)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -10132,13 +10441,13 @@ func (p *TSCreateAlignedTimeseriesReq)  ReadField4(ctx context.Context, iprot th
   tSlice := make([]int32, 0, size)
   p.DataTypes =  tSlice
   for i := 0; i < size; i ++ {
-var _elem115 int32
+var _elem121 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem115 = v
+    _elem121 = v
 }
-    p.DataTypes = append(p.DataTypes, _elem115)
+    p.DataTypes = append(p.DataTypes, _elem121)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -10154,13 +10463,13 @@ func (p *TSCreateAlignedTimeseriesReq)  ReadField5(ctx context.Context, iprot th
   tSlice := make([]int32, 0, size)
   p.Encodings =  tSlice
   for i := 0; i < size; i ++ {
-var _elem116 int32
+var _elem122 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem116 = v
+    _elem122 = v
 }
-    p.Encodings = append(p.Encodings, _elem116)
+    p.Encodings = append(p.Encodings, _elem122)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -10176,13 +10485,13 @@ func (p *TSCreateAlignedTimeseriesReq)  ReadField6(ctx context.Context, iprot th
   tSlice := make([]int32, 0, size)
   p.Compressors =  tSlice
   for i := 0; i < size; i ++ {
-var _elem117 int32
+var _elem123 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem117 = v
+    _elem123 = v
 }
-    p.Compressors = append(p.Compressors, _elem117)
+    p.Compressors = append(p.Compressors, _elem123)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -10198,13 +10507,13 @@ func (p *TSCreateAlignedTimeseriesReq)  ReadField7(ctx context.Context, iprot th
   tSlice := make([]string, 0, size)
   p.MeasurementAlias =  tSlice
   for i := 0; i < size; i ++ {
-var _elem118 string
+var _elem124 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem118 = v
+    _elem124 = v
 }
-    p.MeasurementAlias = append(p.MeasurementAlias, _elem118)
+    p.MeasurementAlias = append(p.MeasurementAlias, _elem124)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -10225,26 +10534,26 @@ func (p *TSCreateAlignedTimeseriesReq)  ReadField8(ctx context.Context, iprot th
       return thrift.PrependError("error reading map begin: ", err)
     }
     tMap := make(map[string]string, size)
-    _elem119 :=  tMap
+    _elem125 :=  tMap
     for i := 0; i < size; i ++ {
-var _key120 string
+var _key126 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _key120 = v
+      _key126 = v
 }
-var _val121 string
+var _val127 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _val121 = v
+      _val127 = v
 }
-      _elem119[_key120] = _val121
+      _elem125[_key126] = _val127
     }
     if err := iprot.ReadMapEnd(ctx); err != nil {
       return thrift.PrependError("error reading map end: ", err)
     }
-    p.TagsList = append(p.TagsList, _elem119)
+    p.TagsList = append(p.TagsList, _elem125)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -10265,26 +10574,26 @@ func (p *TSCreateAlignedTimeseriesReq)  ReadField9(ctx context.Context, iprot th
       return thrift.PrependError("error reading map begin: ", err)
     }
     tMap := make(map[string]string, size)
-    _elem122 :=  tMap
+    _elem128 :=  tMap
     for i := 0; i < size; i ++ {
-var _key123 string
+var _key129 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _key123 = v
+      _key129 = v
 }
-var _val124 string
+var _val130 string
       if v, err := iprot.ReadString(ctx); err != nil {
       return thrift.PrependError("error reading field 0: ", err)
 } else {
-      _val124 = v
+      _val130 = v
 }
-      _elem122[_key123] = _val124
+      _elem128[_key129] = _val130
     }
     if err := iprot.ReadMapEnd(ctx); err != nil {
       return thrift.PrependError("error reading map end: ", err)
     }
-    p.AttributesList = append(p.AttributesList, _elem122)
+    p.AttributesList = append(p.AttributesList, _elem128)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -10495,45 +10804,45 @@ func (p *TSCreateAlignedTimeseriesReq) Equals(other *TSCreateAlignedTimeseriesRe
   if p.PrefixPath != other.PrefixPath { return false }
   if len(p.Measurements) != len(other.Measurements) { return false }
   for i, _tgt := range p.Measurements {
-    _src125 := other.Measurements[i]
-    if _tgt != _src125 { return false }
+    _src131 := other.Measurements[i]
+    if _tgt != _src131 { return false }
   }
   if len(p.DataTypes) != len(other.DataTypes) { return false }
   for i, _tgt := range p.DataTypes {
-    _src126 := other.DataTypes[i]
-    if _tgt != _src126 { return false }
+    _src132 := other.DataTypes[i]
+    if _tgt != _src132 { return false }
   }
   if len(p.Encodings) != len(other.Encodings) { return false }
   for i, _tgt := range p.Encodings {
-    _src127 := other.Encodings[i]
-    if _tgt != _src127 { return false }
+    _src133 := other.Encodings[i]
+    if _tgt != _src133 { return false }
   }
   if len(p.Compressors) != len(other.Compressors) { return false }
   for i, _tgt := range p.Compressors {
-    _src128 := other.Compressors[i]
-    if _tgt != _src128 { return false }
+    _src134 := other.Compressors[i]
+    if _tgt != _src134 { return false }
   }
   if len(p.MeasurementAlias) != len(other.MeasurementAlias) { return false }
   for i, _tgt := range p.MeasurementAlias {
-    _src129 := other.MeasurementAlias[i]
-    if _tgt != _src129 { return false }
+    _src135 := other.MeasurementAlias[i]
+    if _tgt != _src135 { return false }
   }
   if len(p.TagsList) != len(other.TagsList) { return false }
   for i, _tgt := range p.TagsList {
-    _src130 := other.TagsList[i]
-    if len(_tgt) != len(_src130) { return false }
+    _src136 := other.TagsList[i]
+    if len(_tgt) != len(_src136) { return false }
     for k, _tgt := range _tgt {
-      _src131 := _src130[k]
-      if _tgt != _src131 { return false }
+      _src137 := _src136[k]
+      if _tgt != _src137 { return false }
     }
   }
   if len(p.AttributesList) != len(other.AttributesList) { return false }
   for i, _tgt := range p.AttributesList {
-    _src132 := other.AttributesList[i]
-    if len(_tgt) != len(_src132) { return false }
+    _src138 := other.AttributesList[i]
+    if len(_tgt) != len(_src138) { return false }
     for k, _tgt := range _tgt {
-      _src133 := _src132[k]
-      if _tgt != _src133 { return false }
+      _src139 := _src138[k]
+      if _tgt != _src139 { return false }
     }
   }
   return true
@@ -10796,13 +11105,13 @@ func (p *TSRawDataQueryReq)  ReadField2(ctx context.Context, iprot thrift.TProto
   tSlice := make([]string, 0, size)
   p.Paths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem134 string
+var _elem140 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem134 = v
+    _elem140 = v
 }
-    p.Paths = append(p.Paths, _elem134)
+    p.Paths = append(p.Paths, _elem140)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -11009,8 +11318,8 @@ func (p *TSRawDataQueryReq) Equals(other *TSRawDataQueryReq) bool {
   if p.SessionId != other.SessionId { return false }
   if len(p.Paths) != len(other.Paths) { return false }
   for i, _tgt := range p.Paths {
-    _src135 := other.Paths[i]
-    if _tgt != _src135 { return false }
+    _src141 := other.Paths[i]
+    if _tgt != _src141 { return false }
   }
   if p.FetchSize != other.FetchSize {
     if p.FetchSize == nil || other.FetchSize == nil {
@@ -11278,13 +11587,13 @@ func (p *TSLastDataQueryReq)  ReadField2(ctx context.Context, iprot thrift.TProt
   tSlice := make([]string, 0, size)
   p.Paths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem136 string
+var _elem142 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem136 = v
+    _elem142 = v
 }
-    p.Paths = append(p.Paths, _elem136)
+    p.Paths = append(p.Paths, _elem142)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -11471,8 +11780,8 @@ func (p *TSLastDataQueryReq) Equals(other *TSLastDataQueryReq) bool {
   if p.SessionId != other.SessionId { return false }
   if len(p.Paths) != len(other.Paths) { return false }
   for i, _tgt := range p.Paths {
-    _src137 := other.Paths[i]
-    if _tgt != _src137 { return false }
+    _src143 := other.Paths[i]
+    if _tgt != _src143 { return false }
   }
   if p.FetchSize != other.FetchSize {
     if p.FetchSize == nil || other.FetchSize == nil {
@@ -11794,13 +12103,13 @@ func (p *TSAggregationQueryReq)  ReadField3(ctx context.Context, iprot thrift.TP
   tSlice := make([]string, 0, size)
   p.Paths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem138 string
+var _elem144 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem138 = v
+    _elem144 = v
 }
-    p.Paths = append(p.Paths, _elem138)
+    p.Paths = append(p.Paths, _elem144)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -11816,14 +12125,14 @@ func (p *TSAggregationQueryReq)  ReadField4(ctx context.Context, iprot thrift.TP
   tSlice := make([]common.TAggregationType, 0, size)
   p.Aggregations =  tSlice
   for i := 0; i < size; i ++ {
-var _elem139 common.TAggregationType
+var _elem145 common.TAggregationType
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
     temp := common.TAggregationType(v)
-    _elem139 = temp
+    _elem145 = temp
 }
-    p.Aggregations = append(p.Aggregations, _elem139)
+    p.Aggregations = append(p.Aggregations, _elem145)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -12045,13 +12354,13 @@ func (p *TSAggregationQueryReq) Equals(other *TSAggregationQueryReq) bool {
   if p.StatementId != other.StatementId { return false }
   if len(p.Paths) != len(other.Paths) { return false }
   for i, _tgt := range p.Paths {
-    _src140 := other.Paths[i]
-    if _tgt != _src140 { return false }
+    _src146 := other.Paths[i]
+    if _tgt != _src146 { return false }
   }
   if len(p.Aggregations) != len(other.Aggregations) { return false }
   for i, _tgt := range p.Aggregations {
-    _src141 := other.Aggregations[i]
-    if _tgt != _src141 { return false }
+    _src147 := other.Aggregations[i]
+    if _tgt != _src147 { return false }
   }
   if p.StartTime != other.StartTime {
     if p.StartTime == nil || other.StartTime == nil {
@@ -12341,13 +12650,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField2(ctx context.Context, iprot thri
   tSlice := make([]string, 0, size)
   p.Paths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem142 string
+var _elem148 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem142 = v
+    _elem148 = v
 }
-    p.Paths = append(p.Paths, _elem142)
+    p.Paths = append(p.Paths, _elem148)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -12363,13 +12672,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField3(ctx context.Context, iprot thri
   tSlice := make([]int32, 0, size)
   p.DataTypes =  tSlice
   for i := 0; i < size; i ++ {
-var _elem143 int32
+var _elem149 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem143 = v
+    _elem149 = v
 }
-    p.DataTypes = append(p.DataTypes, _elem143)
+    p.DataTypes = append(p.DataTypes, _elem149)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -12385,13 +12694,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField4(ctx context.Context, iprot thri
   tSlice := make([]int32, 0, size)
   p.Encodings =  tSlice
   for i := 0; i < size; i ++ {
-var _elem144 int32
+var _elem150 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem144 = v
+    _elem150 = v
 }
-    p.Encodings = append(p.Encodings, _elem144)
+    p.Encodings = append(p.Encodings, _elem150)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -12407,13 +12716,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField5(ctx context.Context, iprot thri
   tSlice := make([]int32, 0, size)
   p.Compressors =  tSlice
   for i := 0; i < size; i ++ {
-var _elem145 int32
+var _elem151 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem145 = v
+    _elem151 = v
 }
-    p.Compressors = append(p.Compressors, _elem145)
+    p.Compressors = append(p.Compressors, _elem151)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -12428,86 +12737,6 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField6(ctx context.Context, iprot thri
   }
   tSlice := make([]map[string]string, 0, size)
   p.PropsList =  tSlice
-  for i := 0; i < size; i ++ {
-    _, _, size, err := iprot.ReadMapBegin(ctx)
-    if err != nil {
-      return thrift.PrependError("error reading map begin: ", err)
-    }
-    tMap := make(map[string]string, size)
-    _elem146 :=  tMap
-    for i := 0; i < size; i ++ {
-var _key147 string
-      if v, err := iprot.ReadString(ctx); err != nil {
-      return thrift.PrependError("error reading field 0: ", err)
-} else {
-      _key147 = v
-}
-var _val148 string
-      if v, err := iprot.ReadString(ctx); err != nil {
-      return thrift.PrependError("error reading field 0: ", err)
-} else {
-      _val148 = v
-}
-      _elem146[_key147] = _val148
-    }
-    if err := iprot.ReadMapEnd(ctx); err != nil {
-      return thrift.PrependError("error reading map end: ", err)
-    }
-    p.PropsList = append(p.PropsList, _elem146)
-  }
-  if err := iprot.ReadListEnd(ctx); err != nil {
-    return thrift.PrependError("error reading list end: ", err)
-  }
-  return nil
-}
-
-func (p *TSCreateMultiTimeseriesReq)  ReadField7(ctx context.Context, iprot thrift.TProtocol) error {
-  _, size, err := iprot.ReadListBegin(ctx)
-  if err != nil {
-    return thrift.PrependError("error reading list begin: ", err)
-  }
-  tSlice := make([]map[string]string, 0, size)
-  p.TagsList =  tSlice
-  for i := 0; i < size; i ++ {
-    _, _, size, err := iprot.ReadMapBegin(ctx)
-    if err != nil {
-      return thrift.PrependError("error reading map begin: ", err)
-    }
-    tMap := make(map[string]string, size)
-    _elem149 :=  tMap
-    for i := 0; i < size; i ++ {
-var _key150 string
-      if v, err := iprot.ReadString(ctx); err != nil {
-      return thrift.PrependError("error reading field 0: ", err)
-} else {
-      _key150 = v
-}
-var _val151 string
-      if v, err := iprot.ReadString(ctx); err != nil {
-      return thrift.PrependError("error reading field 0: ", err)
-} else {
-      _val151 = v
-}
-      _elem149[_key150] = _val151
-    }
-    if err := iprot.ReadMapEnd(ctx); err != nil {
-      return thrift.PrependError("error reading map end: ", err)
-    }
-    p.TagsList = append(p.TagsList, _elem149)
-  }
-  if err := iprot.ReadListEnd(ctx); err != nil {
-    return thrift.PrependError("error reading list end: ", err)
-  }
-  return nil
-}
-
-func (p *TSCreateMultiTimeseriesReq)  ReadField8(ctx context.Context, iprot thrift.TProtocol) error {
-  _, size, err := iprot.ReadListBegin(ctx)
-  if err != nil {
-    return thrift.PrependError("error reading list begin: ", err)
-  }
-  tSlice := make([]map[string]string, 0, size)
-  p.AttributesList =  tSlice
   for i := 0; i < size; i ++ {
     _, _, size, err := iprot.ReadMapBegin(ctx)
     if err != nil {
@@ -12533,7 +12762,87 @@ var _val154 string
     if err := iprot.ReadMapEnd(ctx); err != nil {
       return thrift.PrependError("error reading map end: ", err)
     }
-    p.AttributesList = append(p.AttributesList, _elem152)
+    p.PropsList = append(p.PropsList, _elem152)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TSCreateMultiTimeseriesReq)  ReadField7(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]map[string]string, 0, size)
+  p.TagsList =  tSlice
+  for i := 0; i < size; i ++ {
+    _, _, size, err := iprot.ReadMapBegin(ctx)
+    if err != nil {
+      return thrift.PrependError("error reading map begin: ", err)
+    }
+    tMap := make(map[string]string, size)
+    _elem155 :=  tMap
+    for i := 0; i < size; i ++ {
+var _key156 string
+      if v, err := iprot.ReadString(ctx); err != nil {
+      return thrift.PrependError("error reading field 0: ", err)
+} else {
+      _key156 = v
+}
+var _val157 string
+      if v, err := iprot.ReadString(ctx); err != nil {
+      return thrift.PrependError("error reading field 0: ", err)
+} else {
+      _val157 = v
+}
+      _elem155[_key156] = _val157
+    }
+    if err := iprot.ReadMapEnd(ctx); err != nil {
+      return thrift.PrependError("error reading map end: ", err)
+    }
+    p.TagsList = append(p.TagsList, _elem155)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TSCreateMultiTimeseriesReq)  ReadField8(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]map[string]string, 0, size)
+  p.AttributesList =  tSlice
+  for i := 0; i < size; i ++ {
+    _, _, size, err := iprot.ReadMapBegin(ctx)
+    if err != nil {
+      return thrift.PrependError("error reading map begin: ", err)
+    }
+    tMap := make(map[string]string, size)
+    _elem158 :=  tMap
+    for i := 0; i < size; i ++ {
+var _key159 string
+      if v, err := iprot.ReadString(ctx); err != nil {
+      return thrift.PrependError("error reading field 0: ", err)
+} else {
+      _key159 = v
+}
+var _val160 string
+      if v, err := iprot.ReadString(ctx); err != nil {
+      return thrift.PrependError("error reading field 0: ", err)
+} else {
+      _val160 = v
+}
+      _elem158[_key159] = _val160
+    }
+    if err := iprot.ReadMapEnd(ctx); err != nil {
+      return thrift.PrependError("error reading map end: ", err)
+    }
+    p.AttributesList = append(p.AttributesList, _elem158)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -12549,13 +12858,13 @@ func (p *TSCreateMultiTimeseriesReq)  ReadField9(ctx context.Context, iprot thri
   tSlice := make([]string, 0, size)
   p.MeasurementAliasList =  tSlice
   for i := 0; i < size; i ++ {
-var _elem155 string
+var _elem161 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem155 = v
+    _elem161 = v
 }
-    p.MeasurementAliasList = append(p.MeasurementAliasList, _elem155)
+    p.MeasurementAliasList = append(p.MeasurementAliasList, _elem161)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -12785,55 +13094,55 @@ func (p *TSCreateMultiTimeseriesReq) Equals(other *TSCreateMultiTimeseriesReq) b
   if p.SessionId != other.SessionId { return false }
   if len(p.Paths) != len(other.Paths) { return false }
   for i, _tgt := range p.Paths {
-    _src156 := other.Paths[i]
-    if _tgt != _src156 { return false }
+    _src162 := other.Paths[i]
+    if _tgt != _src162 { return false }
   }
   if len(p.DataTypes) != len(other.DataTypes) { return false }
   for i, _tgt := range p.DataTypes {
-    _src157 := other.DataTypes[i]
-    if _tgt != _src157 { return false }
+    _src163 := other.DataTypes[i]
+    if _tgt != _src163 { return false }
   }
   if len(p.Encodings) != len(other.Encodings) { return false }
   for i, _tgt := range p.Encodings {
-    _src158 := other.Encodings[i]
-    if _tgt != _src158 { return false }
+    _src164 := other.Encodings[i]
+    if _tgt != _src164 { return false }
   }
   if len(p.Compressors) != len(other.Compressors) { return false }
   for i, _tgt := range p.Compressors {
-    _src159 := other.Compressors[i]
-    if _tgt != _src159 { return false }
+    _src165 := other.Compressors[i]
+    if _tgt != _src165 { return false }
   }
   if len(p.PropsList) != len(other.PropsList) { return false }
   for i, _tgt := range p.PropsList {
-    _src160 := other.PropsList[i]
-    if len(_tgt) != len(_src160) { return false }
+    _src166 := other.PropsList[i]
+    if len(_tgt) != len(_src166) { return false }
     for k, _tgt := range _tgt {
-      _src161 := _src160[k]
-      if _tgt != _src161 { return false }
+      _src167 := _src166[k]
+      if _tgt != _src167 { return false }
     }
   }
   if len(p.TagsList) != len(other.TagsList) { return false }
   for i, _tgt := range p.TagsList {
-    _src162 := other.TagsList[i]
-    if len(_tgt) != len(_src162) { return false }
+    _src168 := other.TagsList[i]
+    if len(_tgt) != len(_src168) { return false }
     for k, _tgt := range _tgt {
-      _src163 := _src162[k]
-      if _tgt != _src163 { return false }
+      _src169 := _src168[k]
+      if _tgt != _src169 { return false }
     }
   }
   if len(p.AttributesList) != len(other.AttributesList) { return false }
   for i, _tgt := range p.AttributesList {
-    _src164 := other.AttributesList[i]
-    if len(_tgt) != len(_src164) { return false }
+    _src170 := other.AttributesList[i]
+    if len(_tgt) != len(_src170) { return false }
     for k, _tgt := range _tgt {
-      _src165 := _src164[k]
-      if _tgt != _src165 { return false }
+      _src171 := _src170[k]
+      if _tgt != _src171 { return false }
     }
   }
   if len(p.MeasurementAliasList) != len(other.MeasurementAliasList) { return false }
   for i, _tgt := range p.MeasurementAliasList {
-    _src166 := other.MeasurementAliasList[i]
-    if _tgt != _src166 { return false }
+    _src172 := other.MeasurementAliasList[i]
+    if _tgt != _src172 { return false }
   }
   return true
 }
@@ -13161,13 +13470,13 @@ func (p *ServerProperties)  ReadField2(ctx context.Context, iprot thrift.TProtoc
   tSlice := make([]string, 0, size)
   p.SupportedTimeAggregationOperations =  tSlice
   for i := 0; i < size; i ++ {
-var _elem167 string
+var _elem173 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem167 = v
+    _elem173 = v
 }
-    p.SupportedTimeAggregationOperations = append(p.SupportedTimeAggregationOperations, _elem167)
+    p.SupportedTimeAggregationOperations = append(p.SupportedTimeAggregationOperations, _elem173)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -13442,8 +13751,8 @@ func (p *ServerProperties) Equals(other *ServerProperties) bool {
   if p.Version != other.Version { return false }
   if len(p.SupportedTimeAggregationOperations) != len(other.SupportedTimeAggregationOperations) { return false }
   for i, _tgt := range p.SupportedTimeAggregationOperations {
-    _src168 := other.SupportedTimeAggregationOperations[i]
-    if _tgt != _src168 { return false }
+    _src174 := other.SupportedTimeAggregationOperations[i]
+    if _tgt != _src174 { return false }
   }
   if p.TimestampPrecision != other.TimestampPrecision { return false }
   if p.MaxConcurrentClientNum != other.MaxConcurrentClientNum { return false }
@@ -14103,13 +14412,13 @@ func (p *TSAppendSchemaTemplateReq)  ReadField4(ctx context.Context, iprot thrif
   tSlice := make([]string, 0, size)
   p.Measurements =  tSlice
   for i := 0; i < size; i ++ {
-var _elem169 string
+var _elem175 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem169 = v
+    _elem175 = v
 }
-    p.Measurements = append(p.Measurements, _elem169)
+    p.Measurements = append(p.Measurements, _elem175)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -14125,13 +14434,13 @@ func (p *TSAppendSchemaTemplateReq)  ReadField5(ctx context.Context, iprot thrif
   tSlice := make([]int32, 0, size)
   p.DataTypes =  tSlice
   for i := 0; i < size; i ++ {
-var _elem170 int32
+var _elem176 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem170 = v
+    _elem176 = v
 }
-    p.DataTypes = append(p.DataTypes, _elem170)
+    p.DataTypes = append(p.DataTypes, _elem176)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -14147,13 +14456,13 @@ func (p *TSAppendSchemaTemplateReq)  ReadField6(ctx context.Context, iprot thrif
   tSlice := make([]int32, 0, size)
   p.Encodings =  tSlice
   for i := 0; i < size; i ++ {
-var _elem171 int32
+var _elem177 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem171 = v
+    _elem177 = v
 }
-    p.Encodings = append(p.Encodings, _elem171)
+    p.Encodings = append(p.Encodings, _elem177)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -14169,13 +14478,13 @@ func (p *TSAppendSchemaTemplateReq)  ReadField7(ctx context.Context, iprot thrif
   tSlice := make([]int32, 0, size)
   p.Compressors =  tSlice
   for i := 0; i < size; i ++ {
-var _elem172 int32
+var _elem178 int32
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem172 = v
+    _elem178 = v
 }
-    p.Compressors = append(p.Compressors, _elem172)
+    p.Compressors = append(p.Compressors, _elem178)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -14315,23 +14624,23 @@ func (p *TSAppendSchemaTemplateReq) Equals(other *TSAppendSchemaTemplateReq) boo
   if p.IsAligned != other.IsAligned { return false }
   if len(p.Measurements) != len(other.Measurements) { return false }
   for i, _tgt := range p.Measurements {
-    _src173 := other.Measurements[i]
-    if _tgt != _src173 { return false }
+    _src179 := other.Measurements[i]
+    if _tgt != _src179 { return false }
   }
   if len(p.DataTypes) != len(other.DataTypes) { return false }
   for i, _tgt := range p.DataTypes {
-    _src174 := other.DataTypes[i]
-    if _tgt != _src174 { return false }
+    _src180 := other.DataTypes[i]
+    if _tgt != _src180 { return false }
   }
   if len(p.Encodings) != len(other.Encodings) { return false }
   for i, _tgt := range p.Encodings {
-    _src175 := other.Encodings[i]
-    if _tgt != _src175 { return false }
+    _src181 := other.Encodings[i]
+    if _tgt != _src181 { return false }
   }
   if len(p.Compressors) != len(other.Compressors) { return false }
   for i, _tgt := range p.Compressors {
-    _src176 := other.Compressors[i]
-    if _tgt != _src176 { return false }
+    _src182 := other.Compressors[i]
+    if _tgt != _src182 { return false }
   }
   return true
 }
@@ -14969,13 +15278,13 @@ func (p *TSQueryTemplateResp)  ReadField5(ctx context.Context, iprot thrift.TPro
   tSlice := make([]string, 0, size)
   p.Measurements =  tSlice
   for i := 0; i < size; i ++ {
-var _elem177 string
+var _elem183 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem177 = v
+    _elem183 = v
 }
-    p.Measurements = append(p.Measurements, _elem177)
+    p.Measurements = append(p.Measurements, _elem183)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -15087,8 +15396,8 @@ func (p *TSQueryTemplateResp) Equals(other *TSQueryTemplateResp) bool {
   }
   if len(p.Measurements) != len(other.Measurements) { return false }
   for i, _tgt := range p.Measurements {
-    _src178 := other.Measurements[i]
-    if _tgt != _src178 { return false }
+    _src184 := other.Measurements[i]
+    if _tgt != _src184 { return false }
   }
   return true
 }
@@ -15533,13 +15842,13 @@ func (p *TCreateTimeseriesUsingSchemaTemplateReq)  ReadField2(ctx context.Contex
   tSlice := make([]string, 0, size)
   p.DevicePathList =  tSlice
   for i := 0; i < size; i ++ {
-var _elem179 string
+var _elem185 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem179 = v
+    _elem185 = v
 }
-    p.DevicePathList = append(p.DevicePathList, _elem179)
+    p.DevicePathList = append(p.DevicePathList, _elem185)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -15598,8 +15907,8 @@ func (p *TCreateTimeseriesUsingSchemaTemplateReq) Equals(other *TCreateTimeserie
   if p.SessionId != other.SessionId { return false }
   if len(p.DevicePathList) != len(other.DevicePathList) { return false }
   for i, _tgt := range p.DevicePathList {
-    _src180 := other.DevicePathList[i]
-    if _tgt != _src180 { return false }
+    _src186 := other.DevicePathList[i]
+    if _tgt != _src186 { return false }
   }
   return true
 }
@@ -16555,11 +16864,11 @@ func (p *TSConnectionInfoResp)  ReadField1(ctx context.Context, iprot thrift.TPr
   tSlice := make([]*TSConnectionInfo, 0, size)
   p.ConnectionInfoList =  tSlice
   for i := 0; i < size; i ++ {
-    _elem181 := &TSConnectionInfo{}
-    if err := _elem181.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem181), err)
+    _elem187 := &TSConnectionInfo{}
+    if err := _elem187.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem187), err)
     }
-    p.ConnectionInfoList = append(p.ConnectionInfoList, _elem181)
+    p.ConnectionInfoList = append(p.ConnectionInfoList, _elem187)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -16607,8 +16916,8 @@ func (p *TSConnectionInfoResp) Equals(other *TSConnectionInfoResp) bool {
   }
   if len(p.ConnectionInfoList) != len(other.ConnectionInfoList) { return false }
   for i, _tgt := range p.ConnectionInfoList {
-    _src182 := other.ConnectionInfoList[i]
-    if !_tgt.Equals(_src182) { return false }
+    _src188 := other.ConnectionInfoList[i]
+    if !_tgt.Equals(_src188) { return false }
   }
   return true
 }
@@ -16715,6 +17024,9 @@ type IClientRPCService interface {
   // Parameters:
   //  - Req
   InsertRecords(ctx context.Context, req *TSInsertRecordsReq) (_r *common.TSStatus, _err error)
+  // Parameters:
+  //  - Req
+  FastInsertRecords(ctx context.Context, req *TSFastInsertRecordsReq) (_r *common.TSStatus, _err error)
   // Parameters:
   //  - Req
   InsertRecordsOfOneDevice(ctx context.Context, req *TSInsertRecordsOfOneDeviceReq) (_r *common.TSStatus, _err error)
@@ -16836,41 +17148,11 @@ func (p *IClientRPCServiceClient) SetLastResponseMeta_(meta thrift.ResponseMeta)
 // Parameters:
 //  - Req
 func (p *IClientRPCServiceClient) ExecuteQueryStatementV2(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args183 IClientRPCServiceExecuteQueryStatementV2Args
-  _args183.Req = req
-  var _result185 IClientRPCServiceExecuteQueryStatementV2Result
-  var _meta184 thrift.ResponseMeta
-  _meta184, _err = p.Client_().Call(ctx, "executeQueryStatementV2", &_args183, &_result185)
-  p.SetLastResponseMeta_(_meta184)
-  if _err != nil {
-    return
-  }
-  return _result185.GetSuccess(), nil
-}
-
-// Parameters:
-//  - Req
-func (p *IClientRPCServiceClient) ExecuteUpdateStatementV2(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args186 IClientRPCServiceExecuteUpdateStatementV2Args
-  _args186.Req = req
-  var _result188 IClientRPCServiceExecuteUpdateStatementV2Result
-  var _meta187 thrift.ResponseMeta
-  _meta187, _err = p.Client_().Call(ctx, "executeUpdateStatementV2", &_args186, &_result188)
-  p.SetLastResponseMeta_(_meta187)
-  if _err != nil {
-    return
-  }
-  return _result188.GetSuccess(), nil
-}
-
-// Parameters:
-//  - Req
-func (p *IClientRPCServiceClient) ExecuteStatementV2(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args189 IClientRPCServiceExecuteStatementV2Args
+  var _args189 IClientRPCServiceExecuteQueryStatementV2Args
   _args189.Req = req
-  var _result191 IClientRPCServiceExecuteStatementV2Result
+  var _result191 IClientRPCServiceExecuteQueryStatementV2Result
   var _meta190 thrift.ResponseMeta
-  _meta190, _err = p.Client_().Call(ctx, "executeStatementV2", &_args189, &_result191)
+  _meta190, _err = p.Client_().Call(ctx, "executeQueryStatementV2", &_args189, &_result191)
   p.SetLastResponseMeta_(_meta190)
   if _err != nil {
     return
@@ -16880,12 +17162,12 @@ func (p *IClientRPCServiceClient) ExecuteStatementV2(ctx context.Context, req *T
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteRawDataQueryV2(ctx context.Context, req *TSRawDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args192 IClientRPCServiceExecuteRawDataQueryV2Args
+func (p *IClientRPCServiceClient) ExecuteUpdateStatementV2(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args192 IClientRPCServiceExecuteUpdateStatementV2Args
   _args192.Req = req
-  var _result194 IClientRPCServiceExecuteRawDataQueryV2Result
+  var _result194 IClientRPCServiceExecuteUpdateStatementV2Result
   var _meta193 thrift.ResponseMeta
-  _meta193, _err = p.Client_().Call(ctx, "executeRawDataQueryV2", &_args192, &_result194)
+  _meta193, _err = p.Client_().Call(ctx, "executeUpdateStatementV2", &_args192, &_result194)
   p.SetLastResponseMeta_(_meta193)
   if _err != nil {
     return
@@ -16895,12 +17177,12 @@ func (p *IClientRPCServiceClient) ExecuteRawDataQueryV2(ctx context.Context, req
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteLastDataQueryV2(ctx context.Context, req *TSLastDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args195 IClientRPCServiceExecuteLastDataQueryV2Args
+func (p *IClientRPCServiceClient) ExecuteStatementV2(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args195 IClientRPCServiceExecuteStatementV2Args
   _args195.Req = req
-  var _result197 IClientRPCServiceExecuteLastDataQueryV2Result
+  var _result197 IClientRPCServiceExecuteStatementV2Result
   var _meta196 thrift.ResponseMeta
-  _meta196, _err = p.Client_().Call(ctx, "executeLastDataQueryV2", &_args195, &_result197)
+  _meta196, _err = p.Client_().Call(ctx, "executeStatementV2", &_args195, &_result197)
   p.SetLastResponseMeta_(_meta196)
   if _err != nil {
     return
@@ -16910,12 +17192,12 @@ func (p *IClientRPCServiceClient) ExecuteLastDataQueryV2(ctx context.Context, re
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteAggregationQueryV2(ctx context.Context, req *TSAggregationQueryReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args198 IClientRPCServiceExecuteAggregationQueryV2Args
+func (p *IClientRPCServiceClient) ExecuteRawDataQueryV2(ctx context.Context, req *TSRawDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args198 IClientRPCServiceExecuteRawDataQueryV2Args
   _args198.Req = req
-  var _result200 IClientRPCServiceExecuteAggregationQueryV2Result
+  var _result200 IClientRPCServiceExecuteRawDataQueryV2Result
   var _meta199 thrift.ResponseMeta
-  _meta199, _err = p.Client_().Call(ctx, "executeAggregationQueryV2", &_args198, &_result200)
+  _meta199, _err = p.Client_().Call(ctx, "executeRawDataQueryV2", &_args198, &_result200)
   p.SetLastResponseMeta_(_meta199)
   if _err != nil {
     return
@@ -16925,12 +17207,12 @@ func (p *IClientRPCServiceClient) ExecuteAggregationQueryV2(ctx context.Context,
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) FetchResultsV2(ctx context.Context, req *TSFetchResultsReq) (_r *TSFetchResultsResp, _err error) {
-  var _args201 IClientRPCServiceFetchResultsV2Args
+func (p *IClientRPCServiceClient) ExecuteLastDataQueryV2(ctx context.Context, req *TSLastDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args201 IClientRPCServiceExecuteLastDataQueryV2Args
   _args201.Req = req
-  var _result203 IClientRPCServiceFetchResultsV2Result
+  var _result203 IClientRPCServiceExecuteLastDataQueryV2Result
   var _meta202 thrift.ResponseMeta
-  _meta202, _err = p.Client_().Call(ctx, "fetchResultsV2", &_args201, &_result203)
+  _meta202, _err = p.Client_().Call(ctx, "executeLastDataQueryV2", &_args201, &_result203)
   p.SetLastResponseMeta_(_meta202)
   if _err != nil {
     return
@@ -16940,12 +17222,12 @@ func (p *IClientRPCServiceClient) FetchResultsV2(ctx context.Context, req *TSFet
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) OpenSession(ctx context.Context, req *TSOpenSessionReq) (_r *TSOpenSessionResp, _err error) {
-  var _args204 IClientRPCServiceOpenSessionArgs
+func (p *IClientRPCServiceClient) ExecuteAggregationQueryV2(ctx context.Context, req *TSAggregationQueryReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args204 IClientRPCServiceExecuteAggregationQueryV2Args
   _args204.Req = req
-  var _result206 IClientRPCServiceOpenSessionResult
+  var _result206 IClientRPCServiceExecuteAggregationQueryV2Result
   var _meta205 thrift.ResponseMeta
-  _meta205, _err = p.Client_().Call(ctx, "openSession", &_args204, &_result206)
+  _meta205, _err = p.Client_().Call(ctx, "executeAggregationQueryV2", &_args204, &_result206)
   p.SetLastResponseMeta_(_meta205)
   if _err != nil {
     return
@@ -16955,12 +17237,12 @@ func (p *IClientRPCServiceClient) OpenSession(ctx context.Context, req *TSOpenSe
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) CloseSession(ctx context.Context, req *TSCloseSessionReq) (_r *common.TSStatus, _err error) {
-  var _args207 IClientRPCServiceCloseSessionArgs
+func (p *IClientRPCServiceClient) FetchResultsV2(ctx context.Context, req *TSFetchResultsReq) (_r *TSFetchResultsResp, _err error) {
+  var _args207 IClientRPCServiceFetchResultsV2Args
   _args207.Req = req
-  var _result209 IClientRPCServiceCloseSessionResult
+  var _result209 IClientRPCServiceFetchResultsV2Result
   var _meta208 thrift.ResponseMeta
-  _meta208, _err = p.Client_().Call(ctx, "closeSession", &_args207, &_result209)
+  _meta208, _err = p.Client_().Call(ctx, "fetchResultsV2", &_args207, &_result209)
   p.SetLastResponseMeta_(_meta208)
   if _err != nil {
     return
@@ -16970,12 +17252,12 @@ func (p *IClientRPCServiceClient) CloseSession(ctx context.Context, req *TSClose
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args210 IClientRPCServiceExecuteStatementArgs
+func (p *IClientRPCServiceClient) OpenSession(ctx context.Context, req *TSOpenSessionReq) (_r *TSOpenSessionResp, _err error) {
+  var _args210 IClientRPCServiceOpenSessionArgs
   _args210.Req = req
-  var _result212 IClientRPCServiceExecuteStatementResult
+  var _result212 IClientRPCServiceOpenSessionResult
   var _meta211 thrift.ResponseMeta
-  _meta211, _err = p.Client_().Call(ctx, "executeStatement", &_args210, &_result212)
+  _meta211, _err = p.Client_().Call(ctx, "openSession", &_args210, &_result212)
   p.SetLastResponseMeta_(_meta211)
   if _err != nil {
     return
@@ -16985,12 +17267,12 @@ func (p *IClientRPCServiceClient) ExecuteStatement(ctx context.Context, req *TSE
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteBatchStatement(ctx context.Context, req *TSExecuteBatchStatementReq) (_r *common.TSStatus, _err error) {
-  var _args213 IClientRPCServiceExecuteBatchStatementArgs
+func (p *IClientRPCServiceClient) CloseSession(ctx context.Context, req *TSCloseSessionReq) (_r *common.TSStatus, _err error) {
+  var _args213 IClientRPCServiceCloseSessionArgs
   _args213.Req = req
-  var _result215 IClientRPCServiceExecuteBatchStatementResult
+  var _result215 IClientRPCServiceCloseSessionResult
   var _meta214 thrift.ResponseMeta
-  _meta214, _err = p.Client_().Call(ctx, "executeBatchStatement", &_args213, &_result215)
+  _meta214, _err = p.Client_().Call(ctx, "closeSession", &_args213, &_result215)
   p.SetLastResponseMeta_(_meta214)
   if _err != nil {
     return
@@ -17000,12 +17282,12 @@ func (p *IClientRPCServiceClient) ExecuteBatchStatement(ctx context.Context, req
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteQueryStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args216 IClientRPCServiceExecuteQueryStatementArgs
+func (p *IClientRPCServiceClient) ExecuteStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args216 IClientRPCServiceExecuteStatementArgs
   _args216.Req = req
-  var _result218 IClientRPCServiceExecuteQueryStatementResult
+  var _result218 IClientRPCServiceExecuteStatementResult
   var _meta217 thrift.ResponseMeta
-  _meta217, _err = p.Client_().Call(ctx, "executeQueryStatement", &_args216, &_result218)
+  _meta217, _err = p.Client_().Call(ctx, "executeStatement", &_args216, &_result218)
   p.SetLastResponseMeta_(_meta217)
   if _err != nil {
     return
@@ -17015,12 +17297,12 @@ func (p *IClientRPCServiceClient) ExecuteQueryStatement(ctx context.Context, req
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteUpdateStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args219 IClientRPCServiceExecuteUpdateStatementArgs
+func (p *IClientRPCServiceClient) ExecuteBatchStatement(ctx context.Context, req *TSExecuteBatchStatementReq) (_r *common.TSStatus, _err error) {
+  var _args219 IClientRPCServiceExecuteBatchStatementArgs
   _args219.Req = req
-  var _result221 IClientRPCServiceExecuteUpdateStatementResult
+  var _result221 IClientRPCServiceExecuteBatchStatementResult
   var _meta220 thrift.ResponseMeta
-  _meta220, _err = p.Client_().Call(ctx, "executeUpdateStatement", &_args219, &_result221)
+  _meta220, _err = p.Client_().Call(ctx, "executeBatchStatement", &_args219, &_result221)
   p.SetLastResponseMeta_(_meta220)
   if _err != nil {
     return
@@ -17030,12 +17312,12 @@ func (p *IClientRPCServiceClient) ExecuteUpdateStatement(ctx context.Context, re
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) FetchResults(ctx context.Context, req *TSFetchResultsReq) (_r *TSFetchResultsResp, _err error) {
-  var _args222 IClientRPCServiceFetchResultsArgs
+func (p *IClientRPCServiceClient) ExecuteQueryStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args222 IClientRPCServiceExecuteQueryStatementArgs
   _args222.Req = req
-  var _result224 IClientRPCServiceFetchResultsResult
+  var _result224 IClientRPCServiceExecuteQueryStatementResult
   var _meta223 thrift.ResponseMeta
-  _meta223, _err = p.Client_().Call(ctx, "fetchResults", &_args222, &_result224)
+  _meta223, _err = p.Client_().Call(ctx, "executeQueryStatement", &_args222, &_result224)
   p.SetLastResponseMeta_(_meta223)
   if _err != nil {
     return
@@ -17045,12 +17327,12 @@ func (p *IClientRPCServiceClient) FetchResults(ctx context.Context, req *TSFetch
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) FetchMetadata(ctx context.Context, req *TSFetchMetadataReq) (_r *TSFetchMetadataResp, _err error) {
-  var _args225 IClientRPCServiceFetchMetadataArgs
+func (p *IClientRPCServiceClient) ExecuteUpdateStatement(ctx context.Context, req *TSExecuteStatementReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args225 IClientRPCServiceExecuteUpdateStatementArgs
   _args225.Req = req
-  var _result227 IClientRPCServiceFetchMetadataResult
+  var _result227 IClientRPCServiceExecuteUpdateStatementResult
   var _meta226 thrift.ResponseMeta
-  _meta226, _err = p.Client_().Call(ctx, "fetchMetadata", &_args225, &_result227)
+  _meta226, _err = p.Client_().Call(ctx, "executeUpdateStatement", &_args225, &_result227)
   p.SetLastResponseMeta_(_meta226)
   if _err != nil {
     return
@@ -17060,12 +17342,12 @@ func (p *IClientRPCServiceClient) FetchMetadata(ctx context.Context, req *TSFetc
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) CancelOperation(ctx context.Context, req *TSCancelOperationReq) (_r *common.TSStatus, _err error) {
-  var _args228 IClientRPCServiceCancelOperationArgs
+func (p *IClientRPCServiceClient) FetchResults(ctx context.Context, req *TSFetchResultsReq) (_r *TSFetchResultsResp, _err error) {
+  var _args228 IClientRPCServiceFetchResultsArgs
   _args228.Req = req
-  var _result230 IClientRPCServiceCancelOperationResult
+  var _result230 IClientRPCServiceFetchResultsResult
   var _meta229 thrift.ResponseMeta
-  _meta229, _err = p.Client_().Call(ctx, "cancelOperation", &_args228, &_result230)
+  _meta229, _err = p.Client_().Call(ctx, "fetchResults", &_args228, &_result230)
   p.SetLastResponseMeta_(_meta229)
   if _err != nil {
     return
@@ -17075,12 +17357,12 @@ func (p *IClientRPCServiceClient) CancelOperation(ctx context.Context, req *TSCa
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) CloseOperation(ctx context.Context, req *TSCloseOperationReq) (_r *common.TSStatus, _err error) {
-  var _args231 IClientRPCServiceCloseOperationArgs
+func (p *IClientRPCServiceClient) FetchMetadata(ctx context.Context, req *TSFetchMetadataReq) (_r *TSFetchMetadataResp, _err error) {
+  var _args231 IClientRPCServiceFetchMetadataArgs
   _args231.Req = req
-  var _result233 IClientRPCServiceCloseOperationResult
+  var _result233 IClientRPCServiceFetchMetadataResult
   var _meta232 thrift.ResponseMeta
-  _meta232, _err = p.Client_().Call(ctx, "closeOperation", &_args231, &_result233)
+  _meta232, _err = p.Client_().Call(ctx, "fetchMetadata", &_args231, &_result233)
   p.SetLastResponseMeta_(_meta232)
   if _err != nil {
     return
@@ -17089,13 +17371,13 @@ func (p *IClientRPCServiceClient) CloseOperation(ctx context.Context, req *TSClo
 }
 
 // Parameters:
-//  - SessionId
-func (p *IClientRPCServiceClient) GetTimeZone(ctx context.Context, sessionId int64) (_r *TSGetTimeZoneResp, _err error) {
-  var _args234 IClientRPCServiceGetTimeZoneArgs
-  _args234.SessionId = sessionId
-  var _result236 IClientRPCServiceGetTimeZoneResult
+//  - Req
+func (p *IClientRPCServiceClient) CancelOperation(ctx context.Context, req *TSCancelOperationReq) (_r *common.TSStatus, _err error) {
+  var _args234 IClientRPCServiceCancelOperationArgs
+  _args234.Req = req
+  var _result236 IClientRPCServiceCancelOperationResult
   var _meta235 thrift.ResponseMeta
-  _meta235, _err = p.Client_().Call(ctx, "getTimeZone", &_args234, &_result236)
+  _meta235, _err = p.Client_().Call(ctx, "cancelOperation", &_args234, &_result236)
   p.SetLastResponseMeta_(_meta235)
   if _err != nil {
     return
@@ -17105,12 +17387,12 @@ func (p *IClientRPCServiceClient) GetTimeZone(ctx context.Context, sessionId int
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) SetTimeZone(ctx context.Context, req *TSSetTimeZoneReq) (_r *common.TSStatus, _err error) {
-  var _args237 IClientRPCServiceSetTimeZoneArgs
+func (p *IClientRPCServiceClient) CloseOperation(ctx context.Context, req *TSCloseOperationReq) (_r *common.TSStatus, _err error) {
+  var _args237 IClientRPCServiceCloseOperationArgs
   _args237.Req = req
-  var _result239 IClientRPCServiceSetTimeZoneResult
+  var _result239 IClientRPCServiceCloseOperationResult
   var _meta238 thrift.ResponseMeta
-  _meta238, _err = p.Client_().Call(ctx, "setTimeZone", &_args237, &_result239)
+  _meta238, _err = p.Client_().Call(ctx, "closeOperation", &_args237, &_result239)
   p.SetLastResponseMeta_(_meta238)
   if _err != nil {
     return
@@ -17118,11 +17400,14 @@ func (p *IClientRPCServiceClient) SetTimeZone(ctx context.Context, req *TSSetTim
   return _result239.GetSuccess(), nil
 }
 
-func (p *IClientRPCServiceClient) GetProperties(ctx context.Context) (_r *ServerProperties, _err error) {
-  var _args240 IClientRPCServiceGetPropertiesArgs
-  var _result242 IClientRPCServiceGetPropertiesResult
+// Parameters:
+//  - SessionId
+func (p *IClientRPCServiceClient) GetTimeZone(ctx context.Context, sessionId int64) (_r *TSGetTimeZoneResp, _err error) {
+  var _args240 IClientRPCServiceGetTimeZoneArgs
+  _args240.SessionId = sessionId
+  var _result242 IClientRPCServiceGetTimeZoneResult
   var _meta241 thrift.ResponseMeta
-  _meta241, _err = p.Client_().Call(ctx, "getProperties", &_args240, &_result242)
+  _meta241, _err = p.Client_().Call(ctx, "getTimeZone", &_args240, &_result242)
   p.SetLastResponseMeta_(_meta241)
   if _err != nil {
     return
@@ -17131,15 +17416,13 @@ func (p *IClientRPCServiceClient) GetProperties(ctx context.Context) (_r *Server
 }
 
 // Parameters:
-//  - SessionId
-//  - StorageGroup
-func (p *IClientRPCServiceClient) SetStorageGroup(ctx context.Context, sessionId int64, storageGroup string) (_r *common.TSStatus, _err error) {
-  var _args243 IClientRPCServiceSetStorageGroupArgs
-  _args243.SessionId = sessionId
-  _args243.StorageGroup = storageGroup
-  var _result245 IClientRPCServiceSetStorageGroupResult
+//  - Req
+func (p *IClientRPCServiceClient) SetTimeZone(ctx context.Context, req *TSSetTimeZoneReq) (_r *common.TSStatus, _err error) {
+  var _args243 IClientRPCServiceSetTimeZoneArgs
+  _args243.Req = req
+  var _result245 IClientRPCServiceSetTimeZoneResult
   var _meta244 thrift.ResponseMeta
-  _meta244, _err = p.Client_().Call(ctx, "setStorageGroup", &_args243, &_result245)
+  _meta244, _err = p.Client_().Call(ctx, "setTimeZone", &_args243, &_result245)
   p.SetLastResponseMeta_(_meta244)
   if _err != nil {
     return
@@ -17147,14 +17430,11 @@ func (p *IClientRPCServiceClient) SetStorageGroup(ctx context.Context, sessionId
   return _result245.GetSuccess(), nil
 }
 
-// Parameters:
-//  - Req
-func (p *IClientRPCServiceClient) CreateTimeseries(ctx context.Context, req *TSCreateTimeseriesReq) (_r *common.TSStatus, _err error) {
-  var _args246 IClientRPCServiceCreateTimeseriesArgs
-  _args246.Req = req
-  var _result248 IClientRPCServiceCreateTimeseriesResult
+func (p *IClientRPCServiceClient) GetProperties(ctx context.Context) (_r *ServerProperties, _err error) {
+  var _args246 IClientRPCServiceGetPropertiesArgs
+  var _result248 IClientRPCServiceGetPropertiesResult
   var _meta247 thrift.ResponseMeta
-  _meta247, _err = p.Client_().Call(ctx, "createTimeseries", &_args246, &_result248)
+  _meta247, _err = p.Client_().Call(ctx, "getProperties", &_args246, &_result248)
   p.SetLastResponseMeta_(_meta247)
   if _err != nil {
     return
@@ -17163,13 +17443,15 @@ func (p *IClientRPCServiceClient) CreateTimeseries(ctx context.Context, req *TSC
 }
 
 // Parameters:
-//  - Req
-func (p *IClientRPCServiceClient) CreateAlignedTimeseries(ctx context.Context, req *TSCreateAlignedTimeseriesReq) (_r *common.TSStatus, _err error) {
-  var _args249 IClientRPCServiceCreateAlignedTimeseriesArgs
-  _args249.Req = req
-  var _result251 IClientRPCServiceCreateAlignedTimeseriesResult
+//  - SessionId
+//  - StorageGroup
+func (p *IClientRPCServiceClient) SetStorageGroup(ctx context.Context, sessionId int64, storageGroup string) (_r *common.TSStatus, _err error) {
+  var _args249 IClientRPCServiceSetStorageGroupArgs
+  _args249.SessionId = sessionId
+  _args249.StorageGroup = storageGroup
+  var _result251 IClientRPCServiceSetStorageGroupResult
   var _meta250 thrift.ResponseMeta
-  _meta250, _err = p.Client_().Call(ctx, "createAlignedTimeseries", &_args249, &_result251)
+  _meta250, _err = p.Client_().Call(ctx, "setStorageGroup", &_args249, &_result251)
   p.SetLastResponseMeta_(_meta250)
   if _err != nil {
     return
@@ -17179,12 +17461,12 @@ func (p *IClientRPCServiceClient) CreateAlignedTimeseries(ctx context.Context, r
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) CreateMultiTimeseries(ctx context.Context, req *TSCreateMultiTimeseriesReq) (_r *common.TSStatus, _err error) {
-  var _args252 IClientRPCServiceCreateMultiTimeseriesArgs
+func (p *IClientRPCServiceClient) CreateTimeseries(ctx context.Context, req *TSCreateTimeseriesReq) (_r *common.TSStatus, _err error) {
+  var _args252 IClientRPCServiceCreateTimeseriesArgs
   _args252.Req = req
-  var _result254 IClientRPCServiceCreateMultiTimeseriesResult
+  var _result254 IClientRPCServiceCreateTimeseriesResult
   var _meta253 thrift.ResponseMeta
-  _meta253, _err = p.Client_().Call(ctx, "createMultiTimeseries", &_args252, &_result254)
+  _meta253, _err = p.Client_().Call(ctx, "createTimeseries", &_args252, &_result254)
   p.SetLastResponseMeta_(_meta253)
   if _err != nil {
     return
@@ -17193,15 +17475,13 @@ func (p *IClientRPCServiceClient) CreateMultiTimeseries(ctx context.Context, req
 }
 
 // Parameters:
-//  - SessionId
-//  - Path
-func (p *IClientRPCServiceClient) DeleteTimeseries(ctx context.Context, sessionId int64, path []string) (_r *common.TSStatus, _err error) {
-  var _args255 IClientRPCServiceDeleteTimeseriesArgs
-  _args255.SessionId = sessionId
-  _args255.Path = path
-  var _result257 IClientRPCServiceDeleteTimeseriesResult
+//  - Req
+func (p *IClientRPCServiceClient) CreateAlignedTimeseries(ctx context.Context, req *TSCreateAlignedTimeseriesReq) (_r *common.TSStatus, _err error) {
+  var _args255 IClientRPCServiceCreateAlignedTimeseriesArgs
+  _args255.Req = req
+  var _result257 IClientRPCServiceCreateAlignedTimeseriesResult
   var _meta256 thrift.ResponseMeta
-  _meta256, _err = p.Client_().Call(ctx, "deleteTimeseries", &_args255, &_result257)
+  _meta256, _err = p.Client_().Call(ctx, "createAlignedTimeseries", &_args255, &_result257)
   p.SetLastResponseMeta_(_meta256)
   if _err != nil {
     return
@@ -17210,15 +17490,13 @@ func (p *IClientRPCServiceClient) DeleteTimeseries(ctx context.Context, sessionI
 }
 
 // Parameters:
-//  - SessionId
-//  - StorageGroup
-func (p *IClientRPCServiceClient) DeleteStorageGroups(ctx context.Context, sessionId int64, storageGroup []string) (_r *common.TSStatus, _err error) {
-  var _args258 IClientRPCServiceDeleteStorageGroupsArgs
-  _args258.SessionId = sessionId
-  _args258.StorageGroup = storageGroup
-  var _result260 IClientRPCServiceDeleteStorageGroupsResult
+//  - Req
+func (p *IClientRPCServiceClient) CreateMultiTimeseries(ctx context.Context, req *TSCreateMultiTimeseriesReq) (_r *common.TSStatus, _err error) {
+  var _args258 IClientRPCServiceCreateMultiTimeseriesArgs
+  _args258.Req = req
+  var _result260 IClientRPCServiceCreateMultiTimeseriesResult
   var _meta259 thrift.ResponseMeta
-  _meta259, _err = p.Client_().Call(ctx, "deleteStorageGroups", &_args258, &_result260)
+  _meta259, _err = p.Client_().Call(ctx, "createMultiTimeseries", &_args258, &_result260)
   p.SetLastResponseMeta_(_meta259)
   if _err != nil {
     return
@@ -17227,13 +17505,15 @@ func (p *IClientRPCServiceClient) DeleteStorageGroups(ctx context.Context, sessi
 }
 
 // Parameters:
-//  - Req
-func (p *IClientRPCServiceClient) InsertRecord(ctx context.Context, req *TSInsertRecordReq) (_r *common.TSStatus, _err error) {
-  var _args261 IClientRPCServiceInsertRecordArgs
-  _args261.Req = req
-  var _result263 IClientRPCServiceInsertRecordResult
+//  - SessionId
+//  - Path
+func (p *IClientRPCServiceClient) DeleteTimeseries(ctx context.Context, sessionId int64, path []string) (_r *common.TSStatus, _err error) {
+  var _args261 IClientRPCServiceDeleteTimeseriesArgs
+  _args261.SessionId = sessionId
+  _args261.Path = path
+  var _result263 IClientRPCServiceDeleteTimeseriesResult
   var _meta262 thrift.ResponseMeta
-  _meta262, _err = p.Client_().Call(ctx, "insertRecord", &_args261, &_result263)
+  _meta262, _err = p.Client_().Call(ctx, "deleteTimeseries", &_args261, &_result263)
   p.SetLastResponseMeta_(_meta262)
   if _err != nil {
     return
@@ -17242,13 +17522,15 @@ func (p *IClientRPCServiceClient) InsertRecord(ctx context.Context, req *TSInser
 }
 
 // Parameters:
-//  - Req
-func (p *IClientRPCServiceClient) InsertStringRecord(ctx context.Context, req *TSInsertStringRecordReq) (_r *common.TSStatus, _err error) {
-  var _args264 IClientRPCServiceInsertStringRecordArgs
-  _args264.Req = req
-  var _result266 IClientRPCServiceInsertStringRecordResult
+//  - SessionId
+//  - StorageGroup
+func (p *IClientRPCServiceClient) DeleteStorageGroups(ctx context.Context, sessionId int64, storageGroup []string) (_r *common.TSStatus, _err error) {
+  var _args264 IClientRPCServiceDeleteStorageGroupsArgs
+  _args264.SessionId = sessionId
+  _args264.StorageGroup = storageGroup
+  var _result266 IClientRPCServiceDeleteStorageGroupsResult
   var _meta265 thrift.ResponseMeta
-  _meta265, _err = p.Client_().Call(ctx, "insertStringRecord", &_args264, &_result266)
+  _meta265, _err = p.Client_().Call(ctx, "deleteStorageGroups", &_args264, &_result266)
   p.SetLastResponseMeta_(_meta265)
   if _err != nil {
     return
@@ -17258,12 +17540,12 @@ func (p *IClientRPCServiceClient) InsertStringRecord(ctx context.Context, req *T
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) InsertTablet(ctx context.Context, req *TSInsertTabletReq) (_r *common.TSStatus, _err error) {
-  var _args267 IClientRPCServiceInsertTabletArgs
+func (p *IClientRPCServiceClient) InsertRecord(ctx context.Context, req *TSInsertRecordReq) (_r *common.TSStatus, _err error) {
+  var _args267 IClientRPCServiceInsertRecordArgs
   _args267.Req = req
-  var _result269 IClientRPCServiceInsertTabletResult
+  var _result269 IClientRPCServiceInsertRecordResult
   var _meta268 thrift.ResponseMeta
-  _meta268, _err = p.Client_().Call(ctx, "insertTablet", &_args267, &_result269)
+  _meta268, _err = p.Client_().Call(ctx, "insertRecord", &_args267, &_result269)
   p.SetLastResponseMeta_(_meta268)
   if _err != nil {
     return
@@ -17273,12 +17555,12 @@ func (p *IClientRPCServiceClient) InsertTablet(ctx context.Context, req *TSInser
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) InsertTablets(ctx context.Context, req *TSInsertTabletsReq) (_r *common.TSStatus, _err error) {
-  var _args270 IClientRPCServiceInsertTabletsArgs
+func (p *IClientRPCServiceClient) InsertStringRecord(ctx context.Context, req *TSInsertStringRecordReq) (_r *common.TSStatus, _err error) {
+  var _args270 IClientRPCServiceInsertStringRecordArgs
   _args270.Req = req
-  var _result272 IClientRPCServiceInsertTabletsResult
+  var _result272 IClientRPCServiceInsertStringRecordResult
   var _meta271 thrift.ResponseMeta
-  _meta271, _err = p.Client_().Call(ctx, "insertTablets", &_args270, &_result272)
+  _meta271, _err = p.Client_().Call(ctx, "insertStringRecord", &_args270, &_result272)
   p.SetLastResponseMeta_(_meta271)
   if _err != nil {
     return
@@ -17288,12 +17570,12 @@ func (p *IClientRPCServiceClient) InsertTablets(ctx context.Context, req *TSInse
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) InsertRecords(ctx context.Context, req *TSInsertRecordsReq) (_r *common.TSStatus, _err error) {
-  var _args273 IClientRPCServiceInsertRecordsArgs
+func (p *IClientRPCServiceClient) InsertTablet(ctx context.Context, req *TSInsertTabletReq) (_r *common.TSStatus, _err error) {
+  var _args273 IClientRPCServiceInsertTabletArgs
   _args273.Req = req
-  var _result275 IClientRPCServiceInsertRecordsResult
+  var _result275 IClientRPCServiceInsertTabletResult
   var _meta274 thrift.ResponseMeta
-  _meta274, _err = p.Client_().Call(ctx, "insertRecords", &_args273, &_result275)
+  _meta274, _err = p.Client_().Call(ctx, "insertTablet", &_args273, &_result275)
   p.SetLastResponseMeta_(_meta274)
   if _err != nil {
     return
@@ -17303,12 +17585,12 @@ func (p *IClientRPCServiceClient) InsertRecords(ctx context.Context, req *TSInse
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) InsertRecordsOfOneDevice(ctx context.Context, req *TSInsertRecordsOfOneDeviceReq) (_r *common.TSStatus, _err error) {
-  var _args276 IClientRPCServiceInsertRecordsOfOneDeviceArgs
+func (p *IClientRPCServiceClient) InsertTablets(ctx context.Context, req *TSInsertTabletsReq) (_r *common.TSStatus, _err error) {
+  var _args276 IClientRPCServiceInsertTabletsArgs
   _args276.Req = req
-  var _result278 IClientRPCServiceInsertRecordsOfOneDeviceResult
+  var _result278 IClientRPCServiceInsertTabletsResult
   var _meta277 thrift.ResponseMeta
-  _meta277, _err = p.Client_().Call(ctx, "insertRecordsOfOneDevice", &_args276, &_result278)
+  _meta277, _err = p.Client_().Call(ctx, "insertTablets", &_args276, &_result278)
   p.SetLastResponseMeta_(_meta277)
   if _err != nil {
     return
@@ -17318,12 +17600,12 @@ func (p *IClientRPCServiceClient) InsertRecordsOfOneDevice(ctx context.Context, 
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) InsertStringRecordsOfOneDevice(ctx context.Context, req *TSInsertStringRecordsOfOneDeviceReq) (_r *common.TSStatus, _err error) {
-  var _args279 IClientRPCServiceInsertStringRecordsOfOneDeviceArgs
+func (p *IClientRPCServiceClient) InsertRecords(ctx context.Context, req *TSInsertRecordsReq) (_r *common.TSStatus, _err error) {
+  var _args279 IClientRPCServiceInsertRecordsArgs
   _args279.Req = req
-  var _result281 IClientRPCServiceInsertStringRecordsOfOneDeviceResult
+  var _result281 IClientRPCServiceInsertRecordsResult
   var _meta280 thrift.ResponseMeta
-  _meta280, _err = p.Client_().Call(ctx, "insertStringRecordsOfOneDevice", &_args279, &_result281)
+  _meta280, _err = p.Client_().Call(ctx, "insertRecords", &_args279, &_result281)
   p.SetLastResponseMeta_(_meta280)
   if _err != nil {
     return
@@ -17333,12 +17615,12 @@ func (p *IClientRPCServiceClient) InsertStringRecordsOfOneDevice(ctx context.Con
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) InsertStringRecords(ctx context.Context, req *TSInsertStringRecordsReq) (_r *common.TSStatus, _err error) {
-  var _args282 IClientRPCServiceInsertStringRecordsArgs
+func (p *IClientRPCServiceClient) FastInsertRecords(ctx context.Context, req *TSFastInsertRecordsReq) (_r *common.TSStatus, _err error) {
+  var _args282 IClientRPCServiceFastInsertRecordsArgs
   _args282.Req = req
-  var _result284 IClientRPCServiceInsertStringRecordsResult
+  var _result284 IClientRPCServiceFastInsertRecordsResult
   var _meta283 thrift.ResponseMeta
-  _meta283, _err = p.Client_().Call(ctx, "insertStringRecords", &_args282, &_result284)
+  _meta283, _err = p.Client_().Call(ctx, "fastInsertRecords", &_args282, &_result284)
   p.SetLastResponseMeta_(_meta283)
   if _err != nil {
     return
@@ -17348,12 +17630,12 @@ func (p *IClientRPCServiceClient) InsertStringRecords(ctx context.Context, req *
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) TestInsertTablet(ctx context.Context, req *TSInsertTabletReq) (_r *common.TSStatus, _err error) {
-  var _args285 IClientRPCServiceTestInsertTabletArgs
+func (p *IClientRPCServiceClient) InsertRecordsOfOneDevice(ctx context.Context, req *TSInsertRecordsOfOneDeviceReq) (_r *common.TSStatus, _err error) {
+  var _args285 IClientRPCServiceInsertRecordsOfOneDeviceArgs
   _args285.Req = req
-  var _result287 IClientRPCServiceTestInsertTabletResult
+  var _result287 IClientRPCServiceInsertRecordsOfOneDeviceResult
   var _meta286 thrift.ResponseMeta
-  _meta286, _err = p.Client_().Call(ctx, "testInsertTablet", &_args285, &_result287)
+  _meta286, _err = p.Client_().Call(ctx, "insertRecordsOfOneDevice", &_args285, &_result287)
   p.SetLastResponseMeta_(_meta286)
   if _err != nil {
     return
@@ -17363,12 +17645,12 @@ func (p *IClientRPCServiceClient) TestInsertTablet(ctx context.Context, req *TSI
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) TestInsertTablets(ctx context.Context, req *TSInsertTabletsReq) (_r *common.TSStatus, _err error) {
-  var _args288 IClientRPCServiceTestInsertTabletsArgs
+func (p *IClientRPCServiceClient) InsertStringRecordsOfOneDevice(ctx context.Context, req *TSInsertStringRecordsOfOneDeviceReq) (_r *common.TSStatus, _err error) {
+  var _args288 IClientRPCServiceInsertStringRecordsOfOneDeviceArgs
   _args288.Req = req
-  var _result290 IClientRPCServiceTestInsertTabletsResult
+  var _result290 IClientRPCServiceInsertStringRecordsOfOneDeviceResult
   var _meta289 thrift.ResponseMeta
-  _meta289, _err = p.Client_().Call(ctx, "testInsertTablets", &_args288, &_result290)
+  _meta289, _err = p.Client_().Call(ctx, "insertStringRecordsOfOneDevice", &_args288, &_result290)
   p.SetLastResponseMeta_(_meta289)
   if _err != nil {
     return
@@ -17378,12 +17660,12 @@ func (p *IClientRPCServiceClient) TestInsertTablets(ctx context.Context, req *TS
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) TestInsertRecord(ctx context.Context, req *TSInsertRecordReq) (_r *common.TSStatus, _err error) {
-  var _args291 IClientRPCServiceTestInsertRecordArgs
+func (p *IClientRPCServiceClient) InsertStringRecords(ctx context.Context, req *TSInsertStringRecordsReq) (_r *common.TSStatus, _err error) {
+  var _args291 IClientRPCServiceInsertStringRecordsArgs
   _args291.Req = req
-  var _result293 IClientRPCServiceTestInsertRecordResult
+  var _result293 IClientRPCServiceInsertStringRecordsResult
   var _meta292 thrift.ResponseMeta
-  _meta292, _err = p.Client_().Call(ctx, "testInsertRecord", &_args291, &_result293)
+  _meta292, _err = p.Client_().Call(ctx, "insertStringRecords", &_args291, &_result293)
   p.SetLastResponseMeta_(_meta292)
   if _err != nil {
     return
@@ -17393,12 +17675,12 @@ func (p *IClientRPCServiceClient) TestInsertRecord(ctx context.Context, req *TSI
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) TestInsertStringRecord(ctx context.Context, req *TSInsertStringRecordReq) (_r *common.TSStatus, _err error) {
-  var _args294 IClientRPCServiceTestInsertStringRecordArgs
+func (p *IClientRPCServiceClient) TestInsertTablet(ctx context.Context, req *TSInsertTabletReq) (_r *common.TSStatus, _err error) {
+  var _args294 IClientRPCServiceTestInsertTabletArgs
   _args294.Req = req
-  var _result296 IClientRPCServiceTestInsertStringRecordResult
+  var _result296 IClientRPCServiceTestInsertTabletResult
   var _meta295 thrift.ResponseMeta
-  _meta295, _err = p.Client_().Call(ctx, "testInsertStringRecord", &_args294, &_result296)
+  _meta295, _err = p.Client_().Call(ctx, "testInsertTablet", &_args294, &_result296)
   p.SetLastResponseMeta_(_meta295)
   if _err != nil {
     return
@@ -17408,12 +17690,12 @@ func (p *IClientRPCServiceClient) TestInsertStringRecord(ctx context.Context, re
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) TestInsertRecords(ctx context.Context, req *TSInsertRecordsReq) (_r *common.TSStatus, _err error) {
-  var _args297 IClientRPCServiceTestInsertRecordsArgs
+func (p *IClientRPCServiceClient) TestInsertTablets(ctx context.Context, req *TSInsertTabletsReq) (_r *common.TSStatus, _err error) {
+  var _args297 IClientRPCServiceTestInsertTabletsArgs
   _args297.Req = req
-  var _result299 IClientRPCServiceTestInsertRecordsResult
+  var _result299 IClientRPCServiceTestInsertTabletsResult
   var _meta298 thrift.ResponseMeta
-  _meta298, _err = p.Client_().Call(ctx, "testInsertRecords", &_args297, &_result299)
+  _meta298, _err = p.Client_().Call(ctx, "testInsertTablets", &_args297, &_result299)
   p.SetLastResponseMeta_(_meta298)
   if _err != nil {
     return
@@ -17423,12 +17705,12 @@ func (p *IClientRPCServiceClient) TestInsertRecords(ctx context.Context, req *TS
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) TestInsertRecordsOfOneDevice(ctx context.Context, req *TSInsertRecordsOfOneDeviceReq) (_r *common.TSStatus, _err error) {
-  var _args300 IClientRPCServiceTestInsertRecordsOfOneDeviceArgs
+func (p *IClientRPCServiceClient) TestInsertRecord(ctx context.Context, req *TSInsertRecordReq) (_r *common.TSStatus, _err error) {
+  var _args300 IClientRPCServiceTestInsertRecordArgs
   _args300.Req = req
-  var _result302 IClientRPCServiceTestInsertRecordsOfOneDeviceResult
+  var _result302 IClientRPCServiceTestInsertRecordResult
   var _meta301 thrift.ResponseMeta
-  _meta301, _err = p.Client_().Call(ctx, "testInsertRecordsOfOneDevice", &_args300, &_result302)
+  _meta301, _err = p.Client_().Call(ctx, "testInsertRecord", &_args300, &_result302)
   p.SetLastResponseMeta_(_meta301)
   if _err != nil {
     return
@@ -17438,12 +17720,12 @@ func (p *IClientRPCServiceClient) TestInsertRecordsOfOneDevice(ctx context.Conte
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) TestInsertStringRecords(ctx context.Context, req *TSInsertStringRecordsReq) (_r *common.TSStatus, _err error) {
-  var _args303 IClientRPCServiceTestInsertStringRecordsArgs
+func (p *IClientRPCServiceClient) TestInsertStringRecord(ctx context.Context, req *TSInsertStringRecordReq) (_r *common.TSStatus, _err error) {
+  var _args303 IClientRPCServiceTestInsertStringRecordArgs
   _args303.Req = req
-  var _result305 IClientRPCServiceTestInsertStringRecordsResult
+  var _result305 IClientRPCServiceTestInsertStringRecordResult
   var _meta304 thrift.ResponseMeta
-  _meta304, _err = p.Client_().Call(ctx, "testInsertStringRecords", &_args303, &_result305)
+  _meta304, _err = p.Client_().Call(ctx, "testInsertStringRecord", &_args303, &_result305)
   p.SetLastResponseMeta_(_meta304)
   if _err != nil {
     return
@@ -17453,12 +17735,12 @@ func (p *IClientRPCServiceClient) TestInsertStringRecords(ctx context.Context, r
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) DeleteData(ctx context.Context, req *TSDeleteDataReq) (_r *common.TSStatus, _err error) {
-  var _args306 IClientRPCServiceDeleteDataArgs
+func (p *IClientRPCServiceClient) TestInsertRecords(ctx context.Context, req *TSInsertRecordsReq) (_r *common.TSStatus, _err error) {
+  var _args306 IClientRPCServiceTestInsertRecordsArgs
   _args306.Req = req
-  var _result308 IClientRPCServiceDeleteDataResult
+  var _result308 IClientRPCServiceTestInsertRecordsResult
   var _meta307 thrift.ResponseMeta
-  _meta307, _err = p.Client_().Call(ctx, "deleteData", &_args306, &_result308)
+  _meta307, _err = p.Client_().Call(ctx, "testInsertRecords", &_args306, &_result308)
   p.SetLastResponseMeta_(_meta307)
   if _err != nil {
     return
@@ -17468,12 +17750,12 @@ func (p *IClientRPCServiceClient) DeleteData(ctx context.Context, req *TSDeleteD
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteRawDataQuery(ctx context.Context, req *TSRawDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args309 IClientRPCServiceExecuteRawDataQueryArgs
+func (p *IClientRPCServiceClient) TestInsertRecordsOfOneDevice(ctx context.Context, req *TSInsertRecordsOfOneDeviceReq) (_r *common.TSStatus, _err error) {
+  var _args309 IClientRPCServiceTestInsertRecordsOfOneDeviceArgs
   _args309.Req = req
-  var _result311 IClientRPCServiceExecuteRawDataQueryResult
+  var _result311 IClientRPCServiceTestInsertRecordsOfOneDeviceResult
   var _meta310 thrift.ResponseMeta
-  _meta310, _err = p.Client_().Call(ctx, "executeRawDataQuery", &_args309, &_result311)
+  _meta310, _err = p.Client_().Call(ctx, "testInsertRecordsOfOneDevice", &_args309, &_result311)
   p.SetLastResponseMeta_(_meta310)
   if _err != nil {
     return
@@ -17483,12 +17765,12 @@ func (p *IClientRPCServiceClient) ExecuteRawDataQuery(ctx context.Context, req *
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteLastDataQuery(ctx context.Context, req *TSLastDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args312 IClientRPCServiceExecuteLastDataQueryArgs
+func (p *IClientRPCServiceClient) TestInsertStringRecords(ctx context.Context, req *TSInsertStringRecordsReq) (_r *common.TSStatus, _err error) {
+  var _args312 IClientRPCServiceTestInsertStringRecordsArgs
   _args312.Req = req
-  var _result314 IClientRPCServiceExecuteLastDataQueryResult
+  var _result314 IClientRPCServiceTestInsertStringRecordsResult
   var _meta313 thrift.ResponseMeta
-  _meta313, _err = p.Client_().Call(ctx, "executeLastDataQuery", &_args312, &_result314)
+  _meta313, _err = p.Client_().Call(ctx, "testInsertStringRecords", &_args312, &_result314)
   p.SetLastResponseMeta_(_meta313)
   if _err != nil {
     return
@@ -17498,12 +17780,12 @@ func (p *IClientRPCServiceClient) ExecuteLastDataQuery(ctx context.Context, req 
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) ExecuteAggregationQuery(ctx context.Context, req *TSAggregationQueryReq) (_r *TSExecuteStatementResp, _err error) {
-  var _args315 IClientRPCServiceExecuteAggregationQueryArgs
+func (p *IClientRPCServiceClient) DeleteData(ctx context.Context, req *TSDeleteDataReq) (_r *common.TSStatus, _err error) {
+  var _args315 IClientRPCServiceDeleteDataArgs
   _args315.Req = req
-  var _result317 IClientRPCServiceExecuteAggregationQueryResult
+  var _result317 IClientRPCServiceDeleteDataResult
   var _meta316 thrift.ResponseMeta
-  _meta316, _err = p.Client_().Call(ctx, "executeAggregationQuery", &_args315, &_result317)
+  _meta316, _err = p.Client_().Call(ctx, "deleteData", &_args315, &_result317)
   p.SetLastResponseMeta_(_meta316)
   if _err != nil {
     return
@@ -17512,13 +17794,13 @@ func (p *IClientRPCServiceClient) ExecuteAggregationQuery(ctx context.Context, r
 }
 
 // Parameters:
-//  - SessionId
-func (p *IClientRPCServiceClient) RequestStatementId(ctx context.Context, sessionId int64) (_r int64, _err error) {
-  var _args318 IClientRPCServiceRequestStatementIdArgs
-  _args318.SessionId = sessionId
-  var _result320 IClientRPCServiceRequestStatementIdResult
+//  - Req
+func (p *IClientRPCServiceClient) ExecuteRawDataQuery(ctx context.Context, req *TSRawDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args318 IClientRPCServiceExecuteRawDataQueryArgs
+  _args318.Req = req
+  var _result320 IClientRPCServiceExecuteRawDataQueryResult
   var _meta319 thrift.ResponseMeta
-  _meta319, _err = p.Client_().Call(ctx, "requestStatementId", &_args318, &_result320)
+  _meta319, _err = p.Client_().Call(ctx, "executeRawDataQuery", &_args318, &_result320)
   p.SetLastResponseMeta_(_meta319)
   if _err != nil {
     return
@@ -17528,12 +17810,12 @@ func (p *IClientRPCServiceClient) RequestStatementId(ctx context.Context, sessio
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) CreateSchemaTemplate(ctx context.Context, req *TSCreateSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args321 IClientRPCServiceCreateSchemaTemplateArgs
+func (p *IClientRPCServiceClient) ExecuteLastDataQuery(ctx context.Context, req *TSLastDataQueryReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args321 IClientRPCServiceExecuteLastDataQueryArgs
   _args321.Req = req
-  var _result323 IClientRPCServiceCreateSchemaTemplateResult
+  var _result323 IClientRPCServiceExecuteLastDataQueryResult
   var _meta322 thrift.ResponseMeta
-  _meta322, _err = p.Client_().Call(ctx, "createSchemaTemplate", &_args321, &_result323)
+  _meta322, _err = p.Client_().Call(ctx, "executeLastDataQuery", &_args321, &_result323)
   p.SetLastResponseMeta_(_meta322)
   if _err != nil {
     return
@@ -17543,12 +17825,12 @@ func (p *IClientRPCServiceClient) CreateSchemaTemplate(ctx context.Context, req 
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) AppendSchemaTemplate(ctx context.Context, req *TSAppendSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args324 IClientRPCServiceAppendSchemaTemplateArgs
+func (p *IClientRPCServiceClient) ExecuteAggregationQuery(ctx context.Context, req *TSAggregationQueryReq) (_r *TSExecuteStatementResp, _err error) {
+  var _args324 IClientRPCServiceExecuteAggregationQueryArgs
   _args324.Req = req
-  var _result326 IClientRPCServiceAppendSchemaTemplateResult
+  var _result326 IClientRPCServiceExecuteAggregationQueryResult
   var _meta325 thrift.ResponseMeta
-  _meta325, _err = p.Client_().Call(ctx, "appendSchemaTemplate", &_args324, &_result326)
+  _meta325, _err = p.Client_().Call(ctx, "executeAggregationQuery", &_args324, &_result326)
   p.SetLastResponseMeta_(_meta325)
   if _err != nil {
     return
@@ -17557,13 +17839,13 @@ func (p *IClientRPCServiceClient) AppendSchemaTemplate(ctx context.Context, req 
 }
 
 // Parameters:
-//  - Req
-func (p *IClientRPCServiceClient) PruneSchemaTemplate(ctx context.Context, req *TSPruneSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args327 IClientRPCServicePruneSchemaTemplateArgs
-  _args327.Req = req
-  var _result329 IClientRPCServicePruneSchemaTemplateResult
+//  - SessionId
+func (p *IClientRPCServiceClient) RequestStatementId(ctx context.Context, sessionId int64) (_r int64, _err error) {
+  var _args327 IClientRPCServiceRequestStatementIdArgs
+  _args327.SessionId = sessionId
+  var _result329 IClientRPCServiceRequestStatementIdResult
   var _meta328 thrift.ResponseMeta
-  _meta328, _err = p.Client_().Call(ctx, "pruneSchemaTemplate", &_args327, &_result329)
+  _meta328, _err = p.Client_().Call(ctx, "requestStatementId", &_args327, &_result329)
   p.SetLastResponseMeta_(_meta328)
   if _err != nil {
     return
@@ -17573,12 +17855,12 @@ func (p *IClientRPCServiceClient) PruneSchemaTemplate(ctx context.Context, req *
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) QuerySchemaTemplate(ctx context.Context, req *TSQueryTemplateReq) (_r *TSQueryTemplateResp, _err error) {
-  var _args330 IClientRPCServiceQuerySchemaTemplateArgs
+func (p *IClientRPCServiceClient) CreateSchemaTemplate(ctx context.Context, req *TSCreateSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args330 IClientRPCServiceCreateSchemaTemplateArgs
   _args330.Req = req
-  var _result332 IClientRPCServiceQuerySchemaTemplateResult
+  var _result332 IClientRPCServiceCreateSchemaTemplateResult
   var _meta331 thrift.ResponseMeta
-  _meta331, _err = p.Client_().Call(ctx, "querySchemaTemplate", &_args330, &_result332)
+  _meta331, _err = p.Client_().Call(ctx, "createSchemaTemplate", &_args330, &_result332)
   p.SetLastResponseMeta_(_meta331)
   if _err != nil {
     return
@@ -17588,12 +17870,12 @@ func (p *IClientRPCServiceClient) QuerySchemaTemplate(ctx context.Context, req *
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) SetSchemaTemplate(ctx context.Context, req *TSSetSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args333 IClientRPCServiceSetSchemaTemplateArgs
+func (p *IClientRPCServiceClient) AppendSchemaTemplate(ctx context.Context, req *TSAppendSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args333 IClientRPCServiceAppendSchemaTemplateArgs
   _args333.Req = req
-  var _result335 IClientRPCServiceSetSchemaTemplateResult
+  var _result335 IClientRPCServiceAppendSchemaTemplateResult
   var _meta334 thrift.ResponseMeta
-  _meta334, _err = p.Client_().Call(ctx, "setSchemaTemplate", &_args333, &_result335)
+  _meta334, _err = p.Client_().Call(ctx, "appendSchemaTemplate", &_args333, &_result335)
   p.SetLastResponseMeta_(_meta334)
   if _err != nil {
     return
@@ -17603,12 +17885,12 @@ func (p *IClientRPCServiceClient) SetSchemaTemplate(ctx context.Context, req *TS
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) UnsetSchemaTemplate(ctx context.Context, req *TSUnsetSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args336 IClientRPCServiceUnsetSchemaTemplateArgs
+func (p *IClientRPCServiceClient) PruneSchemaTemplate(ctx context.Context, req *TSPruneSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args336 IClientRPCServicePruneSchemaTemplateArgs
   _args336.Req = req
-  var _result338 IClientRPCServiceUnsetSchemaTemplateResult
+  var _result338 IClientRPCServicePruneSchemaTemplateResult
   var _meta337 thrift.ResponseMeta
-  _meta337, _err = p.Client_().Call(ctx, "unsetSchemaTemplate", &_args336, &_result338)
+  _meta337, _err = p.Client_().Call(ctx, "pruneSchemaTemplate", &_args336, &_result338)
   p.SetLastResponseMeta_(_meta337)
   if _err != nil {
     return
@@ -17618,12 +17900,12 @@ func (p *IClientRPCServiceClient) UnsetSchemaTemplate(ctx context.Context, req *
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) DropSchemaTemplate(ctx context.Context, req *TSDropSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args339 IClientRPCServiceDropSchemaTemplateArgs
+func (p *IClientRPCServiceClient) QuerySchemaTemplate(ctx context.Context, req *TSQueryTemplateReq) (_r *TSQueryTemplateResp, _err error) {
+  var _args339 IClientRPCServiceQuerySchemaTemplateArgs
   _args339.Req = req
-  var _result341 IClientRPCServiceDropSchemaTemplateResult
+  var _result341 IClientRPCServiceQuerySchemaTemplateResult
   var _meta340 thrift.ResponseMeta
-  _meta340, _err = p.Client_().Call(ctx, "dropSchemaTemplate", &_args339, &_result341)
+  _meta340, _err = p.Client_().Call(ctx, "querySchemaTemplate", &_args339, &_result341)
   p.SetLastResponseMeta_(_meta340)
   if _err != nil {
     return
@@ -17633,12 +17915,12 @@ func (p *IClientRPCServiceClient) DropSchemaTemplate(ctx context.Context, req *T
 
 // Parameters:
 //  - Req
-func (p *IClientRPCServiceClient) CreateTimeseriesUsingSchemaTemplate(ctx context.Context, req *TCreateTimeseriesUsingSchemaTemplateReq) (_r *common.TSStatus, _err error) {
-  var _args342 IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs
+func (p *IClientRPCServiceClient) SetSchemaTemplate(ctx context.Context, req *TSSetSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args342 IClientRPCServiceSetSchemaTemplateArgs
   _args342.Req = req
-  var _result344 IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult
+  var _result344 IClientRPCServiceSetSchemaTemplateResult
   var _meta343 thrift.ResponseMeta
-  _meta343, _err = p.Client_().Call(ctx, "createTimeseriesUsingSchemaTemplate", &_args342, &_result344)
+  _meta343, _err = p.Client_().Call(ctx, "setSchemaTemplate", &_args342, &_result344)
   p.SetLastResponseMeta_(_meta343)
   if _err != nil {
     return
@@ -17647,13 +17929,13 @@ func (p *IClientRPCServiceClient) CreateTimeseriesUsingSchemaTemplate(ctx contex
 }
 
 // Parameters:
-//  - Info
-func (p *IClientRPCServiceClient) Handshake(ctx context.Context, info *TSyncIdentityInfo) (_r *common.TSStatus, _err error) {
-  var _args345 IClientRPCServiceHandshakeArgs
-  _args345.Info = info
-  var _result347 IClientRPCServiceHandshakeResult
+//  - Req
+func (p *IClientRPCServiceClient) UnsetSchemaTemplate(ctx context.Context, req *TSUnsetSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args345 IClientRPCServiceUnsetSchemaTemplateArgs
+  _args345.Req = req
+  var _result347 IClientRPCServiceUnsetSchemaTemplateResult
   var _meta346 thrift.ResponseMeta
-  _meta346, _err = p.Client_().Call(ctx, "handshake", &_args345, &_result347)
+  _meta346, _err = p.Client_().Call(ctx, "unsetSchemaTemplate", &_args345, &_result347)
   p.SetLastResponseMeta_(_meta346)
   if _err != nil {
     return
@@ -17662,13 +17944,13 @@ func (p *IClientRPCServiceClient) Handshake(ctx context.Context, info *TSyncIden
 }
 
 // Parameters:
-//  - Buff
-func (p *IClientRPCServiceClient) SendPipeData(ctx context.Context, buff []byte) (_r *common.TSStatus, _err error) {
-  var _args348 IClientRPCServiceSendPipeDataArgs
-  _args348.Buff = buff
-  var _result350 IClientRPCServiceSendPipeDataResult
+//  - Req
+func (p *IClientRPCServiceClient) DropSchemaTemplate(ctx context.Context, req *TSDropSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args348 IClientRPCServiceDropSchemaTemplateArgs
+  _args348.Req = req
+  var _result350 IClientRPCServiceDropSchemaTemplateResult
   var _meta349 thrift.ResponseMeta
-  _meta349, _err = p.Client_().Call(ctx, "sendPipeData", &_args348, &_result350)
+  _meta349, _err = p.Client_().Call(ctx, "dropSchemaTemplate", &_args348, &_result350)
   p.SetLastResponseMeta_(_meta349)
   if _err != nil {
     return
@@ -17677,15 +17959,13 @@ func (p *IClientRPCServiceClient) SendPipeData(ctx context.Context, buff []byte)
 }
 
 // Parameters:
-//  - MetaInfo
-//  - Buff
-func (p *IClientRPCServiceClient) SendFile(ctx context.Context, metaInfo *TSyncTransportMetaInfo, buff []byte) (_r *common.TSStatus, _err error) {
-  var _args351 IClientRPCServiceSendFileArgs
-  _args351.MetaInfo = metaInfo
-  _args351.Buff = buff
-  var _result353 IClientRPCServiceSendFileResult
+//  - Req
+func (p *IClientRPCServiceClient) CreateTimeseriesUsingSchemaTemplate(ctx context.Context, req *TCreateTimeseriesUsingSchemaTemplateReq) (_r *common.TSStatus, _err error) {
+  var _args351 IClientRPCServiceCreateTimeseriesUsingSchemaTemplateArgs
+  _args351.Req = req
+  var _result353 IClientRPCServiceCreateTimeseriesUsingSchemaTemplateResult
   var _meta352 thrift.ResponseMeta
-  _meta352, _err = p.Client_().Call(ctx, "sendFile", &_args351, &_result353)
+  _meta352, _err = p.Client_().Call(ctx, "createTimeseriesUsingSchemaTemplate", &_args351, &_result353)
   p.SetLastResponseMeta_(_meta352)
   if _err != nil {
     return
@@ -17693,11 +17973,14 @@ func (p *IClientRPCServiceClient) SendFile(ctx context.Context, metaInfo *TSyncT
   return _result353.GetSuccess(), nil
 }
 
-func (p *IClientRPCServiceClient) GetBackupConfiguration(ctx context.Context) (_r *TSBackupConfigurationResp, _err error) {
-  var _args354 IClientRPCServiceGetBackupConfigurationArgs
-  var _result356 IClientRPCServiceGetBackupConfigurationResult
+// Parameters:
+//  - Info
+func (p *IClientRPCServiceClient) Handshake(ctx context.Context, info *TSyncIdentityInfo) (_r *common.TSStatus, _err error) {
+  var _args354 IClientRPCServiceHandshakeArgs
+  _args354.Info = info
+  var _result356 IClientRPCServiceHandshakeResult
   var _meta355 thrift.ResponseMeta
-  _meta355, _err = p.Client_().Call(ctx, "getBackupConfiguration", &_args354, &_result356)
+  _meta355, _err = p.Client_().Call(ctx, "handshake", &_args354, &_result356)
   p.SetLastResponseMeta_(_meta355)
   if _err != nil {
     return
@@ -17705,16 +17988,60 @@ func (p *IClientRPCServiceClient) GetBackupConfiguration(ctx context.Context) (_
   return _result356.GetSuccess(), nil
 }
 
-func (p *IClientRPCServiceClient) FetchAllConnectionsInfo(ctx context.Context) (_r *TSConnectionInfoResp, _err error) {
-  var _args357 IClientRPCServiceFetchAllConnectionsInfoArgs
-  var _result359 IClientRPCServiceFetchAllConnectionsInfoResult
+// Parameters:
+//  - Buff
+func (p *IClientRPCServiceClient) SendPipeData(ctx context.Context, buff []byte) (_r *common.TSStatus, _err error) {
+  var _args357 IClientRPCServiceSendPipeDataArgs
+  _args357.Buff = buff
+  var _result359 IClientRPCServiceSendPipeDataResult
   var _meta358 thrift.ResponseMeta
-  _meta358, _err = p.Client_().Call(ctx, "fetchAllConnectionsInfo", &_args357, &_result359)
+  _meta358, _err = p.Client_().Call(ctx, "sendPipeData", &_args357, &_result359)
   p.SetLastResponseMeta_(_meta358)
   if _err != nil {
     return
   }
   return _result359.GetSuccess(), nil
+}
+
+// Parameters:
+//  - MetaInfo
+//  - Buff
+func (p *IClientRPCServiceClient) SendFile(ctx context.Context, metaInfo *TSyncTransportMetaInfo, buff []byte) (_r *common.TSStatus, _err error) {
+  var _args360 IClientRPCServiceSendFileArgs
+  _args360.MetaInfo = metaInfo
+  _args360.Buff = buff
+  var _result362 IClientRPCServiceSendFileResult
+  var _meta361 thrift.ResponseMeta
+  _meta361, _err = p.Client_().Call(ctx, "sendFile", &_args360, &_result362)
+  p.SetLastResponseMeta_(_meta361)
+  if _err != nil {
+    return
+  }
+  return _result362.GetSuccess(), nil
+}
+
+func (p *IClientRPCServiceClient) GetBackupConfiguration(ctx context.Context) (_r *TSBackupConfigurationResp, _err error) {
+  var _args363 IClientRPCServiceGetBackupConfigurationArgs
+  var _result365 IClientRPCServiceGetBackupConfigurationResult
+  var _meta364 thrift.ResponseMeta
+  _meta364, _err = p.Client_().Call(ctx, "getBackupConfiguration", &_args363, &_result365)
+  p.SetLastResponseMeta_(_meta364)
+  if _err != nil {
+    return
+  }
+  return _result365.GetSuccess(), nil
+}
+
+func (p *IClientRPCServiceClient) FetchAllConnectionsInfo(ctx context.Context) (_r *TSConnectionInfoResp, _err error) {
+  var _args366 IClientRPCServiceFetchAllConnectionsInfoArgs
+  var _result368 IClientRPCServiceFetchAllConnectionsInfoResult
+  var _meta367 thrift.ResponseMeta
+  _meta367, _err = p.Client_().Call(ctx, "fetchAllConnectionsInfo", &_args366, &_result368)
+  p.SetLastResponseMeta_(_meta367)
+  if _err != nil {
+    return
+  }
+  return _result368.GetSuccess(), nil
 }
 
 type IClientRPCServiceProcessor struct {
@@ -17737,67 +18064,68 @@ func (p *IClientRPCServiceProcessor) ProcessorMap() map[string]thrift.TProcessor
 
 func NewIClientRPCServiceProcessor(handler IClientRPCService) *IClientRPCServiceProcessor {
 
-  self360 := &IClientRPCServiceProcessor{handler:handler, processorMap:make(map[string]thrift.TProcessorFunction)}
-  self360.processorMap["executeQueryStatementV2"] = &iClientRPCServiceProcessorExecuteQueryStatementV2{handler:handler}
-  self360.processorMap["executeUpdateStatementV2"] = &iClientRPCServiceProcessorExecuteUpdateStatementV2{handler:handler}
-  self360.processorMap["executeStatementV2"] = &iClientRPCServiceProcessorExecuteStatementV2{handler:handler}
-  self360.processorMap["executeRawDataQueryV2"] = &iClientRPCServiceProcessorExecuteRawDataQueryV2{handler:handler}
-  self360.processorMap["executeLastDataQueryV2"] = &iClientRPCServiceProcessorExecuteLastDataQueryV2{handler:handler}
-  self360.processorMap["executeAggregationQueryV2"] = &iClientRPCServiceProcessorExecuteAggregationQueryV2{handler:handler}
-  self360.processorMap["fetchResultsV2"] = &iClientRPCServiceProcessorFetchResultsV2{handler:handler}
-  self360.processorMap["openSession"] = &iClientRPCServiceProcessorOpenSession{handler:handler}
-  self360.processorMap["closeSession"] = &iClientRPCServiceProcessorCloseSession{handler:handler}
-  self360.processorMap["executeStatement"] = &iClientRPCServiceProcessorExecuteStatement{handler:handler}
-  self360.processorMap["executeBatchStatement"] = &iClientRPCServiceProcessorExecuteBatchStatement{handler:handler}
-  self360.processorMap["executeQueryStatement"] = &iClientRPCServiceProcessorExecuteQueryStatement{handler:handler}
-  self360.processorMap["executeUpdateStatement"] = &iClientRPCServiceProcessorExecuteUpdateStatement{handler:handler}
-  self360.processorMap["fetchResults"] = &iClientRPCServiceProcessorFetchResults{handler:handler}
-  self360.processorMap["fetchMetadata"] = &iClientRPCServiceProcessorFetchMetadata{handler:handler}
-  self360.processorMap["cancelOperation"] = &iClientRPCServiceProcessorCancelOperation{handler:handler}
-  self360.processorMap["closeOperation"] = &iClientRPCServiceProcessorCloseOperation{handler:handler}
-  self360.processorMap["getTimeZone"] = &iClientRPCServiceProcessorGetTimeZone{handler:handler}
-  self360.processorMap["setTimeZone"] = &iClientRPCServiceProcessorSetTimeZone{handler:handler}
-  self360.processorMap["getProperties"] = &iClientRPCServiceProcessorGetProperties{handler:handler}
-  self360.processorMap["setStorageGroup"] = &iClientRPCServiceProcessorSetStorageGroup{handler:handler}
-  self360.processorMap["createTimeseries"] = &iClientRPCServiceProcessorCreateTimeseries{handler:handler}
-  self360.processorMap["createAlignedTimeseries"] = &iClientRPCServiceProcessorCreateAlignedTimeseries{handler:handler}
-  self360.processorMap["createMultiTimeseries"] = &iClientRPCServiceProcessorCreateMultiTimeseries{handler:handler}
-  self360.processorMap["deleteTimeseries"] = &iClientRPCServiceProcessorDeleteTimeseries{handler:handler}
-  self360.processorMap["deleteStorageGroups"] = &iClientRPCServiceProcessorDeleteStorageGroups{handler:handler}
-  self360.processorMap["insertRecord"] = &iClientRPCServiceProcessorInsertRecord{handler:handler}
-  self360.processorMap["insertStringRecord"] = &iClientRPCServiceProcessorInsertStringRecord{handler:handler}
-  self360.processorMap["insertTablet"] = &iClientRPCServiceProcessorInsertTablet{handler:handler}
-  self360.processorMap["insertTablets"] = &iClientRPCServiceProcessorInsertTablets{handler:handler}
-  self360.processorMap["insertRecords"] = &iClientRPCServiceProcessorInsertRecords{handler:handler}
-  self360.processorMap["insertRecordsOfOneDevice"] = &iClientRPCServiceProcessorInsertRecordsOfOneDevice{handler:handler}
-  self360.processorMap["insertStringRecordsOfOneDevice"] = &iClientRPCServiceProcessorInsertStringRecordsOfOneDevice{handler:handler}
-  self360.processorMap["insertStringRecords"] = &iClientRPCServiceProcessorInsertStringRecords{handler:handler}
-  self360.processorMap["testInsertTablet"] = &iClientRPCServiceProcessorTestInsertTablet{handler:handler}
-  self360.processorMap["testInsertTablets"] = &iClientRPCServiceProcessorTestInsertTablets{handler:handler}
-  self360.processorMap["testInsertRecord"] = &iClientRPCServiceProcessorTestInsertRecord{handler:handler}
-  self360.processorMap["testInsertStringRecord"] = &iClientRPCServiceProcessorTestInsertStringRecord{handler:handler}
-  self360.processorMap["testInsertRecords"] = &iClientRPCServiceProcessorTestInsertRecords{handler:handler}
-  self360.processorMap["testInsertRecordsOfOneDevice"] = &iClientRPCServiceProcessorTestInsertRecordsOfOneDevice{handler:handler}
-  self360.processorMap["testInsertStringRecords"] = &iClientRPCServiceProcessorTestInsertStringRecords{handler:handler}
-  self360.processorMap["deleteData"] = &iClientRPCServiceProcessorDeleteData{handler:handler}
-  self360.processorMap["executeRawDataQuery"] = &iClientRPCServiceProcessorExecuteRawDataQuery{handler:handler}
-  self360.processorMap["executeLastDataQuery"] = &iClientRPCServiceProcessorExecuteLastDataQuery{handler:handler}
-  self360.processorMap["executeAggregationQuery"] = &iClientRPCServiceProcessorExecuteAggregationQuery{handler:handler}
-  self360.processorMap["requestStatementId"] = &iClientRPCServiceProcessorRequestStatementId{handler:handler}
-  self360.processorMap["createSchemaTemplate"] = &iClientRPCServiceProcessorCreateSchemaTemplate{handler:handler}
-  self360.processorMap["appendSchemaTemplate"] = &iClientRPCServiceProcessorAppendSchemaTemplate{handler:handler}
-  self360.processorMap["pruneSchemaTemplate"] = &iClientRPCServiceProcessorPruneSchemaTemplate{handler:handler}
-  self360.processorMap["querySchemaTemplate"] = &iClientRPCServiceProcessorQuerySchemaTemplate{handler:handler}
-  self360.processorMap["setSchemaTemplate"] = &iClientRPCServiceProcessorSetSchemaTemplate{handler:handler}
-  self360.processorMap["unsetSchemaTemplate"] = &iClientRPCServiceProcessorUnsetSchemaTemplate{handler:handler}
-  self360.processorMap["dropSchemaTemplate"] = &iClientRPCServiceProcessorDropSchemaTemplate{handler:handler}
-  self360.processorMap["createTimeseriesUsingSchemaTemplate"] = &iClientRPCServiceProcessorCreateTimeseriesUsingSchemaTemplate{handler:handler}
-  self360.processorMap["handshake"] = &iClientRPCServiceProcessorHandshake{handler:handler}
-  self360.processorMap["sendPipeData"] = &iClientRPCServiceProcessorSendPipeData{handler:handler}
-  self360.processorMap["sendFile"] = &iClientRPCServiceProcessorSendFile{handler:handler}
-  self360.processorMap["getBackupConfiguration"] = &iClientRPCServiceProcessorGetBackupConfiguration{handler:handler}
-  self360.processorMap["fetchAllConnectionsInfo"] = &iClientRPCServiceProcessorFetchAllConnectionsInfo{handler:handler}
-return self360
+  self369 := &IClientRPCServiceProcessor{handler:handler, processorMap:make(map[string]thrift.TProcessorFunction)}
+  self369.processorMap["executeQueryStatementV2"] = &iClientRPCServiceProcessorExecuteQueryStatementV2{handler:handler}
+  self369.processorMap["executeUpdateStatementV2"] = &iClientRPCServiceProcessorExecuteUpdateStatementV2{handler:handler}
+  self369.processorMap["executeStatementV2"] = &iClientRPCServiceProcessorExecuteStatementV2{handler:handler}
+  self369.processorMap["executeRawDataQueryV2"] = &iClientRPCServiceProcessorExecuteRawDataQueryV2{handler:handler}
+  self369.processorMap["executeLastDataQueryV2"] = &iClientRPCServiceProcessorExecuteLastDataQueryV2{handler:handler}
+  self369.processorMap["executeAggregationQueryV2"] = &iClientRPCServiceProcessorExecuteAggregationQueryV2{handler:handler}
+  self369.processorMap["fetchResultsV2"] = &iClientRPCServiceProcessorFetchResultsV2{handler:handler}
+  self369.processorMap["openSession"] = &iClientRPCServiceProcessorOpenSession{handler:handler}
+  self369.processorMap["closeSession"] = &iClientRPCServiceProcessorCloseSession{handler:handler}
+  self369.processorMap["executeStatement"] = &iClientRPCServiceProcessorExecuteStatement{handler:handler}
+  self369.processorMap["executeBatchStatement"] = &iClientRPCServiceProcessorExecuteBatchStatement{handler:handler}
+  self369.processorMap["executeQueryStatement"] = &iClientRPCServiceProcessorExecuteQueryStatement{handler:handler}
+  self369.processorMap["executeUpdateStatement"] = &iClientRPCServiceProcessorExecuteUpdateStatement{handler:handler}
+  self369.processorMap["fetchResults"] = &iClientRPCServiceProcessorFetchResults{handler:handler}
+  self369.processorMap["fetchMetadata"] = &iClientRPCServiceProcessorFetchMetadata{handler:handler}
+  self369.processorMap["cancelOperation"] = &iClientRPCServiceProcessorCancelOperation{handler:handler}
+  self369.processorMap["closeOperation"] = &iClientRPCServiceProcessorCloseOperation{handler:handler}
+  self369.processorMap["getTimeZone"] = &iClientRPCServiceProcessorGetTimeZone{handler:handler}
+  self369.processorMap["setTimeZone"] = &iClientRPCServiceProcessorSetTimeZone{handler:handler}
+  self369.processorMap["getProperties"] = &iClientRPCServiceProcessorGetProperties{handler:handler}
+  self369.processorMap["setStorageGroup"] = &iClientRPCServiceProcessorSetStorageGroup{handler:handler}
+  self369.processorMap["createTimeseries"] = &iClientRPCServiceProcessorCreateTimeseries{handler:handler}
+  self369.processorMap["createAlignedTimeseries"] = &iClientRPCServiceProcessorCreateAlignedTimeseries{handler:handler}
+  self369.processorMap["createMultiTimeseries"] = &iClientRPCServiceProcessorCreateMultiTimeseries{handler:handler}
+  self369.processorMap["deleteTimeseries"] = &iClientRPCServiceProcessorDeleteTimeseries{handler:handler}
+  self369.processorMap["deleteStorageGroups"] = &iClientRPCServiceProcessorDeleteStorageGroups{handler:handler}
+  self369.processorMap["insertRecord"] = &iClientRPCServiceProcessorInsertRecord{handler:handler}
+  self369.processorMap["insertStringRecord"] = &iClientRPCServiceProcessorInsertStringRecord{handler:handler}
+  self369.processorMap["insertTablet"] = &iClientRPCServiceProcessorInsertTablet{handler:handler}
+  self369.processorMap["insertTablets"] = &iClientRPCServiceProcessorInsertTablets{handler:handler}
+  self369.processorMap["insertRecords"] = &iClientRPCServiceProcessorInsertRecords{handler:handler}
+  self369.processorMap["fastInsertRecords"] = &iClientRPCServiceProcessorFastInsertRecords{handler:handler}
+  self369.processorMap["insertRecordsOfOneDevice"] = &iClientRPCServiceProcessorInsertRecordsOfOneDevice{handler:handler}
+  self369.processorMap["insertStringRecordsOfOneDevice"] = &iClientRPCServiceProcessorInsertStringRecordsOfOneDevice{handler:handler}
+  self369.processorMap["insertStringRecords"] = &iClientRPCServiceProcessorInsertStringRecords{handler:handler}
+  self369.processorMap["testInsertTablet"] = &iClientRPCServiceProcessorTestInsertTablet{handler:handler}
+  self369.processorMap["testInsertTablets"] = &iClientRPCServiceProcessorTestInsertTablets{handler:handler}
+  self369.processorMap["testInsertRecord"] = &iClientRPCServiceProcessorTestInsertRecord{handler:handler}
+  self369.processorMap["testInsertStringRecord"] = &iClientRPCServiceProcessorTestInsertStringRecord{handler:handler}
+  self369.processorMap["testInsertRecords"] = &iClientRPCServiceProcessorTestInsertRecords{handler:handler}
+  self369.processorMap["testInsertRecordsOfOneDevice"] = &iClientRPCServiceProcessorTestInsertRecordsOfOneDevice{handler:handler}
+  self369.processorMap["testInsertStringRecords"] = &iClientRPCServiceProcessorTestInsertStringRecords{handler:handler}
+  self369.processorMap["deleteData"] = &iClientRPCServiceProcessorDeleteData{handler:handler}
+  self369.processorMap["executeRawDataQuery"] = &iClientRPCServiceProcessorExecuteRawDataQuery{handler:handler}
+  self369.processorMap["executeLastDataQuery"] = &iClientRPCServiceProcessorExecuteLastDataQuery{handler:handler}
+  self369.processorMap["executeAggregationQuery"] = &iClientRPCServiceProcessorExecuteAggregationQuery{handler:handler}
+  self369.processorMap["requestStatementId"] = &iClientRPCServiceProcessorRequestStatementId{handler:handler}
+  self369.processorMap["createSchemaTemplate"] = &iClientRPCServiceProcessorCreateSchemaTemplate{handler:handler}
+  self369.processorMap["appendSchemaTemplate"] = &iClientRPCServiceProcessorAppendSchemaTemplate{handler:handler}
+  self369.processorMap["pruneSchemaTemplate"] = &iClientRPCServiceProcessorPruneSchemaTemplate{handler:handler}
+  self369.processorMap["querySchemaTemplate"] = &iClientRPCServiceProcessorQuerySchemaTemplate{handler:handler}
+  self369.processorMap["setSchemaTemplate"] = &iClientRPCServiceProcessorSetSchemaTemplate{handler:handler}
+  self369.processorMap["unsetSchemaTemplate"] = &iClientRPCServiceProcessorUnsetSchemaTemplate{handler:handler}
+  self369.processorMap["dropSchemaTemplate"] = &iClientRPCServiceProcessorDropSchemaTemplate{handler:handler}
+  self369.processorMap["createTimeseriesUsingSchemaTemplate"] = &iClientRPCServiceProcessorCreateTimeseriesUsingSchemaTemplate{handler:handler}
+  self369.processorMap["handshake"] = &iClientRPCServiceProcessorHandshake{handler:handler}
+  self369.processorMap["sendPipeData"] = &iClientRPCServiceProcessorSendPipeData{handler:handler}
+  self369.processorMap["sendFile"] = &iClientRPCServiceProcessorSendFile{handler:handler}
+  self369.processorMap["getBackupConfiguration"] = &iClientRPCServiceProcessorGetBackupConfiguration{handler:handler}
+  self369.processorMap["fetchAllConnectionsInfo"] = &iClientRPCServiceProcessorFetchAllConnectionsInfo{handler:handler}
+return self369
 }
 
 func (p *IClientRPCServiceProcessor) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
@@ -17808,12 +18136,12 @@ func (p *IClientRPCServiceProcessor) Process(ctx context.Context, iprot, oprot t
   }
   iprot.Skip(ctx, thrift.STRUCT)
   iprot.ReadMessageEnd(ctx)
-  x361 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function " + name)
+  x370 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function " + name)
   oprot.WriteMessageBegin(ctx, name, thrift.EXCEPTION, seqId)
-  x361.Write(ctx, oprot)
+  x370.Write(ctx, oprot)
   oprot.WriteMessageEnd(ctx)
   oprot.Flush(ctx)
-  return false, x361
+  return false, x370
 
 }
 
@@ -20249,6 +20577,85 @@ func (p *iClientRPCServiceProcessorInsertRecords) Process(ctx context.Context, s
   }
   tickerCancel()
   if err2 = oprot.WriteMessageBegin(ctx, "insertRecords", thrift.REPLY, seqId); err2 != nil {
+    err = thrift.WrapTException(err2)
+  }
+  if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
+    err = thrift.WrapTException(err2)
+  }
+  if err2 = oprot.WriteMessageEnd(ctx); err == nil && err2 != nil {
+    err = thrift.WrapTException(err2)
+  }
+  if err2 = oprot.Flush(ctx); err == nil && err2 != nil {
+    err = thrift.WrapTException(err2)
+  }
+  if err != nil {
+    return
+  }
+  return true, err
+}
+
+type iClientRPCServiceProcessorFastInsertRecords struct {
+  handler IClientRPCService
+}
+
+func (p *iClientRPCServiceProcessorFastInsertRecords) Process(ctx context.Context, seqId int32, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
+  args := IClientRPCServiceFastInsertRecordsArgs{}
+  var err2 error
+  if err2 = args.Read(ctx, iprot); err2 != nil {
+    iprot.ReadMessageEnd(ctx)
+    x := thrift.NewTApplicationException(thrift.PROTOCOL_ERROR, err2.Error())
+    oprot.WriteMessageBegin(ctx, "fastInsertRecords", thrift.EXCEPTION, seqId)
+    x.Write(ctx, oprot)
+    oprot.WriteMessageEnd(ctx)
+    oprot.Flush(ctx)
+    return false, thrift.WrapTException(err2)
+  }
+  iprot.ReadMessageEnd(ctx)
+
+  tickerCancel := func() {}
+  // Start a goroutine to do server side connectivity check.
+  if thrift.ServerConnectivityCheckInterval > 0 {
+    var cancel context.CancelFunc
+    ctx, cancel = context.WithCancel(ctx)
+    defer cancel()
+    var tickerCtx context.Context
+    tickerCtx, tickerCancel = context.WithCancel(context.Background())
+    defer tickerCancel()
+    go func(ctx context.Context, cancel context.CancelFunc) {
+      ticker := time.NewTicker(thrift.ServerConnectivityCheckInterval)
+      defer ticker.Stop()
+      for {
+        select {
+        case <-ctx.Done():
+          return
+        case <-ticker.C:
+          if !iprot.Transport().IsOpen() {
+            cancel()
+            return
+          }
+        }
+      }
+    }(tickerCtx, cancel)
+  }
+
+  result := IClientRPCServiceFastInsertRecordsResult{}
+  var retval *common.TSStatus
+  if retval, err2 = p.handler.FastInsertRecords(ctx, args.Req); err2 != nil {
+    tickerCancel()
+    if err2 == thrift.ErrAbandonRequest {
+      return false, thrift.WrapTException(err2)
+    }
+    x := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing fastInsertRecords: " + err2.Error())
+    oprot.WriteMessageBegin(ctx, "fastInsertRecords", thrift.EXCEPTION, seqId)
+    x.Write(ctx, oprot)
+    oprot.WriteMessageEnd(ctx)
+    oprot.Flush(ctx)
+    return true, thrift.WrapTException(err2)
+  } else {
+    result.Success = retval
+  }
+  tickerCancel()
+  if err2 = oprot.WriteMessageBegin(ctx, "fastInsertRecords", thrift.REPLY, seqId); err2 != nil {
     err = thrift.WrapTException(err2)
   }
   if err2 = result.Write(ctx, oprot); err == nil && err2 != nil {
@@ -27297,13 +27704,13 @@ func (p *IClientRPCServiceDeleteTimeseriesArgs)  ReadField2(ctx context.Context,
   tSlice := make([]string, 0, size)
   p.Path =  tSlice
   for i := 0; i < size; i ++ {
-var _elem362 string
+var _elem371 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem362 = v
+    _elem371 = v
 }
-    p.Path = append(p.Path, _elem362)
+    p.Path = append(p.Path, _elem371)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -27545,13 +27952,13 @@ func (p *IClientRPCServiceDeleteStorageGroupsArgs)  ReadField2(ctx context.Conte
   tSlice := make([]string, 0, size)
   p.StorageGroup =  tSlice
   for i := 0; i < size; i ++ {
-var _elem363 string
+var _elem372 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem363 = v
+    _elem372 = v
 }
-    p.StorageGroup = append(p.StorageGroup, _elem363)
+    p.StorageGroup = append(p.StorageGroup, _elem372)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -28696,6 +29103,204 @@ func (p *IClientRPCServiceInsertRecordsResult) String() string {
     return "<nil>"
   }
   return fmt.Sprintf("IClientRPCServiceInsertRecordsResult(%+v)", *p)
+}
+
+// Attributes:
+//  - Req
+type IClientRPCServiceFastInsertRecordsArgs struct {
+  Req *TSFastInsertRecordsReq `thrift:"req,1" db:"req" json:"req"`
+}
+
+func NewIClientRPCServiceFastInsertRecordsArgs() *IClientRPCServiceFastInsertRecordsArgs {
+  return &IClientRPCServiceFastInsertRecordsArgs{}
+}
+
+var IClientRPCServiceFastInsertRecordsArgs_Req_DEFAULT *TSFastInsertRecordsReq
+func (p *IClientRPCServiceFastInsertRecordsArgs) GetReq() *TSFastInsertRecordsReq {
+  if !p.IsSetReq() {
+    return IClientRPCServiceFastInsertRecordsArgs_Req_DEFAULT
+  }
+return p.Req
+}
+func (p *IClientRPCServiceFastInsertRecordsArgs) IsSetReq() bool {
+  return p.Req != nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsArgs) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.STRUCT {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  return nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsArgs)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  p.Req = &TSFastInsertRecordsReq{}
+  if err := p.Req.Read(ctx, iprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Req), err)
+  }
+  return nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsArgs) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "fastInsertRecords_args"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsArgs) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "req", thrift.STRUCT, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:req: ", p), err) }
+  if err := p.Req.Write(ctx, oprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Req), err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:req: ", p), err) }
+  return err
+}
+
+func (p *IClientRPCServiceFastInsertRecordsArgs) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("IClientRPCServiceFastInsertRecordsArgs(%+v)", *p)
+}
+
+// Attributes:
+//  - Success
+type IClientRPCServiceFastInsertRecordsResult struct {
+  Success *common.TSStatus `thrift:"success,0" db:"success" json:"success,omitempty"`
+}
+
+func NewIClientRPCServiceFastInsertRecordsResult() *IClientRPCServiceFastInsertRecordsResult {
+  return &IClientRPCServiceFastInsertRecordsResult{}
+}
+
+var IClientRPCServiceFastInsertRecordsResult_Success_DEFAULT *common.TSStatus
+func (p *IClientRPCServiceFastInsertRecordsResult) GetSuccess() *common.TSStatus {
+  if !p.IsSetSuccess() {
+    return IClientRPCServiceFastInsertRecordsResult_Success_DEFAULT
+  }
+return p.Success
+}
+func (p *IClientRPCServiceFastInsertRecordsResult) IsSetSuccess() bool {
+  return p.Success != nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsResult) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 0:
+      if fieldTypeId == thrift.STRUCT {
+        if err := p.ReadField0(ctx, iprot); err != nil {
+          return err
+        }
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  return nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsResult)  ReadField0(ctx context.Context, iprot thrift.TProtocol) error {
+  p.Success = &common.TSStatus{}
+  if err := p.Success.Read(ctx, iprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Success), err)
+  }
+  return nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsResult) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "fastInsertRecords_result"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField0(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *IClientRPCServiceFastInsertRecordsResult) writeField0(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if p.IsSetSuccess() {
+    if err := oprot.WriteFieldBegin(ctx, "success", thrift.STRUCT, 0); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field begin error 0:success: ", p), err) }
+    if err := p.Success.Write(ctx, oprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Success), err)
+    }
+    if err := oprot.WriteFieldEnd(ctx); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field end error 0:success: ", p), err) }
+  }
+  return err
+}
+
+func (p *IClientRPCServiceFastInsertRecordsResult) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("IClientRPCServiceFastInsertRecordsResult(%+v)", *p)
 }
 
 // Attributes:

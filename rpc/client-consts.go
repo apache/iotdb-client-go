@@ -2,13 +2,14 @@
 
 package rpc
 
-import (
+import(
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
-	"github.com/apache/thrift/lib/go/thrift"
 	"time"
+	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/apache/iotdb-client-go/common"
+
 )
 
 // (needed to ensure safety because of naive import list construction.)
