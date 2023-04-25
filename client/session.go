@@ -560,6 +560,54 @@ func (s *Session) InsertAlignedRecord(deviceId string, measurements []string, da
 	return r, err
 }
 
+func (s *Session) genFastInsertRecordReq(deviceIds []string,
+	timestamps []int64,
+	dataTypes [][]TSDataType,
+	values [][]interface{}) (*rpc.TSFastInsertRecordsReq, error) {
+	length := len(deviceIds)
+	if length != len(timestamps) || length != len(values) {
+		return nil, errLength
+	}
+
+	request := rpc.TSFastInsertRecordsReq{
+		SessionId:   s.sessionId,
+		PrefixPaths: deviceIds,
+		Timestamps:  timestamps,
+	}
+
+	v := make([][]byte, length)
+	for i := 0; i < len(timestamps); i++ {
+		if bys, err := valuesToBytesForFast(dataTypes[i], values[i]); err == nil {
+			v[i] = bys
+		} else {
+			return nil, err
+		}
+	}
+
+	request.ValuesList = v
+	return &request, nil
+}
+
+func (s *Session) FastInsertRecords(deviceIds []string,
+	dataTypes [][]TSDataType,
+	values [][]interface{},
+	timestamps []int64) (r *common.TSStatus, err error) {
+	request, err := s.genFastInsertRecordReq(deviceIds, timestamps, dataTypes, values)
+	if err != nil {
+		return nil, err
+	} else {
+		r, err = s.client.FastInsertRecords(context.Background(), request)
+		if err != nil && r == nil {
+			if s.reconnect() {
+				request.SessionId = s.sessionId
+				r, err = s.client.FastInsertRecords(context.Background(), request)
+			}
+		}
+	}
+
+	return r, err
+}
+
 type deviceData struct {
 	timestamps        []int64
 	measurementsSlice [][]string
@@ -899,6 +947,66 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 	buff := &bytes.Buffer{}
 	for i, t := range dataTypes {
 		binary.Write(buff, binary.BigEndian, byte(t))
+		v := values[i]
+		if v == nil {
+			return nil, fmt.Errorf("values[%d] can't be nil", i)
+		}
+
+		switch t {
+		case BOOLEAN:
+			switch v.(type) {
+			case bool:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be bool", i, v, reflect.TypeOf(v))
+			}
+		case INT32:
+			switch v.(type) {
+			case int32:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be int32", i, v, reflect.TypeOf(v))
+			}
+		case INT64:
+			switch v.(type) {
+			case int64:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be int64", i, v, reflect.TypeOf(v))
+			}
+		case FLOAT:
+			switch v.(type) {
+			case float32:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be float32", i, v, reflect.TypeOf(v))
+			}
+		case DOUBLE:
+			switch v.(type) {
+			case float64:
+				binary.Write(buff, binary.BigEndian, v)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be float64", i, v, reflect.TypeOf(v))
+			}
+		case TEXT:
+			switch s := v.(type) {
+			case string:
+				size := len(s)
+				binary.Write(buff, binary.BigEndian, int32(size))
+				binary.Write(buff, binary.BigEndian, []byte(s))
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
+			}
+		default:
+			return nil, fmt.Errorf("types[%d] is incorrect, it must in (BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT)", i)
+		}
+	}
+	return buff.Bytes(), nil
+}
+
+func valuesToBytesForFast(dataTypes []TSDataType, values []interface{}) ([]byte, error) {
+	buff := &bytes.Buffer{}
+	for i, t := range dataTypes {
 		v := values[i]
 		if v == nil {
 			return nil, fmt.Errorf("values[%d] can't be nil", i)

@@ -57,6 +57,8 @@ func main() {
 	}
 	defer session.Close()
 
+	fastInsertRecords()
+
 	setStorageGroup("root.ln1")
 	deleteStorageGroup("root.ln1")
 
@@ -378,6 +380,26 @@ func insertAlignedRecord() {
 	} else {
 		log.Println(err)
 	}
+	fmt.Println()
+}
+
+func fastInsertRecords() {
+	var (
+		deviceIds = []string{"root.fast.d1", "root.fast.d2"}
+		dataTypes = [][]client.TSDataType{{client.INT32, client.INT32}, {client.INT32, client.INT32}}
+		values    = [][]interface{}{{int32(120), int32(121)}, {int32(130), int32(131)}}
+		timestamp = []int64{12, 13}
+	)
+	checkError(session.FastInsertRecords(deviceIds, dataTypes, values, timestamp))
+	sessionDataSet, err := session.ExecuteStatement("show devices")
+	if err == nil {
+		printDataSet0(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+
+	deleteTimeseries("root.fast.**")
 	fmt.Println()
 }
 

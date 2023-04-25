@@ -2,16 +2,15 @@
 
 package rpc
 
-import(
+import (
 	"bytes"
 	"context"
 	"database/sql/driver"
 	"errors"
 	"fmt"
-	"time"
-	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/apache/iotdb-client-go/common"
-
+	"github.com/apache/thrift/lib/go/thrift"
+	"time"
 )
 
 // (needed to ensure safety because of naive import list construction.)
