@@ -507,6 +507,33 @@ func (s *Session) ExecuteAggregationQuery(paths []string, aggregations []common.
 	}
 }
 
+func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregations []common.TAggregationType,
+	startTime *int64, endTime *int64, interval *int64,
+	timeoutMs *int64, legalNodes *bool) (*SessionDataSet, error) {
+
+	request := rpc.TSAggregationQueryReq{SessionId: s.sessionId, StatementId: s.requestStatementId, Paths: paths,
+		Aggregations: aggregations, StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize,
+		Timeout: timeoutMs, LegalPathNodes: legalNodes}
+	if resp, err := s.client.ExecuteAggregationQuery(context.Background(), &request); err == nil {
+		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+		} else {
+			return nil, statusErr
+		}
+	} else {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			resp, err = s.client.ExecuteAggregationQuery(context.Background(), &request)
+			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			} else {
+				return nil, statusErr
+			}
+		}
+		return nil, err
+	}
+}
+
 func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	measurements []string,
 	types []TSDataType,

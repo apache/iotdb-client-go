@@ -638,7 +638,6 @@ func executeQueryStatement(sql string) {
 
 func executeAggregationQueryStatement(paths []string, aggregations []common.TAggregationType,
 	startTime *int64, endTime *int64, interval *int64) {
-	fmt.Printf("====ExecuteAggregationQuery Begin====\n")
 	var timeout int64 = 1000
 	sessionDataSet, err := session.ExecuteAggregationQuery(paths, aggregations, startTime, endTime, interval, &timeout)
 	if err == nil {
@@ -647,7 +646,6 @@ func executeAggregationQueryStatement(paths []string, aggregations []common.TAgg
 	} else {
 		log.Println(err)
 	}
-	fmt.Printf("====ExecuteAggregationQuery End====\n")
 }
 
 func executeRawDataQuery() {
