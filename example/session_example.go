@@ -57,7 +57,7 @@ func main() {
 	}
 	defer session.Close()
 
-	// fastInsertRecords()
+	fastInsertRecords()
 
 	setStorageGroup("root.ln1")
 	deleteStorageGroup("root.ln1")
