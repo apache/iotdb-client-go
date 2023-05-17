@@ -57,7 +57,7 @@ func main() {
 	}
 	defer session.Close()
 
-	fastInsertRecords()
+	// fastInsertRecords()
 
 	setStorageGroup("root.ln1")
 	deleteStorageGroup("root.ln1")
@@ -118,7 +118,7 @@ func main() {
 	var startTime int64 = 1
 	var endTime int64 = 10
 	var interval int64 = 2
-	executeAggregationQueryStatement([]string{"root.ln.wf02.wt02.s5"}, []common.TAggregationType{common.TAggregationType_COUNT}, &startTime, &endTime, &interval)
+	executeAggregationQueryStatementWithLegalNodes([]string{"root.ln.wf02.wt02.s5"}, []common.TAggregationType{common.TAggregationType_COUNT}, &startTime, &endTime, &interval)
 
 	deleteTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.ln.wf02.wt02.s5")
@@ -636,10 +636,11 @@ func executeQueryStatement(sql string) {
 	}
 }
 
-func executeAggregationQueryStatement(paths []string, aggregations []common.TAggregationType,
+func executeAggregationQueryStatementWithLegalNodes(paths []string, aggregations []common.TAggregationType,
 	startTime *int64, endTime *int64, interval *int64) {
 	var timeout int64 = 1000
-	sessionDataSet, err := session.ExecuteAggregationQuery(paths, aggregations, startTime, endTime, interval, &timeout)
+	var legal bool = true
+	sessionDataSet, err := session.ExecuteAggregationQueryWithLegalNodes(paths, aggregations, startTime, endTime, interval, &timeout, &legal)
 	if err == nil {
 		printDataSet1(sessionDataSet)
 		sessionDataSet.Close()
