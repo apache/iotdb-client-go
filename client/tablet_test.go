@@ -370,6 +370,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("1", 4, 0)
 			tablet.SetValueAt(true, 5, 0)
 			tablet.SetTimestamp(3, 0)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(2), 0, 1)
 			tablet.SetValueAt(float64(2.0), 1, 1)
@@ -378,6 +379,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("2", 4, 1)
 			tablet.SetValueAt(true, 5, 1)
 			tablet.SetTimestamp(4, 1)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(3), 0, 2)
 			tablet.SetValueAt(float64(3.0), 1, 2)
@@ -386,6 +388,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("3", 4, 2)
 			tablet.SetValueAt(true, 5, 2)
 			tablet.SetTimestamp(1, 2)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(4), 0, 3)
 			tablet.SetValueAt(float64(4.0), 1, 3)
@@ -394,6 +397,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("4", 4, 3)
 			tablet.SetValueAt(true, 5, 3)
 			tablet.SetTimestamp(2, 3)
+			tablet.RowSize++
 
 			if err := tablet.Sort(); (err != nil) != tt.wantErr {
 				t.Errorf("Tablet.Sort() error = %v, wantErr %v", err, tt.wantErr)
