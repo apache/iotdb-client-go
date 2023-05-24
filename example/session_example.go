@@ -475,6 +475,7 @@ func deleteData() {
 func insertTablet() {
 	if tablet, err := createTablet(12); err == nil {
 		status, err := session.InsertTablet(tablet, false)
+		tablet.Reset()
 		checkError(status, err)
 	} else {
 		log.Fatal(err)
@@ -484,6 +485,7 @@ func insertTablet() {
 func insertAlignedTablet() {
 	if tablet, err := createTablet(12); err == nil {
 		status, err := session.InsertAlignedTablet(tablet, false)
+		tablet.Reset()
 		checkError(status, err)
 	} else {
 		log.Fatal(err)
@@ -502,34 +504,22 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 		{
 			Measurement: "restart_count",
 			DataType:    client.INT32,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "price",
 			DataType:    client.DOUBLE,
-			Encoding:    client.GORILLA,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "tick_count",
 			DataType:    client.INT64,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "temperature",
 			DataType:    client.FLOAT,
-			Encoding:    client.GORILLA,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "description",
 			DataType:    client.TEXT,
-			Encoding:    client.PLAIN,
-			Compressor:  client.SNAPPY,
 		},
 		{
 			Measurement: "status",
 			DataType:    client.BOOLEAN,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		},
 	}, rowCount)
 
@@ -546,6 +536,7 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 		tablet.SetValueAt(rand.Float32(), 3, row)
 		tablet.SetValueAt(fmt.Sprintf("Test Device %d", row+1), 4, row)
 		tablet.SetValueAt(bool(ts%2 == 0), 5, row)
+		tablet.RowSize++
 	}
 	return tablet, nil
 }

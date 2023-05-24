@@ -29,46 +29,22 @@ func createTablet(size int) (*Tablet, error) {
 		{
 			Measurement: "restart_count",
 			DataType:    INT32,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		}, {
 			Measurement: "price",
 			DataType:    DOUBLE,
-			Encoding:    GORILLA,
-			Compressor:  SNAPPY,
 		}, {
 			Measurement: "tick_count",
 			DataType:    INT64,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
 		}, {
 			Measurement: "temperature",
 			DataType:    FLOAT,
-			Encoding:    GORILLA,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		}, {
 			Measurement: "description",
 			DataType:    TEXT,
-			Encoding:    PLAIN,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		},
 		{
 			Measurement: "status",
 			DataType:    BOOLEAN,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		},
 	}, size)
 	return tablet, err
@@ -95,46 +71,22 @@ func TestTablet_getDataTypes(t *testing.T) {
 					{
 						Measurement: "restart_count",
 						DataType:    INT32,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					}, {
 						Measurement: "price",
 						DataType:    DOUBLE,
-						Encoding:    GORILLA,
-						Compressor:  SNAPPY,
 					}, {
 						Measurement: "tick_count",
 						DataType:    INT64,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
 					}, {
 						Measurement: "temperature",
 						DataType:    FLOAT,
-						Encoding:    GORILLA,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					}, {
 						Measurement: "description",
 						DataType:    TEXT,
-						Encoding:    PLAIN,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					},
 					{
 						Measurement: "status",
 						DataType:    BOOLEAN,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					},
 				},
 				timestamps: []int64{},
@@ -151,7 +103,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 				measurementSchemas: tt.fields.measurementSchemas,
 				timestamps:         tt.fields.timestamps,
 				values:             tt.fields.values,
-				rowCount:           tt.fields.rowCount,
+				maxRowNumber:       tt.fields.rowCount,
 			}
 			if got := tablet.getDataTypes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Tablet.getDataTypes() = %v, want %v", got, tt.want)
