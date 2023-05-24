@@ -977,7 +977,7 @@ func (s *Session) genTSInsertTabletReq(tablet *Tablet, isAligned bool) (*rpc.TSI
 			Values:       values,
 			Timestamps:   tablet.GetTimestampBytes(),
 			Types:        tablet.getDataTypes(),
-			Size:         int32(tablet.maxRowNumber),
+			Size:         int32(tablet.RowSize),
 			IsAligned:    &isAligned,
 		}
 		return request, nil

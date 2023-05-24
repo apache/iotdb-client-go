@@ -192,9 +192,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 
 func (t *Tablet) GetTimestampBytes() []byte {
 	buff := &bytes.Buffer{}
-	for _, v := range t.timestamps {
-		binary.Write(buff, binary.BigEndian, v)
-	}
+	binary.Write(buff, binary.BigEndian, t.timestamps[0:t.RowSize])
 	return buff.Bytes()
 }
 
