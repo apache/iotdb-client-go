@@ -29,46 +29,22 @@ func createTablet(size int) (*Tablet, error) {
 		{
 			Measurement: "restart_count",
 			DataType:    INT32,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		}, {
 			Measurement: "price",
 			DataType:    DOUBLE,
-			Encoding:    GORILLA,
-			Compressor:  SNAPPY,
 		}, {
 			Measurement: "tick_count",
 			DataType:    INT64,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
 		}, {
 			Measurement: "temperature",
 			DataType:    FLOAT,
-			Encoding:    GORILLA,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		}, {
 			Measurement: "description",
 			DataType:    TEXT,
-			Encoding:    PLAIN,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		},
 		{
 			Measurement: "status",
 			DataType:    BOOLEAN,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		},
 	}, size)
 	return tablet, err
@@ -95,46 +71,22 @@ func TestTablet_getDataTypes(t *testing.T) {
 					{
 						Measurement: "restart_count",
 						DataType:    INT32,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					}, {
 						Measurement: "price",
 						DataType:    DOUBLE,
-						Encoding:    GORILLA,
-						Compressor:  SNAPPY,
 					}, {
 						Measurement: "tick_count",
 						DataType:    INT64,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
 					}, {
 						Measurement: "temperature",
 						DataType:    FLOAT,
-						Encoding:    GORILLA,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					}, {
 						Measurement: "description",
 						DataType:    TEXT,
-						Encoding:    PLAIN,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					},
 					{
 						Measurement: "status",
 						DataType:    BOOLEAN,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					},
 				},
 				timestamps: []int64{},
@@ -151,7 +103,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 				measurementSchemas: tt.fields.measurementSchemas,
 				timestamps:         tt.fields.timestamps,
 				values:             tt.fields.values,
-				rowCount:           tt.fields.rowCount,
+				maxRowNumber:       tt.fields.rowCount,
 			}
 			if got := tablet.getDataTypes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Tablet.getDataTypes() = %v, want %v", got, tt.want)
@@ -418,6 +370,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("1", 4, 0)
 			tablet.SetValueAt(true, 5, 0)
 			tablet.SetTimestamp(3, 0)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(2), 0, 1)
 			tablet.SetValueAt(float64(2.0), 1, 1)
@@ -426,6 +379,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("2", 4, 1)
 			tablet.SetValueAt(true, 5, 1)
 			tablet.SetTimestamp(4, 1)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(3), 0, 2)
 			tablet.SetValueAt(float64(3.0), 1, 2)
@@ -434,6 +388,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("3", 4, 2)
 			tablet.SetValueAt(true, 5, 2)
 			tablet.SetTimestamp(1, 2)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(4), 0, 3)
 			tablet.SetValueAt(float64(4.0), 1, 3)
@@ -442,6 +397,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("4", 4, 3)
 			tablet.SetValueAt(true, 5, 3)
 			tablet.SetTimestamp(2, 3)
+			tablet.RowSize++
 
 			if err := tablet.Sort(); (err != nil) != tt.wantErr {
 				t.Errorf("Tablet.Sort() error = %v, wantErr %v", err, tt.wantErr)
