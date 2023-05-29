@@ -221,6 +221,7 @@ func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	if tablet, err := createTablet(12); err == nil {
 		status, err := s.session.InsertAlignedTablet(tablet, false)
 		s.checkError(status, err)
+		tablet.Reset()
 	} else {
 		log.Fatal(err)
 	}
@@ -240,34 +241,22 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 		{
 			Measurement: "restart_count",
 			DataType:    client.INT32,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "price",
 			DataType:    client.DOUBLE,
-			Encoding:    client.GORILLA,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "tick_count",
 			DataType:    client.INT64,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "temperature",
 			DataType:    client.FLOAT,
-			Encoding:    client.GORILLA,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "description",
 			DataType:    client.TEXT,
-			Encoding:    client.PLAIN,
-			Compressor:  client.SNAPPY,
 		},
 		{
 			Measurement: "status",
 			DataType:    client.BOOLEAN,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		},
 	}, rowCount)
 
@@ -284,6 +273,7 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 		tablet.SetValueAt(rand.Float32(), 3, row)
 		tablet.SetValueAt(fmt.Sprintf("Test Device %d", row+1), 4, row)
 		tablet.SetValueAt(bool(ts%2 == 0), 5, row)
+		tablet.RowSize++
 	}
 	return tablet, nil
 }
@@ -302,6 +292,8 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 
 	tablets := []*client.Tablet{tablet1, tablet2}
 	s.checkError(s.session.InsertAlignedTablets(tablets, false))
+	tablet1.Reset()
+	tablet2.Reset()
 
 	ds, err := s.session.ExecuteQueryStatement("select count(status) from root.ln.device1", nil)
 	assert := s.Require()

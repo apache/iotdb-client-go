@@ -31,9 +31,6 @@ import (
 type MeasurementSchema struct {
 	Measurement string
 	DataType    TSDataType
-	Encoding    TSEncoding
-	Compressor  TSCompressionType
-	Properties  map[string]string
 }
 
 type Tablet struct {
@@ -41,11 +38,12 @@ type Tablet struct {
 	measurementSchemas []*MeasurementSchema
 	timestamps         []int64
 	values             []interface{}
-	rowCount           int
+	maxRowNumber       int
+	RowSize            int
 }
 
 func (t *Tablet) Len() int {
-	return t.GetRowCount()
+	return t.RowSize
 }
 
 func (t *Tablet) Swap(i, j int) {
@@ -91,7 +89,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		return fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
-	if rowIndex < 0 || rowIndex > int(t.rowCount) {
+	if rowIndex < 0 || rowIndex > int(t.maxRowNumber) {
 		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
@@ -161,7 +159,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 }
 
 func (t *Tablet) GetRowCount() int {
-	return t.rowCount
+	return t.maxRowNumber
 }
 
 func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
@@ -169,7 +167,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return nil, fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
-	if rowIndex < 0 || rowIndex > int(t.rowCount) {
+	if rowIndex < 0 || rowIndex > int(t.maxRowNumber) {
 		return nil, fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
@@ -194,9 +192,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 
 func (t *Tablet) GetTimestampBytes() []byte {
 	buff := &bytes.Buffer{}
-	for _, v := range t.timestamps {
-		binary.Write(buff, binary.BigEndian, v)
-	}
+	binary.Write(buff, binary.BigEndian, t.timestamps[0:t.RowSize])
 	return buff.Bytes()
 }
 
@@ -221,17 +217,17 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 	for i, schema := range t.measurementSchemas {
 		switch schema.DataType {
 		case BOOLEAN:
-			binary.Write(buff, binary.BigEndian, t.values[i].([]bool))
+			binary.Write(buff, binary.BigEndian, t.values[i].([]bool)[0:t.RowSize])
 		case INT32:
-			binary.Write(buff, binary.BigEndian, t.values[i].([]int32))
+			binary.Write(buff, binary.BigEndian, t.values[i].([]int32)[0:t.RowSize])
 		case INT64:
-			binary.Write(buff, binary.BigEndian, t.values[i].([]int64))
+			binary.Write(buff, binary.BigEndian, t.values[i].([]int64)[0:t.RowSize])
 		case FLOAT:
-			binary.Write(buff, binary.BigEndian, t.values[i].([]float32))
+			binary.Write(buff, binary.BigEndian, t.values[i].([]float32)[0:t.RowSize])
 		case DOUBLE:
-			binary.Write(buff, binary.BigEndian, t.values[i].([]float64))
+			binary.Write(buff, binary.BigEndian, t.values[i].([]float64)[0:t.RowSize])
 		case TEXT:
-			for _, s := range t.values[i].([]string) {
+			for _, s := range t.values[i].([]string)[0:t.RowSize] {
 				binary.Write(buff, binary.BigEndian, int32(len(s)))
 				binary.Write(buff, binary.BigEndian, []byte(s))
 			}
@@ -247,28 +243,32 @@ func (t *Tablet) Sort() error {
 	return nil
 }
 
-func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, rowCount int) (*Tablet, error) {
+func (t *Tablet) Reset() {
+	t.RowSize = 0
+}
+
+func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, maxRowNumber int) (*Tablet, error) {
 	tablet := &Tablet{
 		deviceId:           deviceId,
 		measurementSchemas: measurementSchemas,
-		rowCount:           rowCount,
+		maxRowNumber:       maxRowNumber,
 	}
-	tablet.timestamps = make([]int64, rowCount)
+	tablet.timestamps = make([]int64, maxRowNumber)
 	tablet.values = make([]interface{}, len(measurementSchemas))
 	for i, schema := range tablet.measurementSchemas {
 		switch schema.DataType {
 		case BOOLEAN:
-			tablet.values[i] = make([]bool, rowCount)
+			tablet.values[i] = make([]bool, maxRowNumber)
 		case INT32:
-			tablet.values[i] = make([]int32, rowCount)
+			tablet.values[i] = make([]int32, maxRowNumber)
 		case INT64:
-			tablet.values[i] = make([]int64, rowCount)
+			tablet.values[i] = make([]int64, maxRowNumber)
 		case FLOAT:
-			tablet.values[i] = make([]float32, rowCount)
+			tablet.values[i] = make([]float32, maxRowNumber)
 		case DOUBLE:
-			tablet.values[i] = make([]float64, rowCount)
+			tablet.values[i] = make([]float64, maxRowNumber)
 		case TEXT:
-			tablet.values[i] = make([]string, rowCount)
+			tablet.values[i] = make([]string, maxRowNumber)
 		default:
 			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 		}
