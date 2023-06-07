@@ -57,7 +57,7 @@ func main() {
 	}
 	defer session.Close()
 
-	fastInsertRecords()
+	// testExecuteGroupByQueryIntervalQuery()
 
 	setStorageGroup("root.ln1")
 	deleteStorageGroup("root.ln1")
@@ -143,6 +143,24 @@ func main() {
 	deleteStorageGroup("root.ln")
 	insertAlignedTablets()
 	deleteTimeseries("root.ln.device1.*")
+}
+
+func testExecuteGroupByQueryIntervalQuery() {
+	db := "root.sg"
+	device := "root.sg.cpu.host_1"
+	measurement := "usage_user"
+	aggregationType := common.TAggregationType_MAX_VALUE
+	dateType := int32(2)
+	startTime := int64(1451754531000)
+	endTime := int64(1451758131000)
+	interval := int64(60000)
+	timeOut := int64(60000)
+
+	ret, err := session.ExecuteGroupByQueryIntervalQuery(&db, device, measurement, aggregationType,
+		dateType, &startTime, &endTime, &interval, &timeOut)
+	if err == nil {
+		printDataSet1(ret)
+	}
 }
 
 func printDevice1(sds *client.SessionDataSet) {
@@ -380,26 +398,6 @@ func insertAlignedRecord() {
 	} else {
 		log.Println(err)
 	}
-	fmt.Println()
-}
-
-func fastInsertRecords() {
-	var (
-		deviceIds = []string{"root.fast.d1", "root.fast.d2"}
-		dataTypes = [][]client.TSDataType{{client.INT32, client.INT32}, {client.INT32, client.INT32}}
-		values    = [][]interface{}{{int32(120), int32(121)}, {int32(130), int32(131)}}
-		timestamp = []int64{12, 13}
-	)
-	checkError(session.FastInsertRecords(deviceIds, dataTypes, values, timestamp))
-	sessionDataSet, err := session.ExecuteStatement("show devices")
-	if err == nil {
-		printDataSet0(sessionDataSet)
-		sessionDataSet.Close()
-	} else {
-		log.Println(err)
-	}
-
-	deleteTimeseries("root.fast.**")
 	fmt.Println()
 }
 
