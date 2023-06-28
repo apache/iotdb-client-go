@@ -431,6 +431,7 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
+			request.StatementId = s.requestStatementId
 			resp, err = s.client.ExecuteStatement(context.Background(), &request)
 		}
 	}
@@ -450,6 +451,7 @@ func (s *Session) ExecuteNonQueryStatement(sql string) (r *rpc.TSStatus, err err
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
+			request.StatementId = s.requestStatementId
 			resp, err = s.client.ExecuteStatement(context.Background(), &request)
 		}
 	}
@@ -469,6 +471,7 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 	} else {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
+			request.StatementId = s.requestStatementId
 			resp, err = s.client.ExecuteQueryStatement(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 				return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
@@ -769,6 +772,7 @@ func (s *Session) ExecuteRawDataQuery(paths []string, startTime int64, endTime i
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
+			request.StatementId = s.requestStatementId
 			resp, err = s.client.ExecuteRawDataQuery(context.Background(), &request)
 		}
 	}
@@ -788,6 +792,7 @@ func (s *Session) ExecuteUpdateStatement(sql string) (*SessionDataSet, error) {
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
+			request.StatementId = s.requestStatementId
 			resp, err = s.client.ExecuteUpdateStatement(context.Background(), &request)
 		}
 	}
