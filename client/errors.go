@@ -21,12 +21,11 @@ package client
 
 import (
 	"bytes"
-
-	"github.com/apache/iotdb-client-go/rpc"
+	"github.com/apache/iotdb-client-go/common"
 )
 
 type BatchError struct {
-	statuses []*rpc.TSStatus
+	statuses []*common.TSStatus
 }
 
 func (e *BatchError) Error() string {
@@ -37,11 +36,11 @@ func (e *BatchError) Error() string {
 	return buff.String()
 }
 
-func (e *BatchError) GetStatuses() []*rpc.TSStatus {
+func (e *BatchError) GetStatuses() []*common.TSStatus {
 	return e.statuses
 }
 
-func NewBatchError(statuses []*rpc.TSStatus) *BatchError {
+func NewBatchError(statuses []*common.TSStatus) *BatchError {
 	return &BatchError{
 		statuses: statuses,
 	}

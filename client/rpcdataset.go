@@ -24,6 +24,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"math"
 	"time"
 
@@ -63,7 +64,7 @@ type IoTDBRpcDataSet struct {
 	currentBitmap              []byte
 	time                       []byte
 	values                     [][]byte
-	client                     *rpc.TSIServiceClient
+	client                     *rpc.IClientRPCServiceClient
 	emptyResultSet             bool
 	ignoreTimeStamp            bool
 	closed                     bool
@@ -480,7 +481,7 @@ func (s *IoTDBRpcDataSet) Close() (err error) {
 			QueryId:   &s.queryId,
 		}
 
-		var status *rpc.TSStatus
+		var status *common.TSStatus
 		status, err = s.client.CloseOperation(context.Background(), closeRequest)
 		if err == nil {
 			err = VerifySuccess(status)
@@ -509,7 +510,7 @@ func (s *IoTDBRpcDataSet) Close() (err error) {
 
 func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []string,
 	columnNameIndex map[string]int32,
-	queryId int64, client *rpc.TSIServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
+	queryId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
 	ignoreTimeStamp bool, fetchSize int32, timeoutMs *int64) *IoTDBRpcDataSet {
 
 	ds := &IoTDBRpcDataSet{
