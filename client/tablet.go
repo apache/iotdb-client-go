@@ -69,6 +69,24 @@ func (t *Tablet) Swap(i, j int) {
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
 		}
 	}
+	if t.bitMaps != nil {
+		for _, bitMap := range t.bitMaps {
+			if bitMap != nil {
+				isNilI := bitMap.IsMarked(i)
+				isNilJ := bitMap.IsMarked(j)
+				if isNilI {
+					bitMap.Mark(j)
+				} else {
+					bitMap.UnMark(j)
+				}
+				if isNilJ {
+					bitMap.Mark(i)
+				} else {
+					bitMap.UnMark(i)
+				}
+			}
+		}
+	}
 	t.timestamps[i], t.timestamps[j] = t.timestamps[j], t.timestamps[i]
 }
 

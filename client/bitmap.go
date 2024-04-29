@@ -25,6 +25,16 @@ type BitMap struct {
 }
 
 var BitUtil = []byte{1, 2, 4, 8, 16, 32, 64, 128}
+var UnmarkBitUtil = []byte{
+	0xFE, // 11111110
+	0xFD, // 11111101
+	0xFB, // 11111011
+	0xF7, // 11110111
+	0xEF, // 11101111
+	0xDF, // 11011111
+	0xBF, // 10111111
+	0x7F, // 01111111
+}
 
 func NewBitMap(size int) *BitMap {
 	bitMap := &BitMap{
@@ -36,6 +46,10 @@ func NewBitMap(size int) *BitMap {
 
 func (b *BitMap) Mark(position int) {
 	b.bits[position/8] |= BitUtil[position%8]
+}
+
+func (b *BitMap) UnMark(position int) {
+	b.bits[position/8] &= UnmarkBitUtil[position%8]
 }
 
 func (b *BitMap) IsMarked(position int) bool {
