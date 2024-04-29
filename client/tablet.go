@@ -285,6 +285,7 @@ func (t *Tablet) Sort() error {
 
 func (t *Tablet) Reset() {
 	t.RowSize = 0
+	t.bitMaps = nil
 }
 
 func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, maxRowNumber int) (*Tablet, error) {
