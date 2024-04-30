@@ -26,6 +26,9 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
         go: ['1.13', 'stable']
+        exclude:
+          - os: macos-latest
+            go: '1.13'
     steps:
 
     - name: Set up Go ${{ matrix.go }}

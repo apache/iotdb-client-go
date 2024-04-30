@@ -236,6 +236,79 @@ func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	assert.Equal(status, "12")
 	s.session.DeleteStorageGroup("root.ln.**")
 }
+
+func (s *e2eTestSuite) Test_InsertAlignedTabletWithNilValue() {
+	var timeseries = []string{"root.ln.device1.**"}
+	s.session.DeleteTimeseries(timeseries)
+	if tablet, err := createTabletWithNil(12); err == nil {
+		status, err := s.session.InsertAlignedTablet(tablet, false)
+		s.checkError(status, err)
+		tablet.Reset()
+	} else {
+		log.Fatal(err)
+	}
+	var timeout int64 = 1000
+	ds, err := s.session.ExecuteQueryStatement("select count(status) from root.ln.device1", &timeout)
+	assert := s.Require()
+	assert.NoError(err)
+	defer ds.Close()
+	assert.True(ds.Next())
+	var status string
+	assert.NoError(ds.Scan(&status))
+	assert.Equal(status, "12")
+	s.session.DeleteStorageGroup("root.ln.**")
+}
+
+func createTabletWithNil(rowCount int) (*client.Tablet, error) {
+	tablet, err := client.NewTablet("root.ln.device1", []*client.MeasurementSchema{
+		{
+			Measurement: "restart_count",
+			DataType:    client.INT32,
+		}, {
+			Measurement: "price",
+			DataType:    client.DOUBLE,
+		}, {
+			Measurement: "tick_count",
+			DataType:    client.INT64,
+		}, {
+			Measurement: "temperature",
+			DataType:    client.FLOAT,
+		}, {
+			Measurement: "description",
+			DataType:    client.TEXT,
+		},
+		{
+			Measurement: "status",
+			DataType:    client.BOOLEAN,
+		},
+	}, rowCount)
+
+	if err != nil {
+		return nil, err
+	}
+	ts := time.Now().UTC().UnixNano() / 1000000
+	for row := 0; row < int(rowCount); row++ {
+		ts++
+		tablet.SetTimestamp(ts, row)
+		tablet.SetValueAt(rand.Int31(), 0, row)
+		if row%2 == 1 {
+			tablet.SetValueAt(rand.Float64(), 1, row)
+		} else {
+			tablet.SetValueAt(nil, 1, row)
+		}
+		tablet.SetValueAt(rand.Int63(), 2, row)
+		if row%3 == 1 {
+			tablet.SetValueAt(rand.Float32(), 3, row)
+		} else {
+			tablet.SetValueAt(nil, 3, row)
+		}
+		tablet.SetValueAt(fmt.Sprintf("Test Device %d", row+1), 4, row)
+		tablet.SetValueAt(bool(ts%2 == 0), 5, row)
+		tablet.RowSize++
+	}
+	return tablet, nil
+}
+
 func createTablet(rowCount int) (*client.Tablet, error) {
 	tablet, err := client.NewTablet("root.ln.device1", []*client.MeasurementSchema{
 		{
