@@ -20,10 +20,8 @@ jobs:
 
   build:
     name: e2e test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
+    runs-on: ubuntu-latest
+
     steps:
 
     - name: Check out code into the Go module directory
