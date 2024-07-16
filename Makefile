@@ -23,21 +23,30 @@ generate:
 		exit 1; \
 	fi
 
-        @if [ -f "../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift" ]; then \
-		thrift -out . -gen go ../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift; \
-	else \
-		curl -o common.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-commons/src/main/thrift/common.thrift; \
-		thrift -out . -gen go common.thrift; \
-		rm -f common.thrift; \
-	fi
+        
 
-	@if [ -f "../../iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift" ]; then \
-		thrift -out . -gen go ../../iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift; \
+        @if [ -f "../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift" ]; then \
+                cd ../..; \
+		mvn clean package -pl iotdb-protocol/thrift-datanode -am; \
+                cd iotdb-client/client-go; \
+                cp -r ../../iotdb-protocol/thrift-commons/target/generated-sources-go/common common; \
+                cp -r ../../iotdb-protocol/thrift-datanode/target/generated-sources-go/rpc rpc; \
 	else \
+		
+
+                echo "Downloading and unpacking iotdb-tools-thrift..."; \
+	        mkdir -p thrift; \
+	        curl -L -o thrift/iotdb-tools-thrift.zip https://repo1.maven.org/maven2/org/apache/iotdb/tools/iotdb-tools-thrift/0.14.1.0/iotdb-tools-thrift-0.14.1.0-$(OS_CLASSIFIER).zip; \
+	        unzip -o thrift/iotdb-tools-thrift.zip -d thrift; \
+
+                curl -o common.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-commons/src/main/thrift/common.thrift; \
+		$(THRIFT_EXEC) -out . -gen go common.thrift; \
+		rm -f common.thrift; \
 		curl -o client.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift; \
-		thrift -out . -gen go client.thrift; \
+		$(THRIFT_EXEC) -out . -gen go client.thrift; \
 		rm -f client.thrift; \
 	fi
+        @rm -rf rpc/i_client_r_p_c_service-remote
 
 .PHONY: generate all test e2e_test e2e_test_clean
 
