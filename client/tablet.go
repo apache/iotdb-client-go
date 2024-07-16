@@ -194,6 +194,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return nil, fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
+
 	if rowIndex < 0 || rowIndex > t.maxRowNumber {
 		return nil, fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}

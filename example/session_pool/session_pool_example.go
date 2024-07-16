@@ -22,6 +22,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strings"
@@ -29,7 +30,6 @@ import (
 	"time"
 
 	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/rpc"
 )
 
 var (
@@ -641,7 +641,7 @@ func printDevice1(sds *client.SessionDataSet) {
 		// var description string
 		// var status string
 
-		if err := sds.Scan(&restartCount, &price, &tickCount, &temperature, &description, &status); err != nil {
+		if err := sds.Scan(&restartCount, &tickCount, &price, &temperature, &description, &status); err != nil {
 			log.Fatal(err)
 		}
 
@@ -751,7 +751,7 @@ func printDataSet2(sds *client.SessionDataSet) {
 	}
 }
 
-func checkError(status *rpc.TSStatus, err error) {
+func checkError(status *common.TSStatus, err error) {
 	if err != nil {
 		log.Fatal(err)
 	}

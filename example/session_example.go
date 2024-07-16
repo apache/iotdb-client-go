@@ -22,13 +22,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/rpc"
 )
 
 var (
@@ -56,6 +56,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer session.Close()
+
+	fastInsertRecords()
 
 	setStorageGroup("root.ln1")
 	deleteStorageGroup("root.ln1")
@@ -113,6 +115,11 @@ func main() {
 	executeRawDataQuery()
 	executeBatchStatement()
 
+	var startTime int64 = 1
+	var endTime int64 = 10
+	var interval int64 = 2
+	executeAggregationQueryStatementWithLegalNodes([]string{"root.ln.wf02.wt02.s5"}, []common.TAggregationType{common.TAggregationType_COUNT}, &startTime, &endTime, &interval)
+
 	deleteTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.ln.wf02.wt02.s5")
 
@@ -169,7 +176,7 @@ func printDevice1(sds *client.SessionDataSet) {
 		// var description string
 		// var status string
 
-		if err := sds.Scan(&restartCount, &price, &tickCount, &temperature, &description, &status); err != nil {
+		if err := sds.Scan(&restartCount, &tickCount, &price, &temperature, &description, &status); err != nil {
 			log.Fatal(err)
 		}
 
@@ -373,6 +380,26 @@ func insertAlignedRecord() {
 	} else {
 		log.Println(err)
 	}
+	fmt.Println()
+}
+
+func fastInsertRecords() {
+	var (
+		deviceIds = []string{"root.fast.d1", "root.fast.d2"}
+		dataTypes = [][]client.TSDataType{{client.INT32, client.INT32}, {client.INT32, client.INT32}}
+		values    = [][]interface{}{{int32(120), int32(121)}, {int32(130), int32(131)}}
+		timestamp = []int64{12, 13}
+	)
+	checkError(session.FastInsertRecords(deviceIds, dataTypes, values, timestamp))
+	sessionDataSet, err := session.ExecuteStatement("show devices")
+	if err == nil {
+		printDataSet0(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+
+	deleteTimeseries("root.fast.**")
 	fmt.Println()
 }
 
@@ -604,12 +631,25 @@ func executeQueryStatement(sql string) {
 	}
 }
 
+func executeAggregationQueryStatementWithLegalNodes(paths []string, aggregations []common.TAggregationType,
+	startTime *int64, endTime *int64, interval *int64) {
+	var timeout int64 = 1000
+	var legal bool = true
+	sessionDataSet, err := session.ExecuteAggregationQueryWithLegalNodes(paths, aggregations, startTime, endTime, interval, &timeout, &legal)
+	if err == nil {
+		printDataSet1(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+}
+
 func executeRawDataQuery() {
 	session.ExecuteUpdateStatement("insert into root.ln.wf02.wt02(time,s5) values(1,true)")
 	var (
-		paths     []string = []string{"root.ln.wf02.wt02.s5"}
-		startTime int64    = 1
-		endTime   int64    = 200
+		paths           = []string{"root.ln.wf02.wt02.s5"}
+		startTime int64 = 1
+		endTime   int64 = 200
 	)
 	sessionDataSet, err := session.ExecuteRawDataQuery(paths, startTime, endTime)
 	if err == nil {
@@ -638,7 +678,7 @@ func executeBatchStatement() {
 	}
 }
 
-func checkError(status *rpc.TSStatus, err error) {
+func checkError(status *common.TSStatus, err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
