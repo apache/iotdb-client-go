@@ -558,7 +558,11 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 		ts++
 		tablet.SetTimestamp(ts, row)
 		tablet.SetValueAt(rand.Int31(), 0, row)
-		tablet.SetValueAt(rand.Float64(), 1, row)
+		if row%2 == 1 {
+			tablet.SetValueAt(rand.Float64(), 1, row)
+		} else {
+			tablet.SetValueAt(nil, 1, row)
+		}
 		tablet.SetValueAt(rand.Int63(), 2, row)
 		tablet.SetValueAt(rand.Float32(), 3, row)
 		tablet.SetValueAt(fmt.Sprintf("Test Device %d", row+1), 4, row)

@@ -22,7 +22,6 @@ package client
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -38,6 +37,7 @@ type Tablet struct {
 	measurementSchemas []*MeasurementSchema
 	timestamps         []int64
 	values             []interface{}
+	bitMaps            []*BitMap
 	maxRowNumber       int
 	RowSize            int
 }
@@ -69,6 +69,24 @@ func (t *Tablet) Swap(i, j int) {
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
 		}
 	}
+	if t.bitMaps != nil {
+		for _, bitMap := range t.bitMaps {
+			if bitMap != nil {
+				isNilI := bitMap.IsMarked(i)
+				isNilJ := bitMap.IsMarked(j)
+				if isNilI {
+					bitMap.Mark(j)
+				} else {
+					bitMap.UnMark(j)
+				}
+				if isNilJ {
+					bitMap.Mark(i)
+				} else {
+					bitMap.UnMark(i)
+				}
+			}
+		}
+	}
 	t.timestamps[i], t.timestamps[j] = t.timestamps[j], t.timestamps[i]
 }
 
@@ -81,16 +99,25 @@ func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
 }
 
 func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error {
-	if value == nil {
-		return errors.New("illegal argument value can't be nil")
-	}
 
 	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
 		return fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
-	if rowIndex < 0 || rowIndex > int(t.maxRowNumber) {
+	if rowIndex < 0 || rowIndex > t.maxRowNumber {
 		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
+	}
+
+	if value == nil {
+		// Init the bitMap to mark nil value
+		if t.bitMaps == nil {
+			t.bitMaps = make([]*BitMap, len(t.values))
+		}
+		if t.bitMaps[columnIndex] == nil {
+			t.bitMaps[columnIndex] = NewBitMap(t.maxRowNumber)
+		}
+		// Mark the nil value position
+		t.bitMaps[columnIndex].Mark(rowIndex)
 	}
 
 	switch t.measurementSchemas[columnIndex].DataType {
@@ -167,11 +194,16 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return nil, fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
-	if rowIndex < 0 || rowIndex > int(t.maxRowNumber) {
+
+	if rowIndex < 0 || rowIndex > t.maxRowNumber {
 		return nil, fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
 	schema := t.measurementSchemas[columnIndex]
+
+	if t.bitMaps != nil && t.bitMaps[columnIndex] != nil && t.bitMaps[columnIndex].IsMarked(rowIndex) {
+		return nil, nil
+	}
 	switch schema.DataType {
 	case BOOLEAN:
 		return t.values[columnIndex].([]bool)[rowIndex], nil
@@ -235,6 +267,15 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 		}
 	}
+	if t.bitMaps != nil {
+		for _, bitMap := range t.bitMaps {
+			columnHasNil := bitMap != nil && !bitMap.IsAllUnmarked()
+			binary.Write(buff, binary.BigEndian, columnHasNil)
+			if columnHasNil {
+				binary.Write(buff, binary.BigEndian, bitMap.GetBits()[0:t.RowSize/8+1])
+			}
+		}
+	}
 	return buff.Bytes(), nil
 }
 
@@ -245,6 +286,7 @@ func (t *Tablet) Sort() error {
 
 func (t *Tablet) Reset() {
 	t.RowSize = 0
+	t.bitMaps = nil
 }
 
 func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, maxRowNumber int) (*Tablet, error) {

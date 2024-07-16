@@ -33,10 +33,10 @@ generate:
 		exit 1; \
 	fi
 
-	@if [ -f "../thrift/src/main/thrift/rpc.thrift" ]; then \
-		thrift -out . -gen go ../thrift/src/main/thrift/rpc.thrift; \
+	@if [ -f "../../iotdb-protocol/thrift/src/main/thrift/rpc.thrift" ]; then \
+		thrift -out . -gen go ../../iotdb-protocol/thrift/src/main/thrift/rpc.thrift; \
 	else \
-		curl -o rpc.thrift https://raw.githubusercontent.com/apache/iotdb/master/thrift/src/main/thrift/rpc.thrift; \
+		curl -o rpc.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift/src/main/thrift/rpc.thrift; \
 		thrift -out . -gen go rpc.thrift; \
 		rm -f rpc.thrift; \
 	fi
@@ -61,7 +61,7 @@ e2e_test_clean:
 #only used for project structure that the iotdb main project is in the parent folder of this project.
 e2e_test_for_parent_git_repo:
 	mkdir -p target/iotdb
-	unzip -o -q ../distribution/target/apache-iotdb-*-all-bin.zip -d target
+	unzip -o -q ../../distribution/target/apache-iotdb-*-all-bin.zip -d target
 	mv target/*/* target/iotdb
 	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 

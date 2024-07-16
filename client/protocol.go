@@ -45,6 +45,11 @@ const (
 	GORILLA_V1       TSEncoding = 6
 	REGULAR          TSEncoding = 7
 	GORILLA          TSEncoding = 8
+    ZIGZAG           TSEncoding = 9
+    FREQ             TSEncoding = 10
+    CHIMP            TSEncoding = 11
+    SPRINTZ          TSEncoding = 12
+    RLBE             TSEncoding = 13
 )
 
 const (
@@ -57,6 +62,7 @@ const (
 	PLA          TSCompressionType = 6
 	LZ4          TSCompressionType = 7
 	ZSTD		 TSCompressionType = 8
+	LZMA2        TSCompressionType = 9
 )
 
 // TSStatusCode
