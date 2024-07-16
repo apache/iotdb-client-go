@@ -51,11 +51,6 @@ endif
 all: generate
 
 generate:
-	@if ! command -v curl &> /dev/null; then \
-	    echo "curl could not be found, please install curl."; \
-	    exit 1; \
-	fi
-
 
 	@if [ -f "../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift" ]; then \
 		cd ../..; \
