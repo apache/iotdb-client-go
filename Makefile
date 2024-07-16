@@ -39,9 +39,11 @@ ifeq ($(UNAME_S),Darwin)
 		THRIFT_EXEC := thrift/bin/thrift
 	endif
 endif
-ifeq ($(UNAME_S),)
-	OS_CLASSIFIER := windows-x86_64
-	THRIFT_EXEC := thrift/bin/Release/thrift.exe
+ifneq ($(UNAME_S),Linux)
+	ifneq ($(UNAME_S),Darwin)
+		OS_CLASSIFIER := windows-x86_64
+		THRIFT_EXEC := thrift/bin/Release/thrift.exe
+	endif
 endif
 
 all: generate
