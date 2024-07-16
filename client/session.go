@@ -590,54 +590,6 @@ func (s *Session) InsertAlignedRecord(deviceId string, measurements []string, da
 	return r, err
 }
 
-func (s *Session) genFastInsertRecordReq(deviceIds []string,
-	timestamps []int64,
-	dataTypes [][]TSDataType,
-	values [][]interface{}) (*rpc.TSFastInsertRecordsReq, error) {
-	length := len(deviceIds)
-	if length != len(timestamps) || length != len(values) {
-		return nil, errLength
-	}
-
-	request := rpc.TSFastInsertRecordsReq{
-		SessionId:   s.sessionId,
-		PrefixPaths: deviceIds,
-		Timestamps:  timestamps,
-	}
-
-	v := make([][]byte, length)
-	for i := 0; i < len(timestamps); i++ {
-		if bys, err := valuesToBytesForFast(dataTypes[i], values[i]); err == nil {
-			v[i] = bys
-		} else {
-			return nil, err
-		}
-	}
-
-	request.ValuesList = v
-	return &request, nil
-}
-
-func (s *Session) FastInsertRecords(deviceIds []string,
-	dataTypes [][]TSDataType,
-	values [][]interface{},
-	timestamps []int64) (r *common.TSStatus, err error) {
-	request, err := s.genFastInsertRecordReq(deviceIds, timestamps, dataTypes, values)
-	if err != nil {
-		return nil, err
-	} else {
-		r, err = s.client.FastInsertRecords(context.Background(), request)
-		if err != nil && r == nil {
-			if s.reconnect() {
-				request.SessionId = s.sessionId
-				r, err = s.client.FastInsertRecords(context.Background(), request)
-			}
-		}
-	}
-
-	return r, err
-}
-
 type deviceData struct {
 	timestamps        []int64
 	measurementsSlice [][]string
