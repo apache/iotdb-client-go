@@ -23,24 +23,21 @@ generate:
 		exit 1; \
 	fi
 
-	@if ! command -v thrift &> /dev/null; then \
-		echo "thrift could not be found, please install thrift 0.15.0"; \
-		exit 1; \
-	fi
-
-	@if [[ "`thrift --version|grep -o '0.15.[0-9]'`" == "" ]]; then \
-		echo "please install thrift 0.15.0"; \
-		exit 1; \
-	fi
-
-	@if [ -f "../../iotdb-protocol/thrift/src/main/thrift/rpc.thrift" ]; then \
-		thrift -out . -gen go ../../iotdb-protocol/thrift/src/main/thrift/rpc.thrift; \
+        @if [ -f "../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift" ]; then \
+		thrift -out . -gen go ../../iotdb-protocol/thrift-commons/src/main/thrift/common.thrift; \
 	else \
-		curl -o rpc.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift/src/main/thrift/rpc.thrift; \
-		thrift -out . -gen go rpc.thrift; \
-		rm -f rpc.thrift; \
+		curl -o common.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-commons/src/main/thrift/common.thrift; \
+		thrift -out . -gen go common.thrift; \
+		rm -f common.thrift; \
 	fi
-	@rm -rf rpc/t_s_i_service-remote
+
+	@if [ -f "../../iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift" ]; then \
+		thrift -out . -gen go ../../iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift; \
+	else \
+		curl -o client.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift; \
+		thrift -out . -gen go client.thrift; \
+		rm -f client.thrift; \
+	fi
 
 .PHONY: generate all test e2e_test e2e_test_clean
 
