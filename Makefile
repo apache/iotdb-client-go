@@ -81,19 +81,19 @@ e2e_test:
 	mkdir -p target/iotdb
 	unzip -o -q /tmp/iotdb/distribution/target/apache-iotdb-*-all-bin.zip -d target
 	mv target/*/* target/iotdb
-	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
+	docker compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean:
 	rm -rf /tmp/iotdb target
-	docker-compose -f test/e2e/docker-compose.yml down
+	docker compose -f test/e2e/docker-compose.yml down
 
 #only used for project structure that the iotdb main project is in the parent folder of this project.
 e2e_test_for_parent_git_repo:
 	mkdir -p target/iotdb
 	unzip -o -q ../../distribution/target/apache-iotdb-*-all-bin.zip -d target
 	mv target/*/* target/iotdb
-	docker-compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
+	docker compose -f test/e2e/docker-compose.yml up --build --abort-on-container-exit --remove-orphans
 
 e2e_test_clean_for_parent_git_repo:
 	rm -rf target
-	docker-compose -f test/e2e/docker-compose.yml down
+	docker compose -f test/e2e/docker-compose.yml down
