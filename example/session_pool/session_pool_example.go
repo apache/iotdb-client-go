@@ -67,6 +67,7 @@ func main() {
 		}()
 
 	}
+	//useNodeUrls()
 	setStorageGroup("root.ln1")
 	setStorageGroup("root.ln2")
 	deleteStorageGroups("root.ln1", "root.ln2")
@@ -136,6 +137,25 @@ func main() {
 	deleteTimeseries("root.ln.device1.*")
 	executeQueryStatement("show timeseries root.**")
 	wg.Wait()
+
+}
+
+// If your IoTDB is a cluster version, you can use the following code for session pool connection
+func useNodeUrls() {
+
+	config := &client.PoolConfig{
+		UserName: user,
+		Password: password,
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668", ","),
+	}
+	sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
+	defer sessionPool.Close()
+	session, err := sessionPool.GetSession()
+	defer sessionPool.PutBack(session)
+	if err != nil {
+		log.Print(err)
+		return
+	}
 
 }
 
@@ -761,23 +781,4 @@ func checkError(status *common.TSStatus, err error) {
 			log.Println(err)
 		}
 	}
-}
-
-// If your IotDB is a cluster version or doubleLive, you can use the following code for session pool connection
-func useSessionPool() {
-
-	config := &client.PoolConfig{
-		UserName: user,
-		Password: password,
-		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668", ","),
-	}
-	sessionPool = client.NewSessionPool(config, 3, 60000, 60000, false)
-	defer sessionPool.Close()
-	session, err := sessionPool.GetSession()
-	defer sessionPool.PutBack(session)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
 }
