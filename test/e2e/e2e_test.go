@@ -77,7 +77,7 @@ func (s *e2eTestSuite) checkError(status *common.TSStatus, err error) {
 
 func (s *e2eTestSuite) Test_ClusterSessionInit() {
 	config := &client.ClusterConfig{
-		NodeUrls: strings.Split("iotdb:6668,1iotdb:6667,iotdb:6669", ","),
+		NodeUrls: strings.Split("iotdb:6668,iotdb:6667,iotdb:6669", ","),
 		UserName: "root",
 		Password: "root",
 	}
