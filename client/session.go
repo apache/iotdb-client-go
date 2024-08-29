@@ -1137,23 +1137,21 @@ func NewClusterSession(clusterConfig *ClusterConfig) Session {
 		session.trans = thrift.NewTSocketConf(net.JoinHostPort(e.Value.(endPoint).Host, e.Value.(endPoint).Port), &thrift.TConfiguration{
 			ConnectTimeout: time.Duration(0), // Use 0 for no timeout
 		})
-		if err == nil {
-			// session.trans = thrift.NewTFramedTransport(session.trans)	// deprecated
-			var tmp_conf = thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
-			session.trans = thrift.NewTFramedTransportConf(session.trans, &tmp_conf)
-			if !session.trans.IsOpen() {
-				err = session.trans.Open()
-				if err != nil {
-					log.Println(err)
-				} else {
-					session.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
-						clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax)
-					break
-				}
+		// session.trans = thrift.NewTFramedTransport(session.trans)	// deprecated
+		var tmp_conf = thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
+		session.trans = thrift.NewTFramedTransportConf(session.trans, &tmp_conf)
+		if !session.trans.IsOpen() {
+			err = session.trans.Open()
+			if err != nil {
+				log.Println(err)
+			} else {
+				session.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
+					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax)
+				break
 			}
 		}
 	}
-	if err != nil {
+	if !session.trans.IsOpen() {
 		log.Fatal("No Server Can Connect")
 	}
 	return session
