@@ -24,6 +24,7 @@ import (
 	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,6 +73,20 @@ func (s *e2eTestSuite) checkError(status *common.TSStatus, err error) {
 	if status != nil {
 		s.Require().NoError(client.VerifySuccess(status))
 	}
+}
+
+func (s *e2eTestSuite) Test_ClusterSessionInit() {
+	config := &client.ClusterConfig{
+		NodeUrls: strings.Split("iotdb:6668,1iotdb:6667,iotdb:6669", ","),
+		UserName: "root",
+		Password: "root",
+	}
+	var session client.Session
+	session = client.NewClusterSession(config)
+	err := session.Open(false, 0)
+	s.Require().NoError(err)
+	_, err = session.Close()
+	s.Require().NoError(err)
 }
 
 func (s *e2eTestSuite) Test_CreateTimeseries() {
