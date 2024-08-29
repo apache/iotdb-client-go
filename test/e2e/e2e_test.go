@@ -42,14 +42,12 @@ func TestE2ETestSuite(t *testing.T) {
 }
 
 func (s *e2eTestSuite) SetupSuite() {
-	config := &client.Config{
-		Host:     "iotdb",
-		Port:     "6667",
+	clusterConfig := client.ClusterConfig{
+		NodeUrls: strings.Split("0.0.0.0:6668,0.0.0.0:6667,0.0.0.0:6669", ","),
 		UserName: "root",
 		Password: "root",
 	}
-
-	s.session = client.NewSession(config)
+	s.session = client.NewClusterSession(&clusterConfig)
 	err := s.session.Open(false, 0)
 	s.Require().NoError(err)
 }
@@ -73,20 +71,6 @@ func (s *e2eTestSuite) checkError(status *common.TSStatus, err error) {
 	if status != nil {
 		s.Require().NoError(client.VerifySuccess(status))
 	}
-}
-
-func (s *e2eTestSuite) Test_ClusterSessionInit() {
-	config := &client.ClusterConfig{
-		NodeUrls: strings.Split("iotdb:6668,iotdb:6667,iotdb:6669", ","),
-		UserName: "root",
-		Password: "root",
-	}
-	var session client.Session
-	session = client.NewClusterSession(config)
-	err := session.OpenCluster(false)
-	s.Require().NoError(err)
-	_, err = session.Close()
-	s.Require().NoError(err)
 }
 
 func (s *e2eTestSuite) Test_CreateTimeseries() {
