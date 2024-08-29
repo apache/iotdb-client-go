@@ -43,7 +43,7 @@ func TestE2ETestSuite(t *testing.T) {
 
 func (s *e2eTestSuite) SetupSuite() {
 	clusterConfig := client.ClusterConfig{
-		NodeUrls: strings.Split("0.0.0.0:6668,0.0.0.0:6667,0.0.0.0:6669", ","),
+		NodeUrls: strings.Split("iotdb:6668,iotdb:6667,iotdb:6669", ","),
 		UserName: "root",
 		Password: "root",
 	}
