@@ -83,7 +83,7 @@ func (s *e2eTestSuite) Test_ClusterSessionInit() {
 	}
 	var session client.Session
 	session = client.NewClusterSession(config)
-	err := session.Open(false, 0)
+	err := session.OpenCluster(false)
 	s.Require().NoError(err)
 	_, err = session.Close()
 	s.Require().NoError(err)
