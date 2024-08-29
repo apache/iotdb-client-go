@@ -57,6 +57,8 @@ func main() {
 	}
 	defer session.Close()
 
+	//connectCluster()
+
 	setStorageGroup("root.ln1")
 	deleteStorageGroup("root.ln1")
 
@@ -141,6 +143,19 @@ func main() {
 	deleteStorageGroup("root.ln")
 	insertAlignedTablets()
 	deleteTimeseries("root.ln.device1.*")
+}
+
+// If your IotDB is a cluster version, you can use the following code for multi node connection
+func connectCluster() {
+	config := &client.ClusterConfig{
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669", ","),
+		UserName: "root",
+		Password: "root",
+	}
+	session = client.NewClusterSession(config)
+	if err := session.OpenCluster(false); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func printDevice1(sds *client.SessionDataSet) {
@@ -665,18 +680,5 @@ func checkError(status *common.TSStatus, err error) {
 		if err = client.VerifySuccess(status); err != nil {
 			log.Println(err)
 		}
-	}
-}
-
-// If your IotDB is a cluster version, you can use the following code for multi node connection
-func connectCluster() {
-	config := &client.ClusterConfig{
-		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669", ","),
-		UserName: "root",
-		Password: "root",
-	}
-	session = client.NewClusterSession(config)
-	if err := session.OpenCluster(false); err != nil {
-		log.Fatal(err)
 	}
 }
