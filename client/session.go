@@ -980,7 +980,7 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 				binary.Write(buff, binary.BigEndian, int32(size))
 				binary.Write(buff, binary.BigEndian, s)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("values[%d] %v(%v) must be string or []byte", i, v, reflect.TypeOf(v))
 			}
 		case BLOB:
 			switch s := v.(type) {
@@ -989,10 +989,21 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 				binary.Write(buff, binary.BigEndian, int32(size))
 				binary.Write(buff, binary.BigEndian, s)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("values[%d] %v(%v) must be []byte", i, v, reflect.TypeOf(v))
+			}
+		case DATE:
+			switch s := v.(type) {
+			case time.Time:
+				date, err := dateToInt32(s)
+				if err != nil {
+					return nil, err
+				}
+				binary.Write(buff, binary.BigEndian, date)
+			default:
+				return nil, fmt.Errorf("values[%d] %v(%v) must be time.Time", i, v, reflect.TypeOf(v))
 			}
 		default:
-			return nil, fmt.Errorf("types[%d] is incorrect, it must in (BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT)", i)
+			return nil, fmt.Errorf("types[%d] is incorrect, it must in (BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, BLOB, DATE, STRING)", i)
 		}
 	}
 	return buff.Bytes(), nil

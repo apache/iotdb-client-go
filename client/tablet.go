@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"time"
 )
 
 type MeasurementSchema struct {
@@ -52,7 +53,7 @@ func (t *Tablet) Swap(i, j int) {
 		case BOOLEAN:
 			sortedSlice := t.values[index].([]bool)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-		case INT32:
+		case INT32, DATE:
 			sortedSlice := t.values[index].([]int32)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
 		case INT64, TIMESTAMP:
@@ -189,6 +190,18 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
+	case DATE:
+		values := t.values[columnIndex].([]int32)
+		switch v := value.(type) {
+		case time.Time:
+			val, err := dateToInt32(v)
+			if err != nil {
+				return err
+			}
+			values[rowIndex] = val
+		default:
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
 	}
 	return nil
 }
@@ -226,6 +239,8 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return string(t.values[columnIndex].([][]byte)[rowIndex]), nil
 	case BLOB:
 		return t.values[columnIndex].([][]byte)[rowIndex], nil
+	case DATE:
+		return int32ToDate(t.values[columnIndex].([]int32)[rowIndex])
 	default:
 		return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 	}
@@ -259,7 +274,7 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 		switch schema.DataType {
 		case BOOLEAN:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]bool)[0:t.RowSize])
-		case INT32:
+		case INT32, DATE:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]int32)[0:t.RowSize])
 		case INT64, TIMESTAMP:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]int64)[0:t.RowSize])
@@ -310,7 +325,7 @@ func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, maxRowN
 		switch schema.DataType {
 		case BOOLEAN:
 			tablet.values[i] = make([]bool, maxRowNumber)
-		case INT32:
+		case INT32, DATE:
 			tablet.values[i] = make([]int32, maxRowNumber)
 		case INT64, TIMESTAMP:
 			tablet.values[i] = make([]int64, maxRowNumber)
