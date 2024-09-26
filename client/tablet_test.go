@@ -322,7 +322,7 @@ func TestTablet_GetValueAt(t *testing.T) {
 	}
 	if tablet, err := createTablet(1); err == nil {
 		tablet.SetValueAt(int32(256), 0, 0)
-		tablet.SetValueAt(float64(32.768), 1, 0)
+		tablet.SetValueAt(32.768, 1, 0)
 		tablet.SetValueAt(int64(65535), 2, 0)
 		tablet.SetValueAt(float32(36.5), 3, 0)
 		tablet.SetValueAt("Hello World!", 4, 0)

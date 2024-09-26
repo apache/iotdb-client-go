@@ -222,7 +222,9 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return t.values[columnIndex].([]float32)[rowIndex], nil
 	case DOUBLE:
 		return t.values[columnIndex].([]float64)[rowIndex], nil
-	case TEXT, STRING, BLOB:
+	case TEXT, STRING:
+		return string(t.values[columnIndex].([][]byte)[rowIndex]), nil
+	case BLOB:
 		return t.values[columnIndex].([][]byte)[rowIndex], nil
 	default:
 		return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
