@@ -69,6 +69,16 @@ func bytesToInt64(bys []byte) int64 {
 	return int64(data)
 }
 
+func parseBytesToString(input []byte) string {
+	hexString := "0x"
+	if input != nil {
+		for _, b := range input {
+			hexString += fmt.Sprintf("%02x", b)
+		}
+	}
+	return hexString
+}
+
 func verifySuccesses(statuses []*common.TSStatus) error {
 	buff := bytes.Buffer{}
 	for _, status := range statuses {

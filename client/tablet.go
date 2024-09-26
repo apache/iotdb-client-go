@@ -55,7 +55,7 @@ func (t *Tablet) Swap(i, j int) {
 		case INT32:
 			sortedSlice := t.values[index].([]int32)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-		case INT64:
+		case INT64, TIMESTAMP:
 			sortedSlice := t.values[index].([]int64)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
 		case FLOAT:
@@ -64,8 +64,8 @@ func (t *Tablet) Swap(i, j int) {
 		case DOUBLE:
 			sortedSlice := t.values[index].([]float64)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-		case TEXT:
-			sortedSlice := t.values[index].([]string)
+		case TEXT, BLOB, STRING:
+			sortedSlice := t.values[index].([][]byte)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
 		}
 	}
@@ -141,7 +141,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
-	case INT64:
+	case INT64, TIMESTAMP:
 		values := t.values[columnIndex].([]int64)
 		switch v := value.(type) {
 		case int64:
@@ -171,13 +171,21 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
-	case TEXT:
-		values := t.values[columnIndex].([]string)
+	case TEXT, STRING:
+		values := t.values[columnIndex].([][]byte)
 		switch v := value.(type) {
 		case string:
-			values[rowIndex] = v
+			values[rowIndex] = []byte(v)
 		case []byte:
-			values[rowIndex] = string(v)
+			values[rowIndex] = v
+		default:
+			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
+		}
+	case BLOB:
+		values := t.values[columnIndex].([][]byte)
+		switch v := value.(type) {
+		case []byte:
+			values[rowIndex] = v
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
@@ -194,7 +202,6 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return nil, fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
-
 	if rowIndex < 0 || rowIndex > t.maxRowNumber {
 		return nil, fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
@@ -209,14 +216,14 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return t.values[columnIndex].([]bool)[rowIndex], nil
 	case INT32:
 		return t.values[columnIndex].([]int32)[rowIndex], nil
-	case INT64:
+	case INT64, TIMESTAMP:
 		return t.values[columnIndex].([]int64)[rowIndex], nil
 	case FLOAT:
 		return t.values[columnIndex].([]float32)[rowIndex], nil
 	case DOUBLE:
 		return t.values[columnIndex].([]float64)[rowIndex], nil
-	case TEXT:
-		return t.values[columnIndex].([]string)[rowIndex], nil
+	case TEXT, STRING, BLOB:
+		return t.values[columnIndex].([][]byte)[rowIndex], nil
 	default:
 		return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 	}
@@ -252,16 +259,16 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 			binary.Write(buff, binary.BigEndian, t.values[i].([]bool)[0:t.RowSize])
 		case INT32:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]int32)[0:t.RowSize])
-		case INT64:
+		case INT64, TIMESTAMP:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]int64)[0:t.RowSize])
 		case FLOAT:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]float32)[0:t.RowSize])
 		case DOUBLE:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]float64)[0:t.RowSize])
-		case TEXT:
-			for _, s := range t.values[i].([]string)[0:t.RowSize] {
+		case TEXT, STRING, BLOB:
+			for _, s := range t.values[i].([][]byte)[0:t.RowSize] {
 				binary.Write(buff, binary.BigEndian, int32(len(s)))
-				binary.Write(buff, binary.BigEndian, []byte(s))
+				binary.Write(buff, binary.BigEndian, s)
 			}
 		default:
 			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
@@ -303,14 +310,14 @@ func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, maxRowN
 			tablet.values[i] = make([]bool, maxRowNumber)
 		case INT32:
 			tablet.values[i] = make([]int32, maxRowNumber)
-		case INT64:
+		case INT64, TIMESTAMP:
 			tablet.values[i] = make([]int64, maxRowNumber)
 		case FLOAT:
 			tablet.values[i] = make([]float32, maxRowNumber)
 		case DOUBLE:
 			tablet.values[i] = make([]float64, maxRowNumber)
-		case TEXT:
-			tablet.values[i] = make([]string, maxRowNumber)
+		case TEXT, STRING, BLOB:
+			tablet.values[i] = make([][]byte, maxRowNumber)
 		default:
 			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 		}

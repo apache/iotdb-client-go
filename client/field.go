@@ -92,3 +92,7 @@ func (f *Field) GetText() string {
 	}
 	return ""
 }
+
+func (f *Field) GetBlob() []byte {
+	return f.value.([]byte)
+}

@@ -90,9 +90,6 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 	s.trans = thrift.NewTSocketConf(net.JoinHostPort(s.config.Host, s.config.Port), &thrift.TConfiguration{
 		ConnectTimeout: time.Duration(connectionTimeoutInMs) * time.Millisecond, // Use 0 for no timeout
 	})
-	if err != nil {
-		return err
-	}
 	// s.trans = thrift.NewTFramedTransport(s.trans)	// deprecated
 	var tmp_conf = thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
 	s.trans = thrift.NewTFramedTransportConf(s.trans, &tmp_conf)
@@ -951,8 +948,7 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 			default:
 				return nil, fmt.Errorf("values[%d] %v(%v) must be int32", i, v, reflect.TypeOf(v))
 			}
-		case INT64:
-		case TIMESTAMP:
+		case INT64, TIMESTAMP:
 			switch v.(type) {
 			case int64:
 				binary.Write(buff, binary.BigEndian, v)
@@ -973,82 +969,25 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 			default:
 				return nil, fmt.Errorf("values[%d] %v(%v) must be float64", i, v, reflect.TypeOf(v))
 			}
-		case TEXT:
-		case STRING:
+		case TEXT, STRING:
 			switch s := v.(type) {
 			case string:
 				size := len(s)
 				binary.Write(buff, binary.BigEndian, int32(size))
 				binary.Write(buff, binary.BigEndian, []byte(s))
+			case []byte:
+				size := len(s)
+				binary.Write(buff, binary.BigEndian, int32(size))
+				binary.Write(buff, binary.BigEndian, s)
 			default:
 				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
 			}
 		case BLOB:
 			switch s := v.(type) {
-			case string:
+			case []byte:
 				size := len(s)
 				binary.Write(buff, binary.BigEndian, int32(size))
-				binary.Write(buff, binary.BigEndian, []byte(s))
-			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
-			}
-		default:
-			return nil, fmt.Errorf("types[%d] is incorrect, it must in (BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT)", i)
-		}
-	}
-	return buff.Bytes(), nil
-}
-
-func valuesToBytesForFast(dataTypes []TSDataType, values []interface{}) ([]byte, error) {
-	buff := &bytes.Buffer{}
-	for i, t := range dataTypes {
-		v := values[i]
-		if v == nil {
-			return nil, fmt.Errorf("values[%d] can't be nil", i)
-		}
-
-		switch t {
-		case BOOLEAN:
-			switch v.(type) {
-			case bool:
-				binary.Write(buff, binary.BigEndian, v)
-			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be bool", i, v, reflect.TypeOf(v))
-			}
-		case INT32:
-			switch v.(type) {
-			case int32:
-				binary.Write(buff, binary.BigEndian, v)
-			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be int32", i, v, reflect.TypeOf(v))
-			}
-		case INT64:
-			switch v.(type) {
-			case int64:
-				binary.Write(buff, binary.BigEndian, v)
-			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be int64", i, v, reflect.TypeOf(v))
-			}
-		case FLOAT:
-			switch v.(type) {
-			case float32:
-				binary.Write(buff, binary.BigEndian, v)
-			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be float32", i, v, reflect.TypeOf(v))
-			}
-		case DOUBLE:
-			switch v.(type) {
-			case float64:
-				binary.Write(buff, binary.BigEndian, v)
-			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be float64", i, v, reflect.TypeOf(v))
-			}
-		case TEXT:
-			switch s := v.(type) {
-			case string:
-				size := len(s)
-				binary.Write(buff, binary.BigEndian, int32(size))
-				binary.Write(buff, binary.BigEndian, []byte(s))
+				binary.Write(buff, binary.BigEndian, s)
 			default:
 				return nil, fmt.Errorf("values[%d] %v(%v) must be string", i, v, reflect.TypeOf(v))
 			}
