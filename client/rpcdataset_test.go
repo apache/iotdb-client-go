@@ -20,6 +20,7 @@
 package client
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 	"time"
@@ -28,23 +29,49 @@ import (
 )
 
 func createIoTDBRpcDataSet() *IoTDBRpcDataSet {
-	columns := []string{"root.ln.device1.restart_count", "root.ln.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status"}
-	dataTypes := []string{"INT32", "DOUBLE", "INT64", "FLOAT", "TEXT", "BOOLEAN"}
+	columns := []string{
+		"root.ln.device1.restart_count",
+		"root.ln.device1.price",
+		"root.ln.device1.tick_count",
+		"root.ln.device1.temperature",
+		"root.ln.device1.description",
+		"root.ln.device1.status",
+		"root.ln.device1.description_string",
+		"root.ln.device1.description_blob",
+		"root.ln.device1.date",
+		"root.ln.device1.timestamp",
+	}
+	dataTypes := []string{"INT32", "DOUBLE", "INT64", "FLOAT", "TEXT", "BOOLEAN", "STRING", "BLOB", "DATE", "TIMESTAMP"}
 	columnNameIndex := map[string]int32{
-		"root.ln.device1.restart_count": 2,
-		"root.ln.device1.price":         1,
-		"root.ln.device1.tick_count":    5,
-		"root.ln.device1.temperature":   4,
-		"root.ln.device1.description":   0,
-		"root.ln.device1.status":        3,
+		"root.ln.device1.restart_count":      2,
+		"root.ln.device1.price":              1,
+		"root.ln.device1.tick_count":         5,
+		"root.ln.device1.temperature":        4,
+		"root.ln.device1.description":        0,
+		"root.ln.device1.status":             3,
+		"root.ln.device1.description_string": 6,
+		"root.ln.device1.description_blob":   7,
+		"root.ln.device1.date":               8,
+		"root.ln.device1.timestamp":          9,
 	}
 	var queyrId int64 = 1
 	var sessionId int64 = 1
 	var client *rpc.IClientRPCServiceClient = nil
 	queryDataSet := rpc.TSQueryDataSet{
-		Time:       []byte{0, 0, 1, 118, 76, 52, 0, 236, 0, 0, 1, 118, 76, 52, 25, 228, 0, 0, 1, 118, 76, 52, 41, 42, 0, 0, 1, 118, 76, 52, 243, 148, 0, 0, 1, 118, 76, 95, 98, 255},
-		ValueList:  [][]byte{{0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49}, {64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205}, {0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1}, {1, 1, 1, 1, 1}, {65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154}, {0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213}},
-		BitmapList: [][]byte{{248}, {248}, {248}, {248}, {248}, {248}},
+		Time: []byte{0, 0, 1, 118, 76, 52, 0, 236, 0, 0, 1, 118, 76, 52, 25, 228, 0, 0, 1, 118, 76, 52, 41, 42, 0, 0, 1, 118, 76, 52, 243, 148, 0, 0, 1, 118, 76, 95, 98, 255},
+		ValueList: [][]byte{
+			{0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49},
+			{64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205, 64, 159, 16, 204, 204, 204, 204, 205},
+			{0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
+			{1, 1, 1, 1, 1},
+			{65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154, 65, 65, 153, 154},
+			{0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213},
+			{0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49},
+			{0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49, 0, 0, 0, 13, 84, 101, 115, 116, 32, 68, 101, 118, 105, 99, 101, 32, 49},
+			{1, 52, 216, 17, 1, 52, 216, 17, 1, 52, 216, 17, 1, 52, 216, 17, 1, 52, 216, 17},
+			{0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213, 0, 0, 0, 0, 0, 50, 220, 213},
+		},
+		BitmapList: [][]byte{{248}, {248}, {248}, {248}, {248}, {248}, {248}, {248}, {248}, {248}},
 	}
 	return NewIoTDBRpcDataSet("select * from root.ln.device1", columns, dataTypes, columnNameIndex, queyrId, client, sessionId, &queryDataSet, false, DefaultFetchSize, nil)
 }
@@ -558,11 +585,27 @@ func TestIoTDBRpcDataSet_getRowRecord(t *testing.T) {
 					}, {
 						name:     "root.ln.device1.description",
 						dataType: TEXT,
-						value:    string("Test Device 1"),
+						value:    "Test Device 1",
 					}, {
 						name:     "root.ln.device1.status",
 						dataType: BOOLEAN,
-						value:    bool(true),
+						value:    true,
+					}, {
+						name:     "root.ln.device1.description_string",
+						dataType: STRING,
+						value:    "Test Device 1",
+					}, {
+						name:     "root.ln.device1.description_blob",
+						dataType: BLOB,
+						value:    []byte("Test Device 1"),
+					}, {
+						name:     "root.ln.device1.date",
+						dataType: DATE,
+						value:    time.Date(2024, time.April, 1, 0, 0, 0, 0, time.UTC),
+					}, {
+						name:     "root.ln.device1.timestamp",
+						dataType: TIMESTAMP,
+						value:    int64(3333333),
 					},
 				},
 			},
@@ -583,10 +626,14 @@ func TestIoTDBRpcDataSet_getRowRecord(t *testing.T) {
 			for i := 0; i < len(got.fields); i++ {
 				gotField := got.fields[i]
 				wantField := tt.want.fields[i]
-
-				if gotField.dataType != wantField.dataType || gotField.name != wantField.name || gotField.value != wantField.value {
-					match = false
-
+				if gotField.dataType != BLOB {
+					if gotField.dataType != wantField.dataType || gotField.name != wantField.name || gotField.value != wantField.value {
+						match = false
+					}
+				} else {
+					if gotField.dataType != wantField.dataType || gotField.name != wantField.name || !bytes.Equal(gotField.value.([]byte), wantField.value.([]byte)) {
+						match = false
+					}
 				}
 			}
 			if !match {

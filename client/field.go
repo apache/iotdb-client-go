@@ -19,6 +19,8 @@
 
 package client
 
+import "time"
+
 type Field struct {
 	dataType TSDataType
 	name     string
@@ -89,10 +91,10 @@ func (f *Field) GetText() string {
 		return float64ToString(f.value.(float64))
 	case string:
 		return f.value.(string)
+	case []byte:
+		return bytesToHexString(f.value.([]byte))
+	case time.Time:
+		return f.value.(time.Time).Format(time.DateOnly)
 	}
 	return ""
-}
-
-func (f *Field) GetBlob() []byte {
-	return f.value.([]byte)
 }

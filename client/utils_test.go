@@ -164,7 +164,7 @@ func Test_float64ToString(t *testing.T) {
 		want string
 	}{
 		{
-			name: "Test Flota64",
+			name: "Test Float64",
 			args: args{
 				val: 0.39751212862981283,
 			},
@@ -180,11 +180,37 @@ func Test_float64ToString(t *testing.T) {
 	}
 }
 
+func Test_bytesToHexString(t *testing.T) {
+	type args struct {
+		val []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test bytes",
+			args: args{
+				val: []byte("bytes"),
+			},
+			want: "0x6279746573",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := bytesToHexString(tt.args.val); got != tt.want {
+				t.Errorf("bytesToHexString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_verifySuccess(t *testing.T) {
 	type args struct {
 		status *common.TSStatus
 	}
-	var errMsg string = "error occurred"
+	var errMsg = "error occurred"
 	tests := []struct {
 		name    string
 		args    args
@@ -250,9 +276,9 @@ func Test_verifySuccesses(t *testing.T) {
 	type args struct {
 		statuses []*common.TSStatus
 	}
-	var internalServerError string = "InternalServerError"
-	var success string = "Success"
-	var redirectionRecommend string = "RedirectionRecommend"
+	var internalServerError = "InternalServerError"
+	var success = "Success"
+	var redirectionRecommend = "RedirectionRecommend"
 	tests := []struct {
 		name    string
 		args    args
