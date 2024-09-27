@@ -205,7 +205,7 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 			{float32(12.1), "Test Device 1", false},
 			{[]byte("Test Device 1"), time.Date(2024, time.Month(4), 1, 0, 0, 0, 0, time.UTC), ts},
 		}
-		timestamps = []int64{ts, ts - 1}
+		timestamps = []int64{ts, ts - 1, ts - 2}
 	)
 	s.checkError(s.session.InsertAlignedRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
 	ds, err := s.session.ExecuteStatement("select * from root.al1.dev4")
