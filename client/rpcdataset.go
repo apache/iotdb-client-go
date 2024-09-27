@@ -199,7 +199,7 @@ func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string
 		if err != nil {
 			return ""
 		}
-		return date.Format(time.DateOnly)
+		return date.Format("2006-01-02")
 	default:
 		return ""
 	}
@@ -380,7 +380,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 				if err != nil {
 					*t = ""
 				}
-				*t = date.Format(time.DateOnly)
+				*t = date.Format("2006-01-02")
 			default:
 				return fmt.Errorf("dest[%d] types must be *time.Time or *string", i)
 			}

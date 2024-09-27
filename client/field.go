@@ -94,7 +94,7 @@ func (f *Field) GetText() string {
 	case []byte:
 		return bytesToHexString(f.value.([]byte))
 	case time.Time:
-		return f.value.(time.Time).Format(time.DateOnly)
+		return f.value.(time.Time).Format("2006-01-02")
 	}
 	return ""
 }
