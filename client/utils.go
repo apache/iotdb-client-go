@@ -22,9 +22,11 @@ package client
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"github.com/apache/iotdb-client-go/common"
 	"strconv"
+	"time"
 )
 
 func int32ToString(n int32) string {
@@ -56,17 +58,61 @@ func int64ToBytes(n int64) []byte {
 }
 
 func bytesToInt32(bys []byte) int32 {
-	bytebuff := bytes.NewBuffer(bys)
+	bytesBuffer := bytes.NewBuffer(bys)
 	var data int32
-	binary.Read(bytebuff, binary.BigEndian, &data)
-	return int32(data)
+	binary.Read(bytesBuffer, binary.BigEndian, &data)
+	return data
 }
 
 func bytesToInt64(bys []byte) int64 {
-	bytebuff := bytes.NewBuffer(bys)
+	bytesBuffer := bytes.NewBuffer(bys)
 	var data int64
-	binary.Read(bytebuff, binary.BigEndian, &data)
-	return int64(data)
+	binary.Read(bytesBuffer, binary.BigEndian, &data)
+	return data
+}
+
+func bytesToHexString(input []byte) string {
+	hexString := "0x"
+	if input != nil {
+		for _, b := range input {
+			hexString += fmt.Sprintf("%02x", b)
+		}
+	}
+	return hexString
+}
+
+func dateToInt32(localDate time.Time) (int32, error) {
+	if localDate.IsZero() {
+		return 0, errors.New("date expression is null or empty")
+	}
+
+	year := localDate.Year()
+	if year < 1000 || year > 9999 {
+		return 0, errors.New("year must be between 1000 and 9999")
+	}
+
+	// Convert to YYYY/MM/DD format
+	result := year*10000 + int(localDate.Month())*100 + localDate.Day()
+	return int32(result), nil
+}
+
+func int32ToDate(val int32) (time.Time, error) {
+	date := int(val)
+	year := date / 10000
+	month := (date / 100) % 100
+	day := date % 100
+
+	localDate := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+
+	if localDate.Year() != year || int(localDate.Month()) != month || localDate.Day() != day {
+		return time.Time{}, errors.New("invalid date format")
+	}
+
+	return localDate, nil
+}
+
+func bytesToDate(bys []byte) (time.Time, error) {
+	return int32ToDate(bytesToInt32(bys))
 }
 
 func verifySuccesses(statuses []*common.TSStatus) error {
@@ -76,8 +122,8 @@ func verifySuccesses(statuses []*common.TSStatus) error {
 			buff.WriteString(*status.Message + ";")
 		}
 	}
-	errMsgs := buff.String()
-	if len(errMsgs) > 0 {
+	errMsg := buff.String()
+	if len(errMsg) > 0 {
 		return NewBatchError(statuses)
 	}
 	return nil
@@ -96,9 +142,9 @@ func VerifySuccess(status *common.TSStatus) error {
 	}
 	if status.Code != SuccessStatus {
 		if status.Message != nil {
-			return fmt.Errorf("Error Code: %d, Message: %v", status.Code, *status.Message)
+			return fmt.Errorf("error code: %d, message: %v", status.Code, *status.Message)
 		} else {
-			return fmt.Errorf("Error Code: %d", status.Code)
+			return fmt.Errorf("error code: %d", status.Code)
 		}
 	}
 	return nil

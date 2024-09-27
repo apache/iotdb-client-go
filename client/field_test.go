@@ -22,6 +22,7 @@ package client
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestField_IsNull(t *testing.T) {
@@ -126,6 +127,38 @@ func TestField_GetDataType(t *testing.T) {
 				value:    nil,
 			},
 			want: TEXT,
+		}, {
+			name: "GetDataType-STRING",
+			fields: fields{
+				dataType: STRING,
+				name:     "",
+				value:    nil,
+			},
+			want: STRING,
+		}, {
+			name: "GetDataType-BLOB",
+			fields: fields{
+				dataType: BLOB,
+				name:     "",
+				value:    nil,
+			},
+			want: BLOB,
+		}, {
+			name: "GetDataType-TIMESTAMP",
+			fields: fields{
+				dataType: TIMESTAMP,
+				name:     "",
+				value:    nil,
+			},
+			want: TIMESTAMP,
+		}, {
+			name: "GetDataType-DATE",
+			fields: fields{
+				dataType: DATE,
+				name:     "",
+				value:    nil,
+			},
+			want: DATE,
 		},
 	}
 	for _, tt := range tests {
@@ -201,6 +234,38 @@ func TestField_GetValue(t *testing.T) {
 				value:    "TEXT",
 			},
 			want: "TEXT",
+		}, {
+			name: "GetValue-STRING",
+			fields: fields{
+				dataType: STRING,
+				name:     "",
+				value:    "STRING",
+			},
+			want: "STRING",
+		}, {
+			name: "GetValue-BLOB",
+			fields: fields{
+				dataType: BLOB,
+				name:     "",
+				value:    []byte("BLOB"),
+			},
+			want: []byte("BLOB"),
+		}, {
+			name: "GetValue-TIMESTAMP",
+			fields: fields{
+				dataType: TIMESTAMP,
+				name:     "",
+				value:    int64(65535),
+			},
+			want: int64(65535),
+		}, {
+			name: "GetValue-DATE",
+			fields: fields{
+				dataType: DATE,
+				name:     "",
+				value:    time.Date(2024, time.Month(4), 1, 0, 0, 0, 0, time.UTC),
+			},
+			want: time.Date(2024, time.Month(4), 1, 0, 0, 0, 0, time.UTC),
 		},
 	}
 	for _, tt := range tests {
@@ -408,6 +473,30 @@ func TestField_GetText(t *testing.T) {
 				value:    int32(1),
 			},
 			want: "1",
+		}, {
+			name: "GetText-04",
+			fields: fields{
+				dataType: STRING,
+				name:     "",
+				value:    "STRING",
+			},
+			want: "STRING",
+		}, {
+			name: "GetText-05",
+			fields: fields{
+				dataType: BLOB,
+				name:     "",
+				value:    []byte("BLOB"),
+			},
+			want: "0x424c4f42",
+		}, {
+			name: "GetText-06",
+			fields: fields{
+				dataType: DATE,
+				name:     "",
+				value:    time.Date(2024, time.Month(4), 1, 0, 0, 0, 0, time.UTC),
+			},
+			want: "2024-04-01",
 		},
 	}
 	for _, tt := range tests {

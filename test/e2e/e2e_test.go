@@ -171,7 +171,7 @@ func (s *e2eTestSuite) Test_InsertAlignedRecords() {
 	var (
 		deviceIds    = []string{"root.al1.dev2", "root.al1.dev3"}
 		measurements = [][]string{{"status"}, {"temperature"}}
-		dataTypes    = [][]client.TSDataType{{client.TEXT}, {client.TEXT}}
+		dataTypes    = [][]client.TSDataType{{client.TEXT}, {client.STRING}}
 		values       = [][]interface{}{{"33"}, {"44"}}
 		timestamps   = []int64{12, 13}
 	)
@@ -193,26 +193,29 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 		measurementsSlice = [][]string{
 			{"restart_count", "tick_count", "price"},
 			{"temperature", "description", "status"},
+			{"description_blob", "date", "ts"},
 		}
 		dataTypes = [][]client.TSDataType{
 			{client.INT32, client.INT64, client.DOUBLE},
 			{client.FLOAT, client.TEXT, client.BOOLEAN},
+			{client.BLOB, client.DATE, client.TIMESTAMP},
 		}
 		values = [][]interface{}{
 			{int32(1), int64(2018), float64(1988.1)},
 			{float32(12.1), "Test Device 1", false},
+			{[]byte("Test Device 1"), time.Date(2024, time.Month(4), 1, 0, 0, 0, 0, time.UTC), ts},
 		}
-		timestamps = []int64{ts, ts - 1}
+		timestamps = []int64{ts, ts - 1, ts - 2}
 	)
 	s.checkError(s.session.InsertAlignedRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
-	ds, err := s.session.ExecuteStatement("select temperature from root.al1.dev4")
+	ds, err := s.session.ExecuteStatement("select * from root.al1.dev4")
 	assert := s.Require()
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
 	var status string
 	assert.NoError(ds.Scan(&status))
-	assert.Equal(status, "12.1")
+	assert.Equal(status, "2024-04-01")
 }
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	var timeseries = []string{"root.ln.device1.**"}

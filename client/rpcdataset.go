@@ -39,12 +39,16 @@ const (
 var (
 	errClosed error                 = errors.New("DataSet is Closed")
 	tsTypeMap map[string]TSDataType = map[string]TSDataType{
-		"BOOLEAN": BOOLEAN,
-		"INT32":   INT32,
-		"INT64":   INT64,
-		"FLOAT":   FLOAT,
-		"DOUBLE":  DOUBLE,
-		"TEXT":    TEXT,
+		"BOOLEAN":   BOOLEAN,
+		"INT32":     INT32,
+		"INT64":     INT64,
+		"FLOAT":     FLOAT,
+		"DOUBLE":    DOUBLE,
+		"TEXT":      TEXT,
+		"TIMESTAMP": TIMESTAMP,
+		"DATE":      DATE,
+		"BLOB":      BLOB,
+		"STRING":    STRING,
 	}
 )
 
@@ -116,10 +120,10 @@ func (s *IoTDBRpcDataSet) constructOneRow() error {
 			case BOOLEAN:
 				s.values[i] = valueBuffer[:1]
 				s.queryDataSet.ValueList[i] = valueBuffer[1:]
-			case INT32:
+			case INT32, DATE:
 				s.values[i] = valueBuffer[:4]
 				s.queryDataSet.ValueList[i] = valueBuffer[4:]
-			case INT64:
+			case INT64, TIMESTAMP:
 				s.values[i] = valueBuffer[:8]
 				s.queryDataSet.ValueList[i] = valueBuffer[8:]
 			case FLOAT:
@@ -128,7 +132,7 @@ func (s *IoTDBRpcDataSet) constructOneRow() error {
 			case DOUBLE:
 				s.values[i] = valueBuffer[:8]
 				s.queryDataSet.ValueList[i] = valueBuffer[8:]
-			case TEXT:
+			case TEXT, BLOB, STRING:
 				length := bytesToInt32(valueBuffer[:4])
 				s.values[i] = valueBuffer[4 : 4+length]
 				s.queryDataSet.ValueList[i] = valueBuffer[4+length:]
@@ -178,7 +182,7 @@ func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string
 		return "false"
 	case INT32:
 		return int32ToString(bytesToInt32(valueBytes))
-	case INT64:
+	case INT64, TIMESTAMP:
 		return int64ToString(bytesToInt64(valueBytes))
 	case FLOAT:
 		bits := binary.BigEndian.Uint32(valueBytes)
@@ -186,8 +190,16 @@ func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string
 	case DOUBLE:
 		bits := binary.BigEndian.Uint64(valueBytes)
 		return float64ToString(math.Float64frombits(bits))
-	case TEXT:
+	case TEXT, STRING:
 		return string(valueBytes)
+	case BLOB:
+		return bytesToHexString(valueBytes)
+	case DATE:
+		date, err := bytesToDate(valueBytes)
+		if err != nil {
+			return ""
+		}
+		return date.Format("2006-01-02")
 	default:
 		return ""
 	}
@@ -206,10 +218,10 @@ func (s *IoTDBRpcDataSet) getValue(columnName string) interface{} {
 	valueBytes := s.values[columnIndex]
 	switch dataType {
 	case BOOLEAN:
-		return bool(valueBytes[0] != 0)
+		return valueBytes[0] != 0
 	case INT32:
 		return bytesToInt32(valueBytes)
-	case INT64:
+	case INT64, TIMESTAMP:
 		return bytesToInt64(valueBytes)
 	case FLOAT:
 		bits := binary.BigEndian.Uint32(valueBytes)
@@ -217,8 +229,16 @@ func (s *IoTDBRpcDataSet) getValue(columnName string) interface{} {
 	case DOUBLE:
 		bits := binary.BigEndian.Uint64(valueBytes)
 		return math.Float64frombits(bits)
-	case TEXT:
+	case TEXT, STRING:
 		return string(valueBytes)
+	case BLOB:
+		return valueBytes
+	case DATE:
+		date, err := bytesToDate(valueBytes)
+		if err != nil {
+			return nil
+		}
+		return date
 	default:
 		return nil
 	}
@@ -281,7 +301,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 		case BOOLEAN:
 			switch t := d.(type) {
 			case *bool:
-				*t = bool(valueBytes[0] != 0)
+				*t = valueBytes[0] != 0
 			case *string:
 				if valueBytes[0] != 0 {
 					*t = "true"
@@ -301,7 +321,7 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 			default:
 				return fmt.Errorf("dest[%d] types must be *int32 or *string", i)
 			}
-		case INT64:
+		case INT64, TIMESTAMP:
 			switch t := d.(type) {
 			case *int64:
 				*t = bytesToInt64(valueBytes)
@@ -332,12 +352,37 @@ func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
 			default:
 				return fmt.Errorf("dest[%d] types must be *float64 or *string", i)
 			}
-		case TEXT:
+		case TEXT, STRING:
 			switch t := d.(type) {
+			case *[]byte:
+				*t = valueBytes
 			case *string:
 				*t = string(valueBytes)
 			default:
-				return fmt.Errorf("dest[%d] types must be *string", i)
+				return fmt.Errorf("dest[%d] types must be *[]byte or *string", i)
+			}
+		case BLOB:
+			switch t := d.(type) {
+			case *[]byte:
+				*t = valueBytes
+			case *string:
+				*t = bytesToHexString(valueBytes)
+			default:
+				return fmt.Errorf("dest[%d] types must be *[]byte or *string", i)
+			}
+		case DATE:
+			switch t := d.(type) {
+			case *time.Time:
+				*t, _ = bytesToDate(valueBytes)
+			case *string:
+				*t = int32ToString(bytesToInt32(valueBytes))
+				date, err := bytesToDate(valueBytes)
+				if err != nil {
+					*t = ""
+				}
+				*t = date.Format("2006-01-02")
+			default:
+				return fmt.Errorf("dest[%d] types must be *time.Time or *string", i)
 			}
 		default:
 			return nil
@@ -412,7 +457,7 @@ func (s *IoTDBRpcDataSet) hasCachedResults() bool {
 	if s.closed {
 		return false
 	}
-	return (s.queryDataSet != nil && len(s.queryDataSet.Time) > 0)
+	return s.queryDataSet != nil && len(s.queryDataSet.Time) > 0
 }
 
 func (s *IoTDBRpcDataSet) next() (bool, error) {

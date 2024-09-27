@@ -227,13 +227,13 @@ func printDataSet0(sessionDataSet *client.SessionDataSet) {
 				fmt.Print(sessionDataSet.GetBool(columnName))
 			case client.INT32:
 				fmt.Print(sessionDataSet.GetInt32(columnName))
-			case client.INT64:
+			case client.INT64, client.TIMESTAMP:
 				fmt.Print(sessionDataSet.GetInt64(columnName))
 			case client.FLOAT:
 				fmt.Print(sessionDataSet.GetFloat(columnName))
 			case client.DOUBLE:
 				fmt.Print(sessionDataSet.GetDouble(columnName))
-			case client.TEXT:
+			case client.TEXT, client.STRING, client.BLOB, client.DATE:
 				fmt.Print(sessionDataSet.GetText(columnName))
 			default:
 			}
