@@ -215,7 +215,7 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 	assert.True(ds.Next())
 	var status string
 	assert.NoError(ds.Scan(&status))
-	assert.Equal(status, "12.1")
+	assert.Equal(status, "2024-04-01")
 }
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	var timeseries = []string{"root.ln.device1.**"}
