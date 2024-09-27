@@ -193,7 +193,7 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 		measurementsSlice = [][]string{
 			{"restart_count", "tick_count", "price"},
 			{"temperature", "description", "status"},
-			{"description_blob", "date", "timestamp"},
+			{"description_blob", "date", "ts"},
 		}
 		dataTypes = [][]client.TSDataType{
 			{client.INT32, client.INT64, client.DOUBLE},

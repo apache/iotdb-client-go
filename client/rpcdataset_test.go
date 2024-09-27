@@ -39,7 +39,7 @@ func createIoTDBRpcDataSet() *IoTDBRpcDataSet {
 		"root.ln.device1.description_string",
 		"root.ln.device1.description_blob",
 		"root.ln.device1.date",
-		"root.ln.device1.timestamp",
+		"root.ln.device1.ts",
 	}
 	dataTypes := []string{"INT32", "DOUBLE", "INT64", "FLOAT", "TEXT", "BOOLEAN", "STRING", "BLOB", "DATE", "TIMESTAMP"}
 	columnNameIndex := map[string]int32{
@@ -52,7 +52,7 @@ func createIoTDBRpcDataSet() *IoTDBRpcDataSet {
 		"root.ln.device1.description_string": 6,
 		"root.ln.device1.description_blob":   7,
 		"root.ln.device1.date":               8,
-		"root.ln.device1.timestamp":          9,
+		"root.ln.device1.ts":                 9,
 	}
 	var queyrId int64 = 1
 	var sessionId int64 = 1
@@ -603,7 +603,7 @@ func TestIoTDBRpcDataSet_getRowRecord(t *testing.T) {
 						dataType: DATE,
 						value:    time.Date(2024, time.April, 1, 0, 0, 0, 0, time.UTC),
 					}, {
-						name:     "root.ln.device1.timestamp",
+						name:     "root.ln.device1.ts",
 						dataType: TIMESTAMP,
 						value:    int64(3333333),
 					},

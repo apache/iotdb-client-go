@@ -60,7 +60,7 @@ func createTablet(size int) (*Tablet, error) {
 			DataType:    DATE,
 		},
 		{
-			Measurement: "timestamp",
+			Measurement: "ts",
 			DataType:    TIMESTAMP,
 		},
 	}, size)
@@ -113,7 +113,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 						Measurement: "date",
 						DataType:    DATE,
 					}, {
-						Measurement: "timestamp",
+						Measurement: "ts",
 						DataType:    TIMESTAMP,
 					},
 				},
@@ -297,7 +297,7 @@ func TestTablet_SetValueAt(t *testing.T) {
 			},
 			wantErr: false,
 		}, {
-			name: "timestamp",
+			name: "ts",
 			args: args{
 				value:       int64(1608268702780),
 				columnIndex: 9,
