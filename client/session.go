@@ -826,7 +826,7 @@ func (s *Session) genInsertTabletsReq(tablets []*Tablet, isAligned bool) (*rpc.T
 		valuesList[index] = values
 		timestampsList[index] = tablet.GetTimestampBytes()
 		typesList[index] = tablet.getDataTypes()
-		sizeList[index] = int32(tablet.maxRowNumber)
+		sizeList[index] = int32(tablet.RowSize)
 	}
 	request := rpc.TSInsertTabletsReq{
 		SessionId:        s.sessionId,
