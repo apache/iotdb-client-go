@@ -127,7 +127,7 @@ func TestTablet_getDataTypes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tablet := &Tablet{
-				deviceId:           tt.fields.deviceId,
+				insertTargetName:   tt.fields.deviceId,
 				measurementSchemas: tt.fields.measurementSchemas,
 				timestamps:         tt.fields.timestamps,
 				values:             tt.fields.values,

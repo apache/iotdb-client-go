@@ -33,9 +33,18 @@ type MeasurementSchema struct {
 	DataType    TSDataType
 }
 
+type ColumnCategory int8
+
+const (
+	ID = iota
+	MEASUREMENT
+	ATTRIBUTE
+)
+
 type Tablet struct {
-	deviceId           string
+	insertTargetName   string
 	measurementSchemas []*MeasurementSchema
+	columnCategories   []ColumnCategory
 	timestamps         []int64
 	values             []interface{}
 	bitMaps            []*BitMap
@@ -206,7 +215,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 	return nil
 }
 
-func (t *Tablet) GetRowCount() int {
+func (t *Tablet) GetMaxRowNumber() int {
 	return t.maxRowNumber
 }
 
@@ -268,6 +277,14 @@ func (t *Tablet) getDataTypes() []int32 {
 	return types
 }
 
+func (t *Tablet) getColumnCategories() []int8 {
+	columnCategories := make([]int8, len(t.columnCategories))
+	for i := range t.columnCategories {
+		columnCategories[i] = int8(t.columnCategories[i])
+	}
+	return columnCategories
+}
+
 func (t *Tablet) getValuesBytes() ([]byte, error) {
 	buff := &bytes.Buffer{}
 	for i, schema := range t.measurementSchemas {
@@ -313,9 +330,9 @@ func (t *Tablet) Reset() {
 	t.bitMaps = nil
 }
 
-func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, maxRowNumber int) (*Tablet, error) {
+func NewTablet(insertTargetName string, measurementSchemas []*MeasurementSchema, maxRowNumber int) (*Tablet, error) {
 	tablet := &Tablet{
-		deviceId:           deviceId,
+		insertTargetName:   insertTargetName,
 		measurementSchemas: measurementSchemas,
 		maxRowNumber:       maxRowNumber,
 	}
@@ -339,5 +356,14 @@ func NewTablet(deviceId string, measurementSchemas []*MeasurementSchema, maxRowN
 			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 		}
 	}
+	return tablet, nil
+}
+
+func NewRelationalTablet(tableName string, measurementSchemas []*MeasurementSchema, columnCategories []ColumnCategory, maxRowNumber int) (*Tablet, error) {
+	tablet, err := NewTablet(tableName, measurementSchemas, maxRowNumber)
+	if err != nil {
+		return nil, err
+	}
+	tablet.columnCategories = columnCategories
 	return tablet, nil
 }

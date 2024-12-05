@@ -49,10 +49,18 @@ type PoolConfig struct {
 	FetchSize       int32
 	TimeZone        string
 	ConnectRetryMax int
+	Database        string
+	sqlDialect      string
 }
 
 func NewSessionPool(conf *PoolConfig, maxSize, connectionTimeoutInMs, waitToGetSessionTimeoutInMs int,
 	enableCompression bool) SessionPool {
+	return newSessionPoolWithSqlDialect(conf, maxSize, connectionTimeoutInMs, waitToGetSessionTimeoutInMs, enableCompression, TreeSqlDialect)
+}
+
+func newSessionPoolWithSqlDialect(conf *PoolConfig, maxSize, connectionTimeoutInMs, waitToGetSessionTimeoutInMs int,
+	enableCompression bool, sqlDialect string) SessionPool {
+	conf.sqlDialect = sqlDialect
 	if maxSize <= 0 {
 		maxSize = runtime.NumCPU() * defaultMultiple
 	}
@@ -93,6 +101,17 @@ func (spool *SessionPool) GetSession() (session Session, err error) {
 	}
 }
 
+func (spool *SessionPool) GetTableSession() (ITableSession, error) {
+	tableSession := PooledTableSession{}
+	session, err := spool.GetSession()
+	if err != nil {
+		return nil, err
+	}
+	tableSession.session = session
+	tableSession.sessionPool = spool
+	return &tableSession, nil
+}
+
 func (spool *SessionPool) ConstructSession(config *PoolConfig) (session Session, err error) {
 	if len(config.NodeUrls) > 0 {
 		session = NewClusterSession(getClusterSessionConfig(config))
@@ -101,7 +120,7 @@ func (spool *SessionPool) ConstructSession(config *PoolConfig) (session Session,
 			return session, err
 		}
 	} else {
-		session = NewSession(getSessionConfig(config))
+		session = newSessionWithSqlDialect(getSessionConfig(config), config.sqlDialect)
 		if err := session.Open(spool.enableCompression, spool.connectionTimeoutInMs); err != nil {
 			log.Print(err)
 			return session, err
@@ -119,6 +138,7 @@ func getSessionConfig(config *PoolConfig) *Config {
 		FetchSize:       config.FetchSize,
 		TimeZone:        config.TimeZone,
 		ConnectRetryMax: config.ConnectRetryMax,
+		Database:        config.Database,
 	}
 }
 
@@ -134,8 +154,26 @@ func getClusterSessionConfig(config *PoolConfig) *ClusterConfig {
 }
 
 func (spool *SessionPool) PutBack(session Session) {
+	defer func() {
+		if r := recover(); r != nil {
+			session.Close()
+		}
+	}()
 	if session.trans.IsOpen() {
 		spool.ch <- session
+	}
+	<-spool.sem
+}
+
+func (spool *SessionPool) cleanSession(session Session) {
+	defer func() {
+		if e := recover(); e != nil {
+			session.Close()
+		}
+	}()
+	err := session.Close()
+	if err != nil {
+		log.Println("Failed to close session ", session)
 	}
 	<-spool.sem
 }

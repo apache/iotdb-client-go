@@ -46,6 +46,10 @@ func (s *SessionDataSet) GetText(columnName string) string {
 	return s.ioTDBRpcDataSet.getText(columnName)
 }
 
+func (s *SessionDataSet) IsNull(columnName string) bool {
+	return s.ioTDBRpcDataSet.isNullWithColumnName(columnName)
+}
+
 func (s *SessionDataSet) GetBool(columnName string) bool {
 	return s.ioTDBRpcDataSet.getBool(columnName)
 }
