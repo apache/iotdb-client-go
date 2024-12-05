@@ -34,7 +34,7 @@ func (s *PooledTableSession) Insert(tablet *Tablet) (r *common.TSStatus, err err
 	if err == nil {
 		return
 	}
-	s.sessionPool.cleanSession(s.session)
+	s.sessionPool.dropSession(s.session)
 	s.closed.Store(true)
 	s.session = Session{}
 	return
@@ -45,7 +45,7 @@ func (s *PooledTableSession) ExecuteNonQueryStatement(sql string) (r *common.TSS
 	if err == nil {
 		return
 	}
-	s.sessionPool.cleanSession(s.session)
+	s.sessionPool.dropSession(s.session)
 	s.closed.Store(true)
 	s.session = Session{}
 	return
@@ -56,7 +56,7 @@ func (s *PooledTableSession) ExecuteQueryStatement(sql string, timeoutInMs *int6
 	if err == nil {
 		return sessionDataSet, nil
 	}
-	s.sessionPool.cleanSession(s.session)
+	s.sessionPool.dropSession(s.session)
 	s.closed.Store(true)
 	s.session = Session{}
 	return nil, err

@@ -168,7 +168,7 @@ func (spool *SessionPool) PutBack(session Session) {
 	<-spool.sem
 }
 
-func (spool *SessionPool) cleanSession(session Session) {
+func (spool *SessionPool) dropSession(session Session) {
 	defer func() {
 		if e := recover(); e != nil {
 			session.Close()
