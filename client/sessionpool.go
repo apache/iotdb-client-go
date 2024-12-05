@@ -114,13 +114,13 @@ func (spool *SessionPool) GetTableSession() (ITableSession, error) {
 
 func (spool *SessionPool) ConstructSession(config *PoolConfig) (session Session, err error) {
 	if len(config.NodeUrls) > 0 {
-		session = NewClusterSession(getClusterSessionConfig(config))
+		session = newClusterSessionWithSqlDialect(getClusterSessionConfig(config))
 		if err := session.OpenCluster(spool.enableCompression); err != nil {
 			log.Print(err)
 			return session, err
 		}
 	} else {
-		session = newSessionWithSqlDialect(getSessionConfig(config), config.sqlDialect)
+		session = newSessionWithSpecifiedSqlDialect(getSessionConfig(config))
 		if err := session.Open(spool.enableCompression, spool.connectionTimeoutInMs); err != nil {
 			log.Print(err)
 			return session, err
@@ -138,6 +138,7 @@ func getSessionConfig(config *PoolConfig) *Config {
 		FetchSize:       config.FetchSize,
 		TimeZone:        config.TimeZone,
 		ConnectRetryMax: config.ConnectRetryMax,
+		sqlDialect:      config.sqlDialect,
 		Database:        config.Database,
 	}
 }
@@ -150,6 +151,8 @@ func getClusterSessionConfig(config *PoolConfig) *ClusterConfig {
 		FetchSize:       config.FetchSize,
 		TimeZone:        config.TimeZone,
 		ConnectRetryMax: config.ConnectRetryMax,
+		sqlDialect:      config.sqlDialect,
+		Database:        config.Database,
 	}
 }
 

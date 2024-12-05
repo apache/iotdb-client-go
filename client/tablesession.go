@@ -33,9 +33,19 @@ type TableSession struct {
 }
 
 func NewTableSession(config *Config, enableRPCCompression bool, connectionTimeoutInMs int) (ITableSession, error) {
-	session := newSessionWithSqlDialect(config, TableSqlDialect)
+	config.sqlDialect = TableSqlDialect
+	session := newSessionWithSpecifiedSqlDialect(config)
 
 	if err := session.Open(enableRPCCompression, connectionTimeoutInMs); err != nil {
+		return nil, err
+	}
+	return &TableSession{session: session}, nil
+}
+
+func NewClusterTableSession(clusterConfig *ClusterConfig, enableRPCCompression bool) (ITableSession, error) {
+	clusterConfig.sqlDialect = TableSqlDialect
+	session := newClusterSessionWithSqlDialect(clusterConfig)
+	if err := session.OpenCluster(enableRPCCompression); err != nil {
 		return nil, err
 	}
 	return &TableSession{session: session}, nil

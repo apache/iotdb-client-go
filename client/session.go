@@ -149,14 +149,8 @@ type ClusterConfig struct {
 	FetchSize       int32
 	TimeZone        string
 	ConnectRetryMax int
-}
-
-type ClusterSession struct {
-	config             *ClusterConfig
-	client             *rpc.IClientRPCServiceClient
-	sessionId          int64
-	trans              thrift.TTransport
-	requestStatementId int64
+	sqlDialect      string
+	Database        string
 }
 
 func (s *Session) OpenCluster(enableRPCCompression bool) error {
@@ -1142,19 +1136,24 @@ func (s *Session) GetSessionId() int64 {
 }
 
 func NewSession(config *Config) Session {
-	return newSessionWithSqlDialect(config, TreeSqlDialect)
+	config.sqlDialect = TreeSqlDialect
+	return newSessionWithSpecifiedSqlDialect(config)
 }
 
-func newSessionWithSqlDialect(config *Config, sqlDialect string) Session {
+func newSessionWithSpecifiedSqlDialect(config *Config) Session {
 	endPoint := endPoint{}
 	endPoint.Host = config.Host
 	endPoint.Port = config.Port
 	endPointList.PushBack(endPoint)
-	config.sqlDialect = sqlDialect
 	return Session{config: config}
 }
 
 func NewClusterSession(clusterConfig *ClusterConfig) Session {
+	clusterConfig.sqlDialect = TreeSqlDialect
+	return newClusterSessionWithSqlDialect(clusterConfig)
+}
+
+func newClusterSessionWithSqlDialect(clusterConfig *ClusterConfig) Session {
 	session := Session{}
 	node := endPoint{}
 	for i := 0; i < len(clusterConfig.NodeUrls); i++ {
@@ -1176,7 +1175,7 @@ func NewClusterSession(clusterConfig *ClusterConfig) Session {
 				log.Println(err)
 			} else {
 				session.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
-					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax)
+					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax, clusterConfig.sqlDialect, clusterConfig.Database)
 				break
 			}
 		}
@@ -1235,7 +1234,7 @@ func (s *Session) initClusterConn(node endPoint) error {
 
 }
 
-func getConfig(host string, port string, userName string, passWord string, fetchSize int32, timeZone string, connectRetryMax int) *Config {
+func getConfig(host string, port string, userName string, passWord string, fetchSize int32, timeZone string, connectRetryMax int, database string, sqlDialect string) *Config {
 	return &Config{
 		Host:            host,
 		Port:            port,
@@ -1244,6 +1243,8 @@ func getConfig(host string, port string, userName string, passWord string, fetch
 		FetchSize:       fetchSize,
 		TimeZone:        timeZone,
 		ConnectRetryMax: connectRetryMax,
+		sqlDialect:      sqlDialect,
+		Database:        database,
 	}
 }
 
