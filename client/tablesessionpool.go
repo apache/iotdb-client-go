@@ -16,7 +16,7 @@ func NewTableSessionPool(conf *PoolConfig, maxSize, connectionTimeoutInMs, waitT
 }
 
 func (spool *TableSessionPool) GetSession() (ITableSession, error) {
-	return spool.sessionPool.GetTableSession()
+	return spool.sessionPool.getTableSession()
 }
 
 func (spool *TableSessionPool) Close() {
@@ -30,7 +30,7 @@ type PooledTableSession struct {
 }
 
 func (s *PooledTableSession) Insert(tablet *Tablet) (r *common.TSStatus, err error) {
-	r, err = s.session.InsertRelationalTablet(tablet)
+	r, err = s.session.insertRelationalTablet(tablet)
 	if err == nil {
 		return
 	}

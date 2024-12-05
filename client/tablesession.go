@@ -52,7 +52,7 @@ func NewClusterTableSession(clusterConfig *ClusterConfig, enableRPCCompression b
 }
 
 func (s *TableSession) Insert(tablet *Tablet) (r *common.TSStatus, err error) {
-	return s.session.InsertRelationalTablet(tablet)
+	return s.session.insertRelationalTablet(tablet)
 }
 
 func (s *TableSession) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {

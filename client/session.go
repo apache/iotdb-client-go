@@ -1043,7 +1043,7 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 	return buff.Bytes(), nil
 }
 
-func (s *Session) InsertRelationalTablet(tablet *Tablet) (r *common.TSStatus, err error) {
+func (s *Session) insertRelationalTablet(tablet *Tablet) (r *common.TSStatus, err error) {
 	if tablet.Len() == 0 {
 		return nil, nil
 	}
@@ -1174,7 +1174,7 @@ func newClusterSessionWithSqlDialect(clusterConfig *ClusterConfig) Session {
 				log.Println(err)
 			} else {
 				session.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
-					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax, clusterConfig.sqlDialect, clusterConfig.Database)
+					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax, clusterConfig.Database, clusterConfig.sqlDialect)
 				break
 			}
 		}

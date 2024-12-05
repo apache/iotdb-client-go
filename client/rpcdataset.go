@@ -90,7 +90,7 @@ func (s *IoTDBRpcDataSet) getColumnType(columnName string) TSDataType {
 }
 
 func (s *IoTDBRpcDataSet) isNullWithColumnName(columnName string) bool {
-	return s.isNull(int(s.getColumnIndex(columnName)), s.rowsIndex)
+	return s.isNull(int(s.getColumnIndex(columnName)), s.rowsIndex-1)
 }
 
 func (s *IoTDBRpcDataSet) isNull(columnIndex int, rowIndex int) bool {

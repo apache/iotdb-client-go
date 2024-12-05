@@ -101,7 +101,7 @@ func (spool *SessionPool) GetSession() (session Session, err error) {
 	}
 }
 
-func (spool *SessionPool) GetTableSession() (ITableSession, error) {
+func (spool *SessionPool) getTableSession() (ITableSession, error) {
 	tableSession := PooledTableSession{}
 	session, err := spool.GetSession()
 	if err != nil {

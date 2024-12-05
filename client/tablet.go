@@ -128,6 +128,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		}
 		// Mark the nil value position
 		t.bitMaps[columnIndex].Mark(rowIndex)
+		return nil
 	}
 
 	switch t.measurementSchemas[columnIndex].DataType {
