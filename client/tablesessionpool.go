@@ -26,7 +26,7 @@ func (spool *TableSessionPool) Close() {
 type PooledTableSession struct {
 	session     Session
 	sessionPool *SessionPool
-	closed      atomic.Bool
+	closed      int32
 }
 
 func (s *PooledTableSession) Insert(tablet *Tablet) (r *common.TSStatus, err error) {
@@ -35,7 +35,7 @@ func (s *PooledTableSession) Insert(tablet *Tablet) (r *common.TSStatus, err err
 		return
 	}
 	s.sessionPool.dropSession(s.session)
-	s.closed.Store(true)
+	atomic.StoreInt32(&s.closed, 1)
 	s.session = Session{}
 	return
 }
@@ -46,7 +46,7 @@ func (s *PooledTableSession) ExecuteNonQueryStatement(sql string) (r *common.TSS
 		return
 	}
 	s.sessionPool.dropSession(s.session)
-	s.closed.Store(true)
+	atomic.StoreInt32(&s.closed, 1)
 	s.session = Session{}
 	return
 }
@@ -57,13 +57,13 @@ func (s *PooledTableSession) ExecuteQueryStatement(sql string, timeoutInMs *int6
 		return sessionDataSet, nil
 	}
 	s.sessionPool.dropSession(s.session)
-	s.closed.Store(true)
+	atomic.StoreInt32(&s.closed, 1)
 	s.session = Session{}
 	return nil, err
 }
 
 func (s *PooledTableSession) Close() error {
-	if s.closed.CompareAndSwap(false, true) {
+	if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
 		if s.session.config.Database != s.sessionPool.config.Database && s.sessionPool.config.Database != "" {
 			r, err := s.session.ExecuteNonQueryStatement("use " + s.sessionPool.config.Database)
 			if r.Code == ExecuteStatementError || err != nil {

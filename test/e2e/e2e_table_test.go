@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	nodeUrls = "127.0.0.1:6667"
-	host     = "127.0.0.1"
+	nodeUrls = "iotdb:6668,iotdb:6667,iotdb:6669"
+	host     = "iotdb"
 	port     = "6667"
 	username = "root"
 	password = "root"
