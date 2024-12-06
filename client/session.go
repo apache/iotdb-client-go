@@ -1045,7 +1045,7 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 
 func (s *Session) insertRelationalTablet(tablet *Tablet) (r *common.TSStatus, err error) {
 	if tablet.Len() == 0 {
-		return nil, nil
+		return &common.TSStatus{Code: SuccessStatus}, nil
 	}
 	request, err := s.genTSInsertTabletReq(tablet, true, true)
 	if err != nil {
