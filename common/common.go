@@ -348,6 +348,12 @@ const (
   TAggregationType_MAX_BY TAggregationType = 20
   TAggregationType_MIN_BY TAggregationType = 21
   TAggregationType_UDAF TAggregationType = 22
+  TAggregationType_FIRST TAggregationType = 23
+  TAggregationType_LAST TAggregationType = 24
+  TAggregationType_FIRST_BY TAggregationType = 25
+  TAggregationType_LAST_BY TAggregationType = 26
+  TAggregationType_MIN TAggregationType = 27
+  TAggregationType_MAX TAggregationType = 28
 )
 
 func (p TAggregationType) String() string {
@@ -375,6 +381,12 @@ func (p TAggregationType) String() string {
   case TAggregationType_MAX_BY: return "MAX_BY"
   case TAggregationType_MIN_BY: return "MIN_BY"
   case TAggregationType_UDAF: return "UDAF"
+  case TAggregationType_FIRST: return "FIRST"
+  case TAggregationType_LAST: return "LAST"
+  case TAggregationType_FIRST_BY: return "FIRST_BY"
+  case TAggregationType_LAST_BY: return "LAST_BY"
+  case TAggregationType_MIN: return "MIN"
+  case TAggregationType_MAX: return "MAX"
   }
   return "<UNSET>"
 }
@@ -404,6 +416,12 @@ func TAggregationTypeFromString(s string) (TAggregationType, error) {
   case "MAX_BY": return TAggregationType_MAX_BY, nil 
   case "MIN_BY": return TAggregationType_MIN_BY, nil 
   case "UDAF": return TAggregationType_UDAF, nil 
+  case "FIRST": return TAggregationType_FIRST, nil 
+  case "LAST": return TAggregationType_LAST, nil 
+  case "FIRST_BY": return TAggregationType_FIRST_BY, nil 
+  case "LAST_BY": return TAggregationType_LAST_BY, nil 
+  case "MIN": return TAggregationType_MIN, nil 
+  case "MAX": return TAggregationType_MAX, nil 
   }
   return TAggregationType(0), fmt.Errorf("not a valid TAggregationType string")
 }
@@ -434,6 +452,121 @@ return nil
 }
 
 func (p * TAggregationType) Value() (driver.Value, error) {
+  if p == nil {
+    return nil, nil
+  }
+return int64(*p), nil
+}
+type TrainingState int64
+const (
+  TrainingState_PENDING TrainingState = 0
+  TrainingState_RUNNING TrainingState = 1
+  TrainingState_FINISHED TrainingState = 2
+  TrainingState_FAILED TrainingState = 3
+  TrainingState_DROPPING TrainingState = 4
+)
+
+func (p TrainingState) String() string {
+  switch p {
+  case TrainingState_PENDING: return "PENDING"
+  case TrainingState_RUNNING: return "RUNNING"
+  case TrainingState_FINISHED: return "FINISHED"
+  case TrainingState_FAILED: return "FAILED"
+  case TrainingState_DROPPING: return "DROPPING"
+  }
+  return "<UNSET>"
+}
+
+func TrainingStateFromString(s string) (TrainingState, error) {
+  switch s {
+  case "PENDING": return TrainingState_PENDING, nil 
+  case "RUNNING": return TrainingState_RUNNING, nil 
+  case "FINISHED": return TrainingState_FINISHED, nil 
+  case "FAILED": return TrainingState_FAILED, nil 
+  case "DROPPING": return TrainingState_DROPPING, nil 
+  }
+  return TrainingState(0), fmt.Errorf("not a valid TrainingState string")
+}
+
+
+func TrainingStatePtr(v TrainingState) *TrainingState { return &v }
+
+func (p TrainingState) MarshalText() ([]byte, error) {
+return []byte(p.String()), nil
+}
+
+func (p *TrainingState) UnmarshalText(text []byte) error {
+q, err := TrainingStateFromString(string(text))
+if (err != nil) {
+return err
+}
+*p = q
+return nil
+}
+
+func (p *TrainingState) Scan(value interface{}) error {
+v, ok := value.(int64)
+if !ok {
+return errors.New("Scan value is not int64")
+}
+*p = TrainingState(v)
+return nil
+}
+
+func (p * TrainingState) Value() (driver.Value, error) {
+  if p == nil {
+    return nil, nil
+  }
+return int64(*p), nil
+}
+type Model int64
+const (
+  Model_TREE Model = 0
+  Model_TABLE Model = 1
+)
+
+func (p Model) String() string {
+  switch p {
+  case Model_TREE: return "TREE"
+  case Model_TABLE: return "TABLE"
+  }
+  return "<UNSET>"
+}
+
+func ModelFromString(s string) (Model, error) {
+  switch s {
+  case "TREE": return Model_TREE, nil 
+  case "TABLE": return Model_TABLE, nil 
+  }
+  return Model(0), fmt.Errorf("not a valid Model string")
+}
+
+
+func ModelPtr(v Model) *Model { return &v }
+
+func (p Model) MarshalText() ([]byte, error) {
+return []byte(p.String()), nil
+}
+
+func (p *Model) UnmarshalText(text []byte) error {
+q, err := ModelFromString(string(text))
+if (err != nil) {
+return err
+}
+*p = q
+return nil
+}
+
+func (p *Model) Scan(value interface{}) error {
+v, ok := value.(int64)
+if !ok {
+return errors.New("Scan value is not int64")
+}
+*p = Model(v)
+return nil
+}
+
+func (p * Model) Value() (driver.Value, error) {
   if p == nil {
     return nil, nil
   }
@@ -2153,6 +2286,161 @@ func (p *TDataNodeLocation) String() string {
 }
 
 // Attributes:
+//  - AiNodeId
+//  - InternalEndPoint
+type TAINodeLocation struct {
+  AiNodeId int32 `thrift:"aiNodeId,1,required" db:"aiNodeId" json:"aiNodeId"`
+  InternalEndPoint *TEndPoint `thrift:"internalEndPoint,2,required" db:"internalEndPoint" json:"internalEndPoint"`
+}
+
+func NewTAINodeLocation() *TAINodeLocation {
+  return &TAINodeLocation{}
+}
+
+
+func (p *TAINodeLocation) GetAiNodeId() int32 {
+  return p.AiNodeId
+}
+var TAINodeLocation_InternalEndPoint_DEFAULT *TEndPoint
+func (p *TAINodeLocation) GetInternalEndPoint() *TEndPoint {
+  if !p.IsSetInternalEndPoint() {
+    return TAINodeLocation_InternalEndPoint_DEFAULT
+  }
+return p.InternalEndPoint
+}
+func (p *TAINodeLocation) IsSetInternalEndPoint() bool {
+  return p.InternalEndPoint != nil
+}
+
+func (p *TAINodeLocation) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+  var issetAiNodeId bool = false;
+  var issetInternalEndPoint bool = false;
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.I32 {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+        issetAiNodeId = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 2:
+      if fieldTypeId == thrift.STRUCT {
+        if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+        issetInternalEndPoint = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  if !issetAiNodeId{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field AiNodeId is not set"));
+  }
+  if !issetInternalEndPoint{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field InternalEndPoint is not set"));
+  }
+  return nil
+}
+
+func (p *TAINodeLocation)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadI32(ctx); err != nil {
+  return thrift.PrependError("error reading field 1: ", err)
+} else {
+  p.AiNodeId = v
+}
+  return nil
+}
+
+func (p *TAINodeLocation)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+  p.InternalEndPoint = &TEndPoint{}
+  if err := p.InternalEndPoint.Read(ctx, iprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.InternalEndPoint), err)
+  }
+  return nil
+}
+
+func (p *TAINodeLocation) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TAINodeLocation"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+    if err := p.writeField2(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *TAINodeLocation) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "aiNodeId", thrift.I32, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:aiNodeId: ", p), err) }
+  if err := oprot.WriteI32(ctx, int32(p.AiNodeId)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.aiNodeId (1) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:aiNodeId: ", p), err) }
+  return err
+}
+
+func (p *TAINodeLocation) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "internalEndPoint", thrift.STRUCT, 2); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:internalEndPoint: ", p), err) }
+  if err := p.InternalEndPoint.Write(ctx, oprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.InternalEndPoint), err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 2:internalEndPoint: ", p), err) }
+  return err
+}
+
+func (p *TAINodeLocation) Equals(other *TAINodeLocation) bool {
+  if p == other {
+    return true
+  } else if p == nil || other == nil {
+    return false
+  }
+  if p.AiNodeId != other.AiNodeId { return false }
+  if !p.InternalEndPoint.Equals(other.InternalEndPoint) { return false }
+  return true
+}
+
+func (p *TAINodeLocation) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("TAINodeLocation(%+v)", *p)
+}
+
+// Attributes:
 //  - Location
 //  - Resource
 type TDataNodeConfiguration struct {
@@ -2312,6 +2600,168 @@ func (p *TDataNodeConfiguration) String() string {
     return "<nil>"
   }
   return fmt.Sprintf("TDataNodeConfiguration(%+v)", *p)
+}
+
+// Attributes:
+//  - Location
+//  - Resource
+type TAINodeConfiguration struct {
+  Location *TAINodeLocation `thrift:"location,1,required" db:"location" json:"location"`
+  Resource *TNodeResource `thrift:"resource,2,required" db:"resource" json:"resource"`
+}
+
+func NewTAINodeConfiguration() *TAINodeConfiguration {
+  return &TAINodeConfiguration{}
+}
+
+var TAINodeConfiguration_Location_DEFAULT *TAINodeLocation
+func (p *TAINodeConfiguration) GetLocation() *TAINodeLocation {
+  if !p.IsSetLocation() {
+    return TAINodeConfiguration_Location_DEFAULT
+  }
+return p.Location
+}
+var TAINodeConfiguration_Resource_DEFAULT *TNodeResource
+func (p *TAINodeConfiguration) GetResource() *TNodeResource {
+  if !p.IsSetResource() {
+    return TAINodeConfiguration_Resource_DEFAULT
+  }
+return p.Resource
+}
+func (p *TAINodeConfiguration) IsSetLocation() bool {
+  return p.Location != nil
+}
+
+func (p *TAINodeConfiguration) IsSetResource() bool {
+  return p.Resource != nil
+}
+
+func (p *TAINodeConfiguration) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+  var issetLocation bool = false;
+  var issetResource bool = false;
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.STRUCT {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+        issetLocation = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 2:
+      if fieldTypeId == thrift.STRUCT {
+        if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+        issetResource = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  if !issetLocation{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Location is not set"));
+  }
+  if !issetResource{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Resource is not set"));
+  }
+  return nil
+}
+
+func (p *TAINodeConfiguration)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  p.Location = &TAINodeLocation{}
+  if err := p.Location.Read(ctx, iprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Location), err)
+  }
+  return nil
+}
+
+func (p *TAINodeConfiguration)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+  p.Resource = &TNodeResource{}
+  if err := p.Resource.Read(ctx, iprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Resource), err)
+  }
+  return nil
+}
+
+func (p *TAINodeConfiguration) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TAINodeConfiguration"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+    if err := p.writeField2(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *TAINodeConfiguration) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "location", thrift.STRUCT, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:location: ", p), err) }
+  if err := p.Location.Write(ctx, oprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Location), err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:location: ", p), err) }
+  return err
+}
+
+func (p *TAINodeConfiguration) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "resource", thrift.STRUCT, 2); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:resource: ", p), err) }
+  if err := p.Resource.Write(ctx, oprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Resource), err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 2:resource: ", p), err) }
+  return err
+}
+
+func (p *TAINodeConfiguration) Equals(other *TAINodeConfiguration) bool {
+  if p == other {
+    return true
+  } else if p == nil || other == nil {
+    return false
+  }
+  if !p.Location.Equals(other.Location) { return false }
+  if !p.Resource.Equals(other.Resource) { return false }
+  return true
+}
+
+func (p *TAINodeConfiguration) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("TAINodeConfiguration(%+v)", *p)
 }
 
 // Attributes:
@@ -4974,6 +5424,238 @@ func (p *TLicense) String() string {
     return "<nil>"
   }
   return fmt.Sprintf("TLicense(%+v)", *p)
+}
+
+// Attributes:
+//  - CpuUsageRate
+//  - MemoryUsageRate
+//  - DiskUsageRate
+//  - FreeDiskSpace
+type TLoadSample struct {
+  CpuUsageRate float64 `thrift:"cpuUsageRate,1,required" db:"cpuUsageRate" json:"cpuUsageRate"`
+  MemoryUsageRate float64 `thrift:"memoryUsageRate,2,required" db:"memoryUsageRate" json:"memoryUsageRate"`
+  DiskUsageRate float64 `thrift:"diskUsageRate,3,required" db:"diskUsageRate" json:"diskUsageRate"`
+  FreeDiskSpace float64 `thrift:"freeDiskSpace,4,required" db:"freeDiskSpace" json:"freeDiskSpace"`
+}
+
+func NewTLoadSample() *TLoadSample {
+  return &TLoadSample{}
+}
+
+
+func (p *TLoadSample) GetCpuUsageRate() float64 {
+  return p.CpuUsageRate
+}
+
+func (p *TLoadSample) GetMemoryUsageRate() float64 {
+  return p.MemoryUsageRate
+}
+
+func (p *TLoadSample) GetDiskUsageRate() float64 {
+  return p.DiskUsageRate
+}
+
+func (p *TLoadSample) GetFreeDiskSpace() float64 {
+  return p.FreeDiskSpace
+}
+func (p *TLoadSample) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+  var issetCpuUsageRate bool = false;
+  var issetMemoryUsageRate bool = false;
+  var issetDiskUsageRate bool = false;
+  var issetFreeDiskSpace bool = false;
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.DOUBLE {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+        issetCpuUsageRate = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 2:
+      if fieldTypeId == thrift.DOUBLE {
+        if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+        issetMemoryUsageRate = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 3:
+      if fieldTypeId == thrift.DOUBLE {
+        if err := p.ReadField3(ctx, iprot); err != nil {
+          return err
+        }
+        issetDiskUsageRate = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 4:
+      if fieldTypeId == thrift.DOUBLE {
+        if err := p.ReadField4(ctx, iprot); err != nil {
+          return err
+        }
+        issetFreeDiskSpace = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  if !issetCpuUsageRate{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field CpuUsageRate is not set"));
+  }
+  if !issetMemoryUsageRate{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field MemoryUsageRate is not set"));
+  }
+  if !issetDiskUsageRate{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DiskUsageRate is not set"));
+  }
+  if !issetFreeDiskSpace{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field FreeDiskSpace is not set"));
+  }
+  return nil
+}
+
+func (p *TLoadSample)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadDouble(ctx); err != nil {
+  return thrift.PrependError("error reading field 1: ", err)
+} else {
+  p.CpuUsageRate = v
+}
+  return nil
+}
+
+func (p *TLoadSample)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadDouble(ctx); err != nil {
+  return thrift.PrependError("error reading field 2: ", err)
+} else {
+  p.MemoryUsageRate = v
+}
+  return nil
+}
+
+func (p *TLoadSample)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadDouble(ctx); err != nil {
+  return thrift.PrependError("error reading field 3: ", err)
+} else {
+  p.DiskUsageRate = v
+}
+  return nil
+}
+
+func (p *TLoadSample)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadDouble(ctx); err != nil {
+  return thrift.PrependError("error reading field 4: ", err)
+} else {
+  p.FreeDiskSpace = v
+}
+  return nil
+}
+
+func (p *TLoadSample) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TLoadSample"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+    if err := p.writeField2(ctx, oprot); err != nil { return err }
+    if err := p.writeField3(ctx, oprot); err != nil { return err }
+    if err := p.writeField4(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *TLoadSample) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "cpuUsageRate", thrift.DOUBLE, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:cpuUsageRate: ", p), err) }
+  if err := oprot.WriteDouble(ctx, float64(p.CpuUsageRate)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.cpuUsageRate (1) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:cpuUsageRate: ", p), err) }
+  return err
+}
+
+func (p *TLoadSample) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "memoryUsageRate", thrift.DOUBLE, 2); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:memoryUsageRate: ", p), err) }
+  if err := oprot.WriteDouble(ctx, float64(p.MemoryUsageRate)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.memoryUsageRate (2) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 2:memoryUsageRate: ", p), err) }
+  return err
+}
+
+func (p *TLoadSample) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "diskUsageRate", thrift.DOUBLE, 3); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:diskUsageRate: ", p), err) }
+  if err := oprot.WriteDouble(ctx, float64(p.DiskUsageRate)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.diskUsageRate (3) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 3:diskUsageRate: ", p), err) }
+  return err
+}
+
+func (p *TLoadSample) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "freeDiskSpace", thrift.DOUBLE, 4); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:freeDiskSpace: ", p), err) }
+  if err := oprot.WriteDouble(ctx, float64(p.FreeDiskSpace)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.freeDiskSpace (4) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 4:freeDiskSpace: ", p), err) }
+  return err
+}
+
+func (p *TLoadSample) Equals(other *TLoadSample) bool {
+  if p == other {
+    return true
+  } else if p == nil || other == nil {
+    return false
+  }
+  if p.CpuUsageRate != other.CpuUsageRate { return false }
+  if p.MemoryUsageRate != other.MemoryUsageRate { return false }
+  if p.DiskUsageRate != other.DiskUsageRate { return false }
+  if p.FreeDiskSpace != other.FreeDiskSpace { return false }
+  return true
+}
+
+func (p *TLoadSample) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("TLoadSample(%+v)", *p)
 }
 
 // Attributes:

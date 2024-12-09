@@ -37,9 +37,10 @@ var UnmarkBitUtil = []byte{
 }
 
 func NewBitMap(size int) *BitMap {
+	// Need to maintain consistency with the calculation method on the IoTDB side.
 	bitMap := &BitMap{
 		size: size,
-		bits: make([]byte, (size+7)/8),
+		bits: make([]byte, size/8+1),
 	}
 	return bitMap
 }
