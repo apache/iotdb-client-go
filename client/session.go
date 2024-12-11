@@ -62,6 +62,7 @@ type Session struct {
 	sessionId          int64
 	trans              thrift.TTransport
 	requestStatementId int64
+	protocolFactory    thrift.TProtocolFactory
 }
 
 type endPoint struct {
@@ -83,7 +84,6 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
-	var protocolFactory thrift.TProtocolFactory
 	var err error
 
 	// in thrift 0.14.1, this func returns two values; in thrift 0.15.0, it returns one.
@@ -99,13 +99,10 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 			return err
 		}
 	}
-	if enableRPCCompression {
-		protocolFactory = thrift.NewTCompactProtocolFactory()
-	} else {
-		protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
-	}
-	iprot := protocolFactory.GetProtocol(s.trans)
-	oprot := protocolFactory.GetProtocol(s.trans)
+	s.protocolFactory = getProtocolFactory(enableRPCCompression)
+	iprot := s.protocolFactory.GetProtocol(s.trans)
+	oprot := s.protocolFactory.GetProtocol(s.trans)
+
 	s.client = rpc.NewIClientRPCServiceClient(thrift.NewTStandardClient(iprot, oprot))
 	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password}
@@ -147,16 +144,11 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
-	var protocolFactory thrift.TProtocolFactory
 	var err error
 
-	if enableRPCCompression {
-		protocolFactory = thrift.NewTCompactProtocolFactory()
-	} else {
-		protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
-	}
-	iprot := protocolFactory.GetProtocol(s.trans)
-	oprot := protocolFactory.GetProtocol(s.trans)
+	s.protocolFactory = getProtocolFactory(enableRPCCompression)
+	iprot := s.protocolFactory.GetProtocol(s.trans)
+	oprot := s.protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewIClientRPCServiceClient(thrift.NewTStandardClient(iprot, oprot))
 	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password}
@@ -170,14 +162,22 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 	return err
 }
 
-func (s *Session) Close() (r *common.TSStatus, err error) {
+func getProtocolFactory(enableRPCCompression bool) thrift.TProtocolFactory {
+	if enableRPCCompression {
+		return thrift.NewTCompactProtocolFactoryConf(&thrift.TConfiguration{})
+	} else {
+		return thrift.NewTBinaryProtocolFactoryConf(&thrift.TConfiguration{})
+	}
+}
+
+func (s *Session) Close() error {
 	req := rpc.NewTSCloseSessionReq()
 	req.SessionId = s.sessionId
-	_, err = s.client.CloseSession(context.Background(), req)
+	_, err := s.client.CloseSession(context.Background(), req)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return nil, s.trans.Close()
+	return s.trans.Close()
 }
 
 /*
@@ -1148,10 +1148,8 @@ func (s *Session) initClusterConn(node endPoint) error {
 		s.config.ConnectRetryMax = DefaultConnectRetryMax
 	}
 
-	var protocolFactory thrift.TProtocolFactory
-	protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
-	iprot := protocolFactory.GetProtocol(s.trans)
-	oprot := protocolFactory.GetProtocol(s.trans)
+	iprot := s.protocolFactory.GetProtocol(s.trans)
+	oprot := s.protocolFactory.GetProtocol(s.trans)
 	s.client = rpc.NewIClientRPCServiceClient(thrift.NewTStandardClient(iprot, oprot))
 	req := rpc.TSOpenSessionReq{ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password}
