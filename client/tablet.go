@@ -119,6 +119,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		}
 		// Mark the nil value position
 		t.bitMaps[columnIndex].Mark(rowIndex)
+		return nil
 	}
 
 	switch t.measurementSchemas[columnIndex].DataType {
@@ -296,6 +297,7 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 			columnHasNil := bitMap != nil && !bitMap.IsAllUnmarked()
 			binary.Write(buff, binary.BigEndian, columnHasNil)
 			if columnHasNil {
+				// Need to maintain consistency with the calculation method on the IoTDB side.
 				binary.Write(buff, binary.BigEndian, bitMap.GetBits()[0:t.RowSize/8+1])
 			}
 		}

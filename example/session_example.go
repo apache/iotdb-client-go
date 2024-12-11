@@ -152,8 +152,11 @@ func connectCluster() {
 		UserName: "root",
 		Password: "root",
 	}
-	session = client.NewClusterSession(config)
-	if err := session.OpenCluster(false); err != nil {
+	session, err := client.NewClusterSession(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = session.OpenCluster(false); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -89,6 +89,10 @@ func (s *IoTDBRpcDataSet) getColumnType(columnName string) TSDataType {
 	return s.columnTypeDeduplicatedList[s.getColumnIndex(columnName)]
 }
 
+func (s *IoTDBRpcDataSet) isNullWithColumnName(columnName string) bool {
+	return s.isNull(int(s.getColumnIndex(columnName)), s.rowsIndex-1)
+}
+
 func (s *IoTDBRpcDataSet) isNull(columnIndex int, rowIndex int) bool {
 	if s.closed {
 		return true
