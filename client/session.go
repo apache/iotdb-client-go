@@ -1085,7 +1085,7 @@ func NewSession(config *Config) Session {
 	return Session{config: config}
 }
 
-func NewClusterSession(clusterConfig *ClusterConfig) Session {
+func NewClusterSession(clusterConfig *ClusterConfig) (Session, error) {
 	session := Session{}
 	node := endPoint{}
 	for i := 0; i < len(clusterConfig.NodeUrls); i++ {
@@ -1113,9 +1113,9 @@ func NewClusterSession(clusterConfig *ClusterConfig) Session {
 		}
 	}
 	if !session.trans.IsOpen() {
-		log.Fatal("No Server Can Connect")
+		return session, fmt.Errorf("no server can connect")
 	}
-	return session
+	return session, nil
 }
 
 func (s *Session) initClusterConn(node endPoint) error {
