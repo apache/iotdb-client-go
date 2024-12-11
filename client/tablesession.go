@@ -109,8 +109,11 @@ func NewTableSession(config *Config, enableRPCCompression bool, connectionTimeou
 //   - An error if there is an issue during session initialization.
 func NewClusterTableSession(clusterConfig *ClusterConfig, enableRPCCompression bool) (ITableSession, error) {
 	clusterConfig.sqlDialect = TableSqlDialect
-	session := newClusterSessionWithSqlDialect(clusterConfig)
-	if err := session.OpenCluster(enableRPCCompression); err != nil {
+	session, err := newClusterSessionWithSqlDialect(clusterConfig)
+	if err != nil {
+		return nil, err
+	}
+	if err = session.OpenCluster(enableRPCCompression); err != nil {
 		return nil, err
 	}
 	return &TableSession{session: session}, nil

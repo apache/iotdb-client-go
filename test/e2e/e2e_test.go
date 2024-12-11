@@ -47,8 +47,10 @@ func (s *e2eTestSuite) SetupSuite() {
 		UserName: "root",
 		Password: "root",
 	}
-	s.session = client.NewClusterSession(&clusterConfig)
-	err := s.session.Open(false, 0)
+	session, err := client.NewClusterSession(&clusterConfig)
+	s.Require().NoError(err)
+	s.session = session
+	err = s.session.Open(false, 0)
 	s.Require().NoError(err)
 }
 
