@@ -114,8 +114,11 @@ func (spool *SessionPool) getTableSession() (ITableSession, error) {
 
 func (spool *SessionPool) ConstructSession(config *PoolConfig) (session Session, err error) {
 	if len(config.NodeUrls) > 0 {
-		session = newClusterSessionWithSqlDialect(getClusterSessionConfig(config))
-		if err := session.OpenCluster(spool.enableCompression); err != nil {
+		session, err = newClusterSessionWithSqlDialect(getClusterSessionConfig(config))
+		if err != nil {
+			return session, err
+		}
+		if err = session.OpenCluster(spool.enableCompression); err != nil {
 			log.Print(err)
 			return session, err
 		}
