@@ -183,7 +183,7 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 
 	session1, err := sessionPool.GetSession()
 	assert.NoError(err)
-	s.checkError(session1.ExecuteNonQueryStatement("create table table_in_" + database + " (id1 string id, id2 string id, s1 text measurement, s2 text measurement)"))
+	s.checkError(session1.ExecuteNonQueryStatement("create table table_in_" + database + " (tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
 	session1.Close()
 
 	var wg sync.WaitGroup
@@ -239,7 +239,7 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 
 func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 	assert := s.Require()
-	s.checkError(s.session.ExecuteNonQueryStatement("create table t1 (id1 string id, id2 string id, s1 text measurement, s2 text measurement)"))
+	s.checkError(s.session.ExecuteNonQueryStatement("create table t1 (tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
 
 	timeoutInMs := int64(10000)
 
@@ -255,11 +255,11 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 	// insert relational tablet
 	tablet, err := client.NewRelationalTablet("t1", []*client.MeasurementSchema{
 		{
-			Measurement: "id1",
+			Measurement: "tag1",
 			DataType:    client.STRING,
 		},
 		{
-			Measurement: "id2",
+			Measurement: "tag2",
 			DataType:    client.STRING,
 		},
 		{
@@ -274,14 +274,14 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 	assert.NoError(err)
 
 	values := [][]interface{}{
-		{"id1_field_1", "id2_field_1", "s1_value_1", "s2_value_1"},
-		{"id1_field_1", "id2_field_1", "s1_value_2", "s2_value_2"},
-		{"id1_field_1", "id2_field_1", nil, "s2_value_2"},
-		{"id1_field_2", "id2_field_2", "s1_value_1", "s2_value_1"},
-		{"id1_field_2", "id2_field_2", "s1_value_1", "s2_value_1"},
-		{"id1_field_3", "id2_field_3", "s1_value_1", "s2_value_1"},
-		{"id1_field_3", "id2_field_3", "s1_value_2", nil},
-		{"id1_field_3", "id2_field_3", "s1_value_3", "s2_value_3"},
+		{"tag1_field_1", "tag2_field_1", "s1_value_1", "s2_value_1"},
+		{"tag1_field_1", "tag2_field_1", "s1_value_2", "s2_value_2"},
+		{"tag1_field_1", "tag2_field_1", nil, "s2_value_2"},
+		{"tag1_field_2", "tag2_field_2", "s1_value_1", "s2_value_1"},
+		{"tag1_field_2", "tag2_field_2", "s1_value_1", "s2_value_1"},
+		{"tag1_field_3", "tag2_field_3", "s1_value_1", "s2_value_1"},
+		{"tag1_field_3", "tag2_field_3", "s1_value_2", nil},
+		{"tag1_field_3", "tag2_field_3", "s1_value_3", "s2_value_3"},
 	}
 
 	ts := int64(0)
@@ -308,8 +308,8 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 			break
 		}
 		assert.Equal(count, dataSet.GetInt64("time"))
-		assert.Equal(values[count][0], getValueFromDataSet(dataSet, "id1"))
-		assert.Equal(values[count][1], getValueFromDataSet(dataSet, "id2"))
+		assert.Equal(values[count][0], getValueFromDataSet(dataSet, "tag1"))
+		assert.Equal(values[count][1], getValueFromDataSet(dataSet, "tag2"))
 		assert.Equal(values[count][2], getValueFromDataSet(dataSet, "s1"))
 		assert.Equal(values[count][3], getValueFromDataSet(dataSet, "s2"))
 		count++
