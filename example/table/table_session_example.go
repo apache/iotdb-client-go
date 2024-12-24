@@ -46,7 +46,7 @@ func main() {
 
 	checkError(session.ExecuteNonQueryStatement("create database test_db"))
 	checkError(session.ExecuteNonQueryStatement("use test_db"))
-	checkError(session.ExecuteNonQueryStatement("create table t1 (id1 string id, id2 string id, s1 text measurement, s2 text measurement)"))
+	checkError(session.ExecuteNonQueryStatement("create table t1 (tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
 	insertRelationalTablet(session)
 	showTables(session)
 	query(session)
@@ -63,11 +63,11 @@ func getTextValueFromDataSet(dataSet *client.SessionDataSet, columnName string) 
 func insertRelationalTablet(session client.ITableSession) {
 	tablet, err := client.NewRelationalTablet("t1", []*client.MeasurementSchema{
 		{
-			Measurement: "id1",
+			Measurement: "tag1",
 			DataType:    client.STRING,
 		},
 		{
-			Measurement: "id2",
+			Measurement: "tag2",
 			DataType:    client.STRING,
 		},
 		{
@@ -78,7 +78,7 @@ func insertRelationalTablet(session client.ITableSession) {
 			Measurement: "s2",
 			DataType:    client.TEXT,
 		},
-	}, []client.ColumnCategory{client.ID, client.ID, client.MEASUREMENT, client.MEASUREMENT}, 1024)
+	}, []client.ColumnCategory{client.TAG, client.TAG, client.FIELD, client.FIELD}, 1024)
 	if err != nil {
 		log.Fatal("Failed to create relational tablet {}", err)
 	}
@@ -86,8 +86,8 @@ func insertRelationalTablet(session client.ITableSession) {
 	for row := 0; row < 16; row++ {
 		ts++
 		tablet.SetTimestamp(ts, row)
-		tablet.SetValueAt("id1_field_"+strconv.Itoa(row), 0, row)
-		tablet.SetValueAt("id2_field_"+strconv.Itoa(row), 1, row)
+		tablet.SetValueAt("tag1_value_"+strconv.Itoa(row), 0, row)
+		tablet.SetValueAt("tag2_value_"+strconv.Itoa(row), 1, row)
 		tablet.SetValueAt("s1_value_"+strconv.Itoa(row), 2, row)
 		tablet.SetValueAt("s2_value_"+strconv.Itoa(row), 3, row)
 		tablet.RowSize++
@@ -99,8 +99,8 @@ func insertRelationalTablet(session client.ITableSession) {
 	for row := 0; row < 16; row++ {
 		ts++
 		tablet.SetTimestamp(ts, row)
-		tablet.SetValueAt("id1_field_1", 0, row)
-		tablet.SetValueAt("id2_field_1", 1, row)
+		tablet.SetValueAt("tag1_value_1", 0, row)
+		tablet.SetValueAt("tag2_value_1", 1, row)
 		tablet.SetValueAt("s1_value_"+strconv.Itoa(row), 2, row)
 		tablet.SetValueAt("s2_value_"+strconv.Itoa(row), 3, row)
 
@@ -143,7 +143,7 @@ func query(session client.ITableSession) {
 		if !hasNext {
 			break
 		}
-		log.Printf("%v %v %v %v", getTextValueFromDataSet(dataSet, "id1"), getTextValueFromDataSet(dataSet, "id2"), getTextValueFromDataSet(dataSet, "s1"), getTextValueFromDataSet(dataSet, "s2"))
+		log.Printf("%v %v %v %v", getTextValueFromDataSet(dataSet, "tag1"), getTextValueFromDataSet(dataSet, "tag2"), getTextValueFromDataSet(dataSet, "s1"), getTextValueFromDataSet(dataSet, "s2"))
 	}
 }
 

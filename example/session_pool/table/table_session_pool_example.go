@@ -68,7 +68,7 @@ func putBackToSessionPoolExample() {
 			}()
 			checkError(session.ExecuteNonQueryStatement("create database " + dbName))
 			checkError(session.ExecuteNonQueryStatement("use " + dbName))
-			checkError(session.ExecuteNonQueryStatement("create table table_of_" + dbName + " (id1 string id, id2 string id, s1 text measurement, s2 text measurement)"))
+			checkError(session.ExecuteNonQueryStatement("create table table_of_" + dbName + " (tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
 		}()
 	}
 	wg.Wait()
@@ -126,7 +126,7 @@ func sessionPoolWithSpecificDatabaseExample() {
 				return
 			}
 			defer session.Close()
-			checkError(session.ExecuteNonQueryStatement("create table " + tableName + " (id1 string id, id2 string id, s1 text measurement, s2 text measurement)"))
+			checkError(session.ExecuteNonQueryStatement("create table " + tableName + " (tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
 		}()
 	}
 	wg.Wait()
@@ -156,7 +156,7 @@ func sessionPoolWithoutSpecificDatabaseExample() {
 			defer session.Close()
 			checkError(session.ExecuteNonQueryStatement("create database " + dbName))
 			checkError(session.ExecuteNonQueryStatement("use " + dbName))
-			checkError(session.ExecuteNonQueryStatement("create table t1 (id1 string id, id2 string id, s1 text measurement, s2 text measurement)"))
+			checkError(session.ExecuteNonQueryStatement("create table t1 (tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
 		}()
 	}
 	wg.Wait()
