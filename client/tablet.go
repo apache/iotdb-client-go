@@ -36,8 +36,8 @@ type MeasurementSchema struct {
 type ColumnCategory int8
 
 const (
-	ID = iota
-	MEASUREMENT
+	TAG = iota
+	FIELD
 	ATTRIBUTE
 )
 
