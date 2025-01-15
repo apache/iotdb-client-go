@@ -39,7 +39,7 @@ var (
 )
 var session client.Session
 
-func main() {
+func main2() {
 	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
 	flag.StringVar(&port, "port", "6667", "--port=6667")
 	flag.StringVar(&user, "user", "root", "--user=root")
