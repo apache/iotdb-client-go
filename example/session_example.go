@@ -253,7 +253,12 @@ func printDataSet1(sds *client.SessionDataSet) {
 	}
 
 	for i := 0; i < sds.GetColumnCount(); i++ {
-		fmt.Printf("%s\t", sds.GetColumnName(i))
+		if i == 0 {
+			fmt.Printf("%s\t\t\t", sds.GetColumnName(i))
+		} else {
+			fmt.Printf("%s\t\t", sds.GetColumnName(i))
+		}
+
 	}
 	fmt.Println()
 
