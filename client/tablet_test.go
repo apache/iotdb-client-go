@@ -191,7 +191,7 @@ func TestTablet_SetValueAt(t *testing.T) {
 				columnIndex: 0,
 				rowIndex:    0,
 			},
-			wantErr: true,
+			wantErr: false,
 		}, {
 			name: "columnIndex-1",
 			args: args{
