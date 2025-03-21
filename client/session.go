@@ -21,7 +21,6 @@ package client
 
 import (
 	"bytes"
-	"container/list"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -63,7 +62,7 @@ type Session struct {
 	trans              thrift.TTransport
 	requestStatementId int64
 	protocolFactory    thrift.TProtocolFactory
-	endPointList       *list.List
+	endPointList       []endPoint
 }
 
 type endPoint struct {
@@ -1077,11 +1076,10 @@ func (s *Session) GetSessionId() int64 {
 }
 
 func NewSession(config *Config) Session {
-	endPointList := list.New()
-	endPoint := endPoint{}
-	endPoint.Host = config.Host
-	endPoint.Port = config.Port
-	endPointList.PushBack(endPoint)
+	endPointList := []endPoint{{
+		Host: config.Host,
+		Port: config.Port,
+	}}
 	return Session{
 		config:       config,
 		endPointList: endPointList,
@@ -1090,16 +1088,17 @@ func NewSession(config *Config) Session {
 
 func NewClusterSession(clusterConfig *ClusterConfig) (Session, error) {
 	session := Session{}
-	node := endPoint{}
-	session.endPointList = list.New()
+	session.endPointList = make([]endPoint, len(clusterConfig.NodeUrls))
 	for i := 0; i < len(clusterConfig.NodeUrls); i++ {
+		node := endPoint{}
 		node.Host = strings.Split(clusterConfig.NodeUrls[i], ":")[0]
 		node.Port = strings.Split(clusterConfig.NodeUrls[i], ":")[1]
-		session.endPointList.PushBack(node)
+		session.endPointList[i] = node
 	}
 	var err error
-	for e := session.endPointList.Front(); e != nil; e = e.Next() {
-		session.trans = thrift.NewTSocketConf(net.JoinHostPort(e.Value.(endPoint).Host, e.Value.(endPoint).Port), &thrift.TConfiguration{
+	for i := range session.endPointList {
+		ep := session.endPointList[i]
+		session.trans = thrift.NewTSocketConf(net.JoinHostPort(ep.Host, ep.Port), &thrift.TConfiguration{
 			ConnectTimeout: time.Duration(0), // Use 0 for no timeout
 		})
 		// session.trans = thrift.NewTFramedTransport(session.trans)	// deprecated
@@ -1110,7 +1109,7 @@ func NewClusterSession(clusterConfig *ClusterConfig) (Session, error) {
 			if err != nil {
 				log.Println(err)
 			} else {
-				session.config = getConfig(e.Value.(endPoint).Host, e.Value.(endPoint).Port,
+				session.config = getConfig(ep.Host, ep.Port,
 					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax)
 				break
 			}
@@ -1185,13 +1184,14 @@ func (s *Session) reconnect() bool {
 	var connectedSuccess = false
 
 	for i := 0; i < s.config.ConnectRetryMax; i++ {
-		for e := s.endPointList.Front(); e != nil; e = e.Next() {
-			err = s.initClusterConn(e.Value.(endPoint))
+		for i := range s.endPointList {
+			ep := s.endPointList[i]
+			err = s.initClusterConn(ep)
 			if err == nil {
 				connectedSuccess = true
 				break
 			} else {
-				log.Println("Connection refused:", e.Value.(endPoint))
+				log.Println("Connection refused:", ep)
 			}
 		}
 		if connectedSuccess {
