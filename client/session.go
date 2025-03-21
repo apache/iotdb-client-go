@@ -63,14 +63,13 @@ type Session struct {
 	trans              thrift.TTransport
 	requestStatementId int64
 	protocolFactory    thrift.TProtocolFactory
+	endPointList       *list.List
 }
 
 type endPoint struct {
 	Host string
 	Port string
 }
-
-var endPointList = list.New()
 
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) error {
 	if s.config.FetchSize <= 0 {
@@ -1078,23 +1077,28 @@ func (s *Session) GetSessionId() int64 {
 }
 
 func NewSession(config *Config) Session {
+	endPointList := list.New()
 	endPoint := endPoint{}
 	endPoint.Host = config.Host
 	endPoint.Port = config.Port
 	endPointList.PushBack(endPoint)
-	return Session{config: config}
+	return Session{
+		config:       config,
+		endPointList: endPointList,
+	}
 }
 
 func NewClusterSession(clusterConfig *ClusterConfig) (Session, error) {
 	session := Session{}
 	node := endPoint{}
+	session.endPointList = list.New()
 	for i := 0; i < len(clusterConfig.NodeUrls); i++ {
 		node.Host = strings.Split(clusterConfig.NodeUrls[i], ":")[0]
 		node.Port = strings.Split(clusterConfig.NodeUrls[i], ":")[1]
-		endPointList.PushBack(node)
+		session.endPointList.PushBack(node)
 	}
 	var err error
-	for e := endPointList.Front(); e != nil; e = e.Next() {
+	for e := session.endPointList.Front(); e != nil; e = e.Next() {
 		session.trans = thrift.NewTSocketConf(net.JoinHostPort(e.Value.(endPoint).Host, e.Value.(endPoint).Port), &thrift.TConfiguration{
 			ConnectTimeout: time.Duration(0), // Use 0 for no timeout
 		})
@@ -1181,7 +1185,7 @@ func (s *Session) reconnect() bool {
 	var connectedSuccess = false
 
 	for i := 0; i < s.config.ConnectRetryMax; i++ {
-		for e := endPointList.Front(); e != nil; e = e.Next() {
+		for e := s.endPointList.Front(); e != nil; e = e.Next() {
 			err = s.initClusterConn(e.Value.(endPoint))
 			if err == nil {
 				connectedSuccess = true
