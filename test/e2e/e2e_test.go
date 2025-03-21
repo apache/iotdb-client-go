@@ -75,6 +75,16 @@ func (s *e2eTestSuite) checkError(status *common.TSStatus, err error) {
 	}
 }
 
+func (s *e2eTestSuite) Test_WrongURL() {
+	clusterConfig := client.ClusterConfig{
+		NodeUrls: strings.Split("iotdb1:6667", ","),
+		UserName: "root",
+		Password: "root",
+	}
+	_, err := client.NewClusterSession(&clusterConfig)
+	s.Require().Error(err)
+}
+
 func (s *e2eTestSuite) Test_CreateTimeseries() {
 	var (
 		path       = "root.tsg1.dev1.status"
