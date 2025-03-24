@@ -149,3 +149,15 @@ func VerifySuccess(status *common.TSStatus) error {
 	}
 	return nil
 }
+
+type Binary struct {
+	values []byte
+}
+
+func NewBinary(v []byte) *Binary {
+	return &Binary{v}
+}
+
+func (b *Binary) GetStringValue() string {
+	return string(b.values)
+}

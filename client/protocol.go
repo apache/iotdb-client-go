@@ -19,6 +19,8 @@
 
 package client
 
+import "fmt"
+
 type TSDataType int8
 
 type TSEncoding uint8
@@ -38,6 +40,48 @@ const (
 	BLOB      TSDataType = 10
 	STRING    TSDataType = 11
 )
+
+var tsTypeMap = map[string]TSDataType{
+	"BOOLEAN":   BOOLEAN,
+	"INT32":     INT32,
+	"INT64":     INT64,
+	"FLOAT":     FLOAT,
+	"DOUBLE":    DOUBLE,
+	"TEXT":      TEXT,
+	"TIMESTAMP": TIMESTAMP,
+	"DATE":      DATE,
+	"BLOB":      BLOB,
+	"STRING":    STRING,
+}
+
+var byteToTsDataType = map[byte]TSDataType{
+	0:  BOOLEAN,
+	1:  INT32,
+	2:  INT64,
+	3:  FLOAT,
+	4:  DOUBLE,
+	5:  TEXT,
+	8:  TIMESTAMP,
+	9:  DATE,
+	10: BLOB,
+	11: STRING,
+}
+
+func getDataTypeByStr(name string) (TSDataType, error) {
+	dataType, exists := tsTypeMap[name]
+	if !exists {
+		return UNKNOWN, fmt.Errorf("invalid input: %v", name)
+	}
+	return dataType, nil
+}
+
+func getDataTypeByByte(b byte) (TSDataType, error) {
+	dataType, exists := byteToTsDataType[b]
+	if !exists {
+		return UNKNOWN, fmt.Errorf("invalid input: %v", b)
+	}
+	return dataType, nil
+}
 
 const (
 	PLAIN      TSEncoding = 0
@@ -201,4 +245,8 @@ const (
 	CqAlreadyActive           int32 = 1401
 	CqAlreadyExist            int32 = 1402
 	CqUpdateLastExecTimeError int32 = 1403
+)
+
+const (
+	TimestampColumnName = "Time"
 )
