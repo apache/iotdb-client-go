@@ -460,7 +460,7 @@ func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err 
 func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.config.FetchSize, Timeout: timeoutMs}
-	if resp, err := s.client.ExecuteQueryStatement(context.Background(), &request); err == nil {
+	if resp, err := s.client.ExecuteQueryStatementV2(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 		} else {
@@ -470,7 +470,7 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteQueryStatement(context.Background(), &request)
+			resp, err = s.client.ExecuteQueryStatementV2(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 				return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 			} else {

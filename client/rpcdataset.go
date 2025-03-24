@@ -135,8 +135,9 @@ func (s *IoTDBRpcDataSet) Close() (err error) {
 		return nil
 	}
 	closeRequest := &rpc.TSCloseOperationReq{
-		SessionId: s.SessionId,
-		QueryId:   &s.QueryId,
+		SessionId:   s.SessionId,
+		StatementId: &s.StatementId,
+		QueryId:     &s.QueryId,
 	}
 
 	var status *common.TSStatus
@@ -377,6 +378,9 @@ func (s *IoTDBRpcDataSet) getLong(columnName string) (int64, error) {
 	err := s.checkRecord()
 	if err != nil {
 		return 0, err
+	}
+	if columnName == TimestampColumnName {
+		return s.CurTsBlock.GetTimeByIndex(s.TsBlockIndex)
 	}
 	index := s.ColumnOrdinalMap[columnName] - startIndex
 	if !s.isNull(index, s.TsBlockIndex) {
