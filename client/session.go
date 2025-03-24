@@ -434,7 +434,7 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 		}
 	}
 
-	return s.genDataSet(sql, resp), err
+	return s.genDataSet(sql, resp)
 }
 
 func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {
@@ -462,7 +462,7 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 		FetchSize: &s.config.FetchSize, Timeout: timeoutMs}
 	if resp, err := s.client.ExecuteQueryStatement(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-			return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 		} else {
 			return nil, statusErr
 		}
@@ -472,7 +472,7 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 			request.StatementId = s.requestStatementId
 			resp, err = s.client.ExecuteQueryStatement(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+				return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 			} else {
 				return nil, statusErr
 			}
@@ -489,7 +489,7 @@ func (s *Session) ExecuteAggregationQuery(paths []string, aggregations []common.
 		Aggregations: aggregations, StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize, Timeout: timeoutMs}
 	if resp, err := s.client.ExecuteAggregationQuery(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 		} else {
 			return nil, statusErr
 		}
@@ -498,7 +498,7 @@ func (s *Session) ExecuteAggregationQuery(paths []string, aggregations []common.
 			request.SessionId = s.sessionId
 			resp, err = s.client.ExecuteAggregationQuery(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 			} else {
 				return nil, statusErr
 			}
@@ -516,7 +516,7 @@ func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregat
 		Timeout: timeoutMs, LegalPathNodes: legalNodes}
 	if resp, err := s.client.ExecuteAggregationQuery(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 		} else {
 			return nil, statusErr
 		}
@@ -525,7 +525,7 @@ func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregat
 			request.SessionId = s.sessionId
 			resp, err = s.client.ExecuteAggregationQuery(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 			} else {
 				return nil, statusErr
 			}
@@ -828,7 +828,7 @@ func (s *Session) ExecuteRawDataQuery(paths []string, startTime int64, endTime i
 		}
 	}
 
-	return s.genDataSet("", resp), err
+	return s.genDataSet("", resp)
 }
 
 func (s *Session) ExecuteUpdateStatement(sql string) (*SessionDataSet, error) {
@@ -848,10 +848,10 @@ func (s *Session) ExecuteUpdateStatement(sql string) (*SessionDataSet, error) {
 		}
 	}
 
-	return s.genDataSet(sql, resp), err
+	return s.genDataSet(sql, resp)
 }
 
-func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) *SessionDataSet {
+func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) (*SessionDataSet, error) {
 	var queryId int64
 	if resp.QueryId == nil {
 		queryId = 0
@@ -859,7 +859,7 @@ func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) *Sess
 		queryId = *resp.QueryId
 	}
 	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap,
-		queryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, nil)
+		queryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, 60000, *resp.MoreData, s.config.FetchSize)
 }
 
 func (s *Session) genInsertTabletsReq(tablets []*Tablet, isAligned bool) (*rpc.TSInsertTabletsReq, error) {
