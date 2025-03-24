@@ -150,7 +150,7 @@ func (t *TsBlock) GetValueColumnCount() int32 {
 }
 
 func (t *TsBlock) GetTimeColumn() Column {
-	return t.GetTimeColumn()
+	return t.timeColumn
 }
 
 func (t *TsBlock) GetValueColumns() *[]Column {
