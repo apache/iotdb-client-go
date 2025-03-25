@@ -94,9 +94,9 @@ func (s *SessionDataSet) FindColumn(columnName string) int32 {
 }
 
 func (s *SessionDataSet) GetColumnNames() []string {
-	return s.ioTDBRpcDataSet.ColumnNameList
+	return s.ioTDBRpcDataSet.columnNameList
 }
 
 func (s *SessionDataSet) GetColumnTypes() []string {
-	return s.ioTDBRpcDataSet.ColumnTypeList
+	return s.ioTDBRpcDataSet.columnTypeList
 }

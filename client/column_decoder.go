@@ -105,8 +105,7 @@ func (decoder *Int32ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 		return nil, err
 	}
 	switch dataType {
-	case INT32:
-	case DATE:
+	case INT32, DATE:
 		intValues := make([]int32, positionCount)
 		for i := int32(0); i < positionCount; i++ {
 			if nullIndicators != nil && nullIndicators[i] {
@@ -172,8 +171,7 @@ func (decoder *Int64ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 		return nil, err
 	}
 	switch dataType {
-	case INT64:
-	case TIMESTAMP:
+	case INT64, TIMESTAMP:
 		values := make([]int64, positionCount)
 		for i := int32(0); i < positionCount; i++ {
 			if nullIndicators != nil && nullIndicators[i] {

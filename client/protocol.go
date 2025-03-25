@@ -67,7 +67,7 @@ var byteToTsDataType = map[byte]TSDataType{
 	11: STRING,
 }
 
-func getDataTypeByStr(name string) (TSDataType, error) {
+func GetDataTypeByStr(name string) (TSDataType, error) {
 	dataType, exists := tsTypeMap[name]
 	if !exists {
 		return UNKNOWN, fmt.Errorf("invalid input: %v", name)
