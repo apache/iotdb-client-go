@@ -449,13 +449,13 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 		StatementId: s.requestStatementId,
 		FetchSize:   &s.config.FetchSize,
 	}
-	resp, err := s.client.ExecuteStatement(context.Background(), &request)
+	resp, err := s.client.ExecuteStatementV2(context.Background(), &request)
 
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteStatement(context.Background(), &request)
+			resp, err = s.client.ExecuteStatementV2(context.Background(), &request)
 		}
 	}
 
@@ -469,13 +469,13 @@ func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err 
 		StatementId: s.requestStatementId,
 		FetchSize:   &s.config.FetchSize,
 	}
-	resp, err := s.client.ExecuteStatement(context.Background(), &request)
+	resp, err := s.client.ExecuteStatementV2(context.Background(), &request)
 
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteStatement(context.Background(), &request)
+			resp, err = s.client.ExecuteStatementV2(context.Background(), &request)
 		}
 	}
 	if resp.IsSetDatabase() {
@@ -519,7 +519,7 @@ func (s *Session) ExecuteAggregationQuery(paths []string, aggregations []common.
 
 	request := rpc.TSAggregationQueryReq{SessionId: s.sessionId, StatementId: s.requestStatementId, Paths: paths,
 		Aggregations: aggregations, StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize, Timeout: timeoutMs}
-	if resp, err := s.client.ExecuteAggregationQuery(context.Background(), &request); err == nil {
+	if resp, err := s.client.ExecuteAggregationQueryV2(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 		} else {
@@ -528,7 +528,7 @@ func (s *Session) ExecuteAggregationQuery(paths []string, aggregations []common.
 	} else {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
-			resp, err = s.client.ExecuteAggregationQuery(context.Background(), &request)
+			resp, err = s.client.ExecuteAggregationQueryV2(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 			} else {
@@ -546,7 +546,7 @@ func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregat
 	request := rpc.TSAggregationQueryReq{SessionId: s.sessionId, StatementId: s.requestStatementId, Paths: paths,
 		Aggregations: aggregations, StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize,
 		Timeout: timeoutMs, LegalPathNodes: legalNodes}
-	if resp, err := s.client.ExecuteAggregationQuery(context.Background(), &request); err == nil {
+	if resp, err := s.client.ExecuteAggregationQueryV2(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 		} else {
@@ -555,7 +555,7 @@ func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregat
 	} else {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
-			resp, err = s.client.ExecuteAggregationQuery(context.Background(), &request)
+			resp, err = s.client.ExecuteAggregationQueryV2(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, *timeoutMs, *resp.MoreData, s.config.FetchSize)
 			} else {
@@ -850,13 +850,13 @@ func (s *Session) ExecuteRawDataQuery(paths []string, startTime int64, endTime i
 		EndTime:     endTime,
 		StatementId: s.requestStatementId,
 	}
-	resp, err := s.client.ExecuteRawDataQuery(context.Background(), &request)
+	resp, err := s.client.ExecuteRawDataQueryV2(context.Background(), &request)
 
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteRawDataQuery(context.Background(), &request)
+			resp, err = s.client.ExecuteRawDataQueryV2(context.Background(), &request)
 		}
 	}
 
@@ -870,13 +870,13 @@ func (s *Session) ExecuteUpdateStatement(sql string) (*SessionDataSet, error) {
 		StatementId: s.requestStatementId,
 		FetchSize:   &s.config.FetchSize,
 	}
-	resp, err := s.client.ExecuteUpdateStatement(context.Background(), &request)
+	resp, err := s.client.ExecuteUpdateStatementV2(context.Background(), &request)
 
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteUpdateStatement(context.Background(), &request)
+			resp, err = s.client.ExecuteUpdateStatementV2(context.Background(), &request)
 		}
 	}
 

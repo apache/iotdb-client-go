@@ -9,68 +9,68 @@ import (
 	"time"
 )
 
-const startIndex = 2
+const startIndex = int32(2)
 
 type IoTDBRpcDataSet struct {
-	Sql                        string
-	IsClosed                   bool
-	Client                     *rpc.IClientRPCServiceClient
-	ColumnNameList             []string
-	ColumnTypeList             []string
-	ColumnOrdinalMap           map[string]int32
-	ColumnTypeDeduplicatedList []TSDataType
-	FetchSize                  int32
-	Timeout                    int64
-	HasCachedRecord            bool
-	LastReadWasNull            bool
+	sql                        string
+	isClosed                   bool
+	client                     *rpc.IClientRPCServiceClient
+	columnNameList             []string
+	columnTypeList             []string
+	columnOrdinalMap           map[string]int32
+	columnTypeDeduplicatedList []TSDataType
+	fetchSize                  int32
+	timeout                    int64
+	hasCachedRecord            bool
+	lastReadWasNull            bool
 
-	ColumnSize int32
+	columnSize int32
 
-	SessionId       int64
-	QueryId         int64
-	StatementId     int64
-	Time            int64
-	IgnoreTimestamp bool
+	sessionId       int64
+	queryId         int64
+	statementId     int64
+	time            int64
+	ignoreTimestamp bool
 	// indicates that there is still more data in server side and we can call fetchResult to get more
-	MoreData bool
+	moreData bool
 
-	QueryResult      [][]byte
-	CurTsBlock       *TsBlock
-	QueryResultSize  int32 // the length of queryResult
-	QueryResultIndex int32 // the index of bytebuffer in queryResult
-	TsBlockSize      int32 // the size of current tsBlock
-	TsBlockIndex     int32 // the row index in current tsBlock
+	queryResult      [][]byte
+	curTsBlock       *TsBlock
+	queryResultSize  int32 // the length of queryResult
+	queryResultIndex int32 // the index of bytebuffer in queryResult
+	tsBlockSize      int32 // the size of current tsBlock
+	tsBlockIndex     int32 // the row index in current tsBlock
 }
 
 func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, ignoreTimestamp bool, moreData bool, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, fetchSize int32, timeout int64) (rpcDataSet *IoTDBRpcDataSet, err error) {
 	ds := &IoTDBRpcDataSet{
-		SessionId:        sessionId,
-		StatementId:      statementId,
-		IgnoreTimestamp:  ignoreTimestamp,
-		Sql:              sql,
-		QueryId:          queryId,
-		Client:           client,
-		FetchSize:        fetchSize,
-		Timeout:          timeout,
-		MoreData:         moreData,
-		ColumnSize:       int32(len(columnNameList)),
-		ColumnNameList:   columnNameList,
-		ColumnTypeList:   columnTypeList,
-		ColumnOrdinalMap: make(map[string]int32),
+		sessionId:        sessionId,
+		statementId:      statementId,
+		ignoreTimestamp:  ignoreTimestamp,
+		sql:              sql,
+		queryId:          queryId,
+		client:           client,
+		fetchSize:        fetchSize,
+		timeout:          timeout,
+		moreData:         moreData,
+		columnSize:       int32(len(columnNameList)),
+		columnNameList:   make([]string, 0, len(columnNameList)+1),
+		columnTypeList:   make([]string, 0, len(columnTypeList)+1),
+		columnOrdinalMap: make(map[string]int32),
 	}
 	if !ignoreTimestamp {
-		ds.ColumnNameList = append(ds.ColumnNameList, TimestampColumnName)
-		ds.ColumnTypeList = append(ds.ColumnTypeList, "INT64")
-		ds.ColumnOrdinalMap[TimestampColumnName] = 1
+		ds.columnNameList = append(ds.columnNameList, TimestampColumnName)
+		ds.columnTypeList = append(ds.columnTypeList, "INT64")
+		ds.columnOrdinalMap[TimestampColumnName] = 1
 	}
-	ds.ColumnNameList = append(ds.ColumnNameList, columnNameList...)
-	ds.ColumnTypeList = append(ds.ColumnTypeList, columnTypeList...)
+	ds.columnNameList = append(ds.columnNameList, columnNameList...)
+	ds.columnTypeList = append(ds.columnTypeList, columnTypeList...)
 
 	if columnNameIndex != nil {
 		deduplicatedColumnSize := getDeduplicatedColumnSize(columnNameIndex)
-		ds.ColumnTypeDeduplicatedList = make([]TSDataType, deduplicatedColumnSize)
+		ds.columnTypeDeduplicatedList = make([]TSDataType, deduplicatedColumnSize)
 		for i, name := range columnNameList {
-			if _, exists := ds.ColumnOrdinalMap[name]; exists {
+			if _, exists := ds.columnOrdinalMap[name]; exists {
 				continue
 			}
 
@@ -78,7 +78,7 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []st
 			targetIndex := index + startIndex
 
 			valueExists := false
-			for _, v := range ds.ColumnOrdinalMap {
+			for _, v := range ds.columnOrdinalMap {
 				if v == targetIndex {
 					valueExists = true
 					break
@@ -86,39 +86,39 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []st
 			}
 
 			if !valueExists {
-				if int(index) < len(ds.ColumnTypeDeduplicatedList) {
-					if ds.ColumnTypeDeduplicatedList[index], err = getDataTypeByStr(columnTypeList[i]); err != nil {
+				if int(index) < len(ds.columnTypeDeduplicatedList) {
+					if ds.columnTypeDeduplicatedList[index], err = GetDataTypeByStr(columnTypeList[i]); err != nil {
 						return nil, err
 					}
 				}
 			}
-			ds.ColumnOrdinalMap[name] = targetIndex
+			ds.columnOrdinalMap[name] = targetIndex
 		}
 	} else {
-		ds.ColumnTypeDeduplicatedList = make([]TSDataType, 0)
+		ds.columnTypeDeduplicatedList = make([]TSDataType, 0)
 		index := startIndex
 		for i := 0; i < len(columnNameList); i++ {
 			name := columnNameList[i]
-			if _, exists := ds.ColumnOrdinalMap[name]; !exists {
-				dataType, err := getDataTypeByStr(columnTypeList[i])
+			if _, exists := ds.columnOrdinalMap[name]; !exists {
+				dataType, err := GetDataTypeByStr(columnTypeList[i])
 				if err != nil {
 					return nil, err
 				}
-				ds.ColumnTypeDeduplicatedList = append(ds.ColumnTypeDeduplicatedList, dataType)
-				ds.ColumnOrdinalMap[name] = int32(index)
+				ds.columnTypeDeduplicatedList = append(ds.columnTypeDeduplicatedList, dataType)
+				ds.columnOrdinalMap[name] = int32(index)
 				index++
 			}
 		}
 	}
-	ds.QueryResult = queryResult
+	ds.queryResult = queryResult
 	if queryResult != nil {
-		ds.QueryResultSize = int32(len(queryResult))
+		ds.queryResultSize = int32(len(queryResult))
 	} else {
-		ds.QueryResultSize = 0
+		ds.queryResultSize = 0
 	}
-	ds.QueryResultIndex = 0
-	ds.TsBlockSize = 0
-	ds.TsBlockIndex = -1
+	ds.queryResultIndex = 0
+	ds.tsBlockSize = 0
+	ds.tsBlockIndex = -1
 	return ds, nil
 }
 
@@ -131,28 +131,28 @@ func getDeduplicatedColumnSize(columnNameList map[string]int32) int {
 }
 
 func (s *IoTDBRpcDataSet) Close() (err error) {
-	if s.IsClosed {
+	if s.isClosed {
 		return nil
 	}
 	closeRequest := &rpc.TSCloseOperationReq{
-		SessionId:   s.SessionId,
-		StatementId: &s.StatementId,
-		QueryId:     &s.QueryId,
+		SessionId:   s.sessionId,
+		StatementId: &s.statementId,
+		QueryId:     &s.queryId,
 	}
 
 	var status *common.TSStatus
-	status, err = s.Client.CloseOperation(context.Background(), closeRequest)
+	status, err = s.client.CloseOperation(context.Background(), closeRequest)
 	if err == nil {
 		err = VerifySuccess(status)
 	}
-	s.Client = nil
-	s.IsClosed = true
+	s.client = nil
+	s.isClosed = true
 	return err
 }
 
 func (s *IoTDBRpcDataSet) Next() (result bool, err error) {
 	if s.hasCachedBlock() {
-		s.LastReadWasNull = false
+		s.lastReadWasNull = false
 		err = s.constructOneRow()
 		return true, err
 	}
@@ -164,7 +164,7 @@ func (s *IoTDBRpcDataSet) Next() (result bool, err error) {
 		return true, err
 	}
 
-	if s.MoreData {
+	if s.moreData {
 		hasResultSet, err := s.fetchResults()
 		if err != nil {
 			return false, err
@@ -185,19 +185,19 @@ func (s *IoTDBRpcDataSet) Next() (result bool, err error) {
 }
 
 func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
-	if s.IsClosed {
+	if s.isClosed {
 		return false, fmt.Errorf("this data set is already closed")
 	}
 	req := rpc.TSFetchResultsReq{
-		SessionId: s.SessionId,
-		Statement: s.Sql,
-		FetchSize: s.FetchSize,
-		QueryId:   s.QueryId,
+		SessionId: s.sessionId,
+		Statement: s.sql,
+		FetchSize: s.fetchSize,
+		QueryId:   s.queryId,
 		IsAlign:   true,
 	}
-	req.Timeout = &s.Timeout
+	req.Timeout = &s.timeout
 
-	resp, err := s.Client.FetchResults(context.Background(), &req)
+	resp, err := s.client.FetchResultsV2(context.Background(), &req)
 
 	if err != nil {
 		return false, err
@@ -210,42 +210,45 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 	if !resp.HasResultSet {
 		err = s.Close()
 	} else {
-		s.QueryResult = resp.GetQueryResult_()
-		s.QueryResultIndex = 0
-		if s.QueryResult != nil {
-			s.QueryResultSize = int32(len(s.QueryResult))
+		s.queryResult = resp.GetQueryResult_()
+		s.queryResultIndex = 0
+		if s.queryResult != nil {
+			s.queryResultSize = int32(len(s.queryResult))
 		} else {
-			s.QueryResultSize = 0
+			s.queryResultSize = 0
 		}
-		s.TsBlockSize = 0
-		s.TsBlockIndex = -1
+		s.tsBlockSize = 0
+		s.tsBlockIndex = -1
 	}
 	return resp.HasResultSet, err
 }
 
 func (s *IoTDBRpcDataSet) hasCachedBlock() bool {
-	return s.CurTsBlock != nil && s.TsBlockIndex < s.TsBlockSize-1
+	return s.curTsBlock != nil && s.tsBlockIndex < s.tsBlockSize-1
 }
 
 func (s *IoTDBRpcDataSet) hasCachedByteBuffer() bool {
-	return s.QueryResult != nil && s.QueryResultIndex < s.QueryResultSize
+	return s.queryResult != nil && s.queryResultIndex < s.queryResultSize
 }
 
 func (s *IoTDBRpcDataSet) constructOneRow() (err error) {
-	s.TsBlockIndex++
-	s.HasCachedRecord = true
-	s.Time, err = s.CurTsBlock.GetTimeColumn().GetLong(s.TsBlockIndex)
+	s.tsBlockIndex++
+	s.hasCachedRecord = true
+	s.time, err = s.curTsBlock.GetTimeColumn().GetLong(s.tsBlockIndex)
 	return err
 }
 
 func (s *IoTDBRpcDataSet) constructOneTsBlock() (err error) {
-	s.LastReadWasNull = false
-	curTsBlockBytes := s.QueryResult[s.QueryResultIndex]
-	s.QueryResultIndex = s.QueryResultIndex + 1
-	s.CurTsBlock, err = DeserializeTsBlock(curTsBlockBytes)
-	s.TsBlockIndex = -1
-	s.TsBlockSize = s.CurTsBlock.GetPositionCount()
-	return err
+	s.lastReadWasNull = false
+	curTsBlockBytes := s.queryResult[s.queryResultIndex]
+	s.queryResultIndex = s.queryResultIndex + 1
+	s.curTsBlock, err = DeserializeTsBlock(curTsBlockBytes)
+	if err != nil {
+		return err
+	}
+	s.tsBlockIndex = -1
+	s.tsBlockSize = s.curTsBlock.GetPositionCount()
+	return nil
 }
 
 func (s *IoTDBRpcDataSet) isNullByIndex(columnIndex int32) (bool, error) {
@@ -253,25 +256,25 @@ func (s *IoTDBRpcDataSet) isNullByIndex(columnIndex int32) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
+	index := s.columnOrdinalMap[columnName] - startIndex
 	// time column will never be null
 	if index < 0 {
 		return true, nil
 	}
-	return s.isNull(index, s.TsBlockIndex), nil
+	return s.isNull(index, s.tsBlockIndex), nil
 }
 
 func (s *IoTDBRpcDataSet) isNullByColumnName(columnName string) bool {
-	index := s.ColumnOrdinalMap[columnName] - startIndex
+	index := s.columnOrdinalMap[columnName] - startIndex
 	// time column will never be null
 	if index < 0 {
 		return true
 	}
-	return s.isNull(index, s.TsBlockIndex)
+	return s.isNull(index, s.tsBlockIndex)
 }
 
 func (s *IoTDBRpcDataSet) isNull(index int32, rowNum int32) bool {
-	return s.CurTsBlock.GetColumn(index).IsNull(rowNum)
+	return s.curTsBlock.GetColumn(index).IsNull(rowNum)
 }
 
 func (s *IoTDBRpcDataSet) getBooleanByIndex(columnIndex int32) (bool, error) {
@@ -287,12 +290,12 @@ func (s *IoTDBRpcDataSet) getBoolean(columnName string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
-	if !s.isNull(index, s.TsBlockIndex) {
-		s.LastReadWasNull = false
-		return s.CurTsBlock.GetColumn(index).GetBoolean(s.TsBlockIndex)
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetBoolean(s.tsBlockIndex)
 	} else {
-		s.LastReadWasNull = true
+		s.lastReadWasNull = true
 		return false, nil
 	}
 }
@@ -310,12 +313,12 @@ func (s *IoTDBRpcDataSet) getDouble(columnName string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
-	if !s.isNull(index, s.TsBlockIndex) {
-		s.LastReadWasNull = false
-		return s.CurTsBlock.GetColumn(index).GetDouble(s.TsBlockIndex)
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetDouble(s.tsBlockIndex)
 	} else {
-		s.LastReadWasNull = true
+		s.lastReadWasNull = true
 		return 0, nil
 	}
 }
@@ -333,12 +336,12 @@ func (s *IoTDBRpcDataSet) getFloat(columnName string) (float32, error) {
 	if err != nil {
 		return 0, err
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
-	if !s.isNull(index, s.TsBlockIndex) {
-		s.LastReadWasNull = false
-		return s.CurTsBlock.GetColumn(index).GetFloat(s.TsBlockIndex)
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetFloat(s.tsBlockIndex)
 	} else {
-		s.LastReadWasNull = true
+		s.lastReadWasNull = true
 		return 0, nil
 	}
 }
@@ -356,12 +359,20 @@ func (s *IoTDBRpcDataSet) getInt(columnName string) (int32, error) {
 	if err != nil {
 		return 0, err
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
-	if !s.isNull(index, s.TsBlockIndex) {
-		s.LastReadWasNull = false
-		return s.CurTsBlock.GetColumn(index).GetInt(s.TsBlockIndex)
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		dataType := s.curTsBlock.GetColumn(index).GetDataType()
+		if dataType == INT64 {
+			if v, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
+				return 0, err
+			} else {
+				return int32(v), nil
+			}
+		}
+		return s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex)
 	} else {
-		s.LastReadWasNull = true
+		s.lastReadWasNull = true
 		return 0, nil
 	}
 }
@@ -380,14 +391,14 @@ func (s *IoTDBRpcDataSet) getLong(columnName string) (int64, error) {
 		return 0, err
 	}
 	if columnName == TimestampColumnName {
-		return s.CurTsBlock.GetTimeByIndex(s.TsBlockIndex)
+		return s.curTsBlock.GetTimeByIndex(s.tsBlockIndex)
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
-	if !s.isNull(index, s.TsBlockIndex) {
-		s.LastReadWasNull = false
-		return s.CurTsBlock.GetColumn(index).GetLong(s.TsBlockIndex)
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex)
 	} else {
-		s.LastReadWasNull = true
+		s.lastReadWasNull = true
 		return 0, nil
 	}
 }
@@ -405,12 +416,12 @@ func (s *IoTDBRpcDataSet) getBinary(columnName string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
-	if !s.isNull(index, s.TsBlockIndex) {
-		s.LastReadWasNull = false
-		return s.CurTsBlock.GetColumn(index).GetBinary(s.TsBlockIndex)
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex)
 	} else {
-		s.LastReadWasNull = true
+		s.lastReadWasNull = true
 		return nil, nil
 	}
 }
@@ -436,7 +447,7 @@ func (s *IoTDBRpcDataSet) GetTimestamp(columnName string) (time.Time, error) {
 }
 
 func (s *IoTDBRpcDataSet) findColumn(columnName string) int32 {
-	return s.ColumnOrdinalMap[columnName]
+	return s.columnOrdinalMap[columnName]
 }
 
 func (s *IoTDBRpcDataSet) getValueByName(columnName string) (string, error) {
@@ -445,69 +456,67 @@ func (s *IoTDBRpcDataSet) getValueByName(columnName string) (string, error) {
 		return "", err
 	}
 	if columnName == TimestampColumnName {
-		if t, err := s.CurTsBlock.GetTimeByIndex(s.TsBlockIndex); err != nil {
+		if t, err := s.curTsBlock.GetTimeByIndex(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return int64ToString(t), nil
 		}
 	}
-	index := s.ColumnOrdinalMap[columnName] - startIndex
-	if index < 0 || index >= int32(len(s.ColumnTypeDeduplicatedList)) || s.isNull(index, s.TsBlockIndex) {
-		s.LastReadWasNull = true
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if index < 0 || index >= int32(len(s.columnTypeDeduplicatedList)) || s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = true
 		return "", err
 	}
-	s.LastReadWasNull = false
-	return s.getString(index, s.ColumnTypeDeduplicatedList[index])
+	s.lastReadWasNull = false
+	return s.getString(index, s.columnTypeDeduplicatedList[index])
 }
 
 func (s *IoTDBRpcDataSet) getString(index int32, tsDataType TSDataType) (string, error) {
 	switch tsDataType {
 	case BOOLEAN:
-		if v, err := s.CurTsBlock.GetColumn(index).GetBoolean(s.TsBlockIndex); err != nil {
+		if v, err := s.curTsBlock.GetColumn(index).GetBoolean(s.tsBlockIndex); err != nil {
 			return "", nil
 		} else {
 			return strconv.FormatBool(v), nil
 		}
 	case INT32:
-		if v, err := s.CurTsBlock.GetColumn(index).GetInt(s.TsBlockIndex); err != nil {
+		if v, err := s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return int32ToString(v), nil
 		}
-	case INT64:
-	case TIMESTAMP:
-		if v, err := s.CurTsBlock.GetColumn(index).GetLong(s.TsBlockIndex); err != nil {
+	case INT64, TIMESTAMP:
+		if v, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return int64ToString(v), nil
 		}
 	case FLOAT:
-		if v, err := s.CurTsBlock.GetColumn(index).GetFloat(s.TsBlockIndex); err != nil {
+		if v, err := s.curTsBlock.GetColumn(index).GetFloat(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return float32ToString(v), nil
 		}
 	case DOUBLE:
-		if v, err := s.CurTsBlock.GetColumn(index).GetDouble(s.TsBlockIndex); err != nil {
+		if v, err := s.curTsBlock.GetColumn(index).GetDouble(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return float64ToString(v), nil
 		}
-	case TEXT:
-	case STRING:
-		if v, err := s.CurTsBlock.GetColumn(index).GetBinary(s.TsBlockIndex); err != nil {
+	case TEXT, STRING:
+		if v, err := s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return v.GetStringValue(), nil
 		}
 	case BLOB:
-		if v, err := s.CurTsBlock.GetColumn(index).GetBinary(s.TsBlockIndex); err != nil {
+		if v, err := s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return bytesToHexString(v.values), nil
 		}
 	case DATE:
-		v, err := s.CurTsBlock.GetColumn(index).GetInt(s.TsBlockIndex)
+		v, err := s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex)
 		if err != nil {
 			return "", err
 		}
@@ -524,14 +533,14 @@ func (s *IoTDBRpcDataSet) findColumnNameByIndex(columnIndex int32) (string, erro
 	if columnIndex <= 0 {
 		return "", fmt.Errorf("column index should start from 1")
 	}
-	if columnIndex > int32(len(s.ColumnNameList)) {
-		return "", fmt.Errorf("column index %d out of range %d", columnIndex, len(s.ColumnNameList))
+	if columnIndex > int32(len(s.columnNameList)) {
+		return "", fmt.Errorf("column index %d out of range %d", columnIndex, len(s.columnNameList))
 	}
-	return s.ColumnNameList[columnIndex-1], nil
+	return s.columnNameList[columnIndex-1], nil
 }
 
 func (s *IoTDBRpcDataSet) checkRecord() (err error) {
-	if s.QueryResultIndex > s.QueryResultSize || s.TsBlockIndex >= s.TsBlockSize || s.QueryResult == nil || s.CurTsBlock == nil {
+	if s.queryResultIndex > s.queryResultSize || s.tsBlockIndex >= s.tsBlockSize || s.queryResult == nil || s.curTsBlock == nil {
 		err = fmt.Errorf("no record remains")
 	}
 	return err

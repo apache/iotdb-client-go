@@ -40,7 +40,7 @@ var encodingToDecoder = map[ColumnEncoding]ColumnDecoder{
 }
 
 var byteToEncoding = map[byte]ColumnEncoding{
-	0: INT32_ARRAY_COLUMN_ENCODING,
+	0: BYTE_ARRAY_COLUMN_ENCODING,
 	1: INT32_ARRAY_COLUMN_ENCODING,
 	2: INT64_ARRAY_COLUMN_ENCODING,
 	3: BINARY_ARRAY_COLUMN_ENCODING,
@@ -92,31 +92,31 @@ type Column interface {
 type baseColumn struct {
 }
 
-func (c *baseColumn) GetBoolean(position int32) (bool, error) {
+func (c *baseColumn) GetBoolean(_ int32) (bool, error) {
 	return false, fmt.Errorf("unsupported operation: GetBoolean")
 }
 
-func (c *baseColumn) GetInt(position int32) (int32, error) {
+func (c *baseColumn) GetInt(_ int32) (int32, error) {
 	return 0, fmt.Errorf("unsupported operation: GetInt")
 }
 
-func (c *baseColumn) GetLong(position int32) (int64, error) {
+func (c *baseColumn) GetLong(_ int32) (int64, error) {
 	return 0, fmt.Errorf("unsupported operation: GetLong")
 }
 
-func (c *baseColumn) GetFloat(position int32) (float32, error) {
+func (c *baseColumn) GetFloat(_ int32) (float32, error) {
 	return 0, fmt.Errorf("unsupported operation: GetFloat")
 }
 
-func (c *baseColumn) GetDouble(position int32) (float64, error) {
+func (c *baseColumn) GetDouble(_ int32) (float64, error) {
 	return 0, fmt.Errorf("unsupported operation: GetDouble")
 }
 
-func (c *baseColumn) GetBinary(position int32) (*Binary, error) {
+func (c *baseColumn) GetBinary(_ int32) (*Binary, error) {
 	return nil, fmt.Errorf("unsupported operation: GetBinary")
 }
 
-func (c *baseColumn) GetObject(position int32) (interface{}, error) {
+func (c *baseColumn) GetObject(_ int32) (interface{}, error) {
 	return nil, fmt.Errorf("unsupported operation: GetObject")
 }
 
@@ -188,7 +188,7 @@ func (tc *TimeColumn) MayHaveNull() bool {
 	return false
 }
 
-func (tc *TimeColumn) IsNull(position int32) bool {
+func (tc *TimeColumn) IsNull(_ int32) bool {
 	return false
 }
 
@@ -687,32 +687,32 @@ func (c *RunLengthEncodedColumn) GetEncoding() ColumnEncoding {
 	return RLE_COLUMN_ENCODING
 }
 
-func (c *RunLengthEncodedColumn) GetBoolean(position int32) (bool, error) {
+func (c *RunLengthEncodedColumn) GetBoolean(_ int32) (bool, error) {
 	return c.value.GetBoolean(0)
 }
 
-func (c *RunLengthEncodedColumn) GetInt(position int32) (int32, error) {
+func (c *RunLengthEncodedColumn) GetInt(_ int32) (int32, error) {
 	return c.value.GetInt(0)
 }
 
-func (c *RunLengthEncodedColumn) GetLong(position int32) (int64, error) {
+func (c *RunLengthEncodedColumn) GetLong(_ int32) (int64, error) {
 	return c.value.GetLong(0)
 }
 
-func (c *RunLengthEncodedColumn) GetFloat(position int32) (float32, error) {
+func (c *RunLengthEncodedColumn) GetFloat(_ int32) (float32, error) {
 	return c.value.GetFloat(0)
 }
 
-func (c *RunLengthEncodedColumn) GetDouble(position int32) (float64, error) {
+func (c *RunLengthEncodedColumn) GetDouble(_ int32) (float64, error) {
 	return c.value.GetDouble(0)
 }
 
-func (c *RunLengthEncodedColumn) GetBinary(position int32) (*Binary, error) {
+func (c *RunLengthEncodedColumn) GetBinary(_ int32) (*Binary, error) {
 	return c.value.GetBinary(0)
 }
 
-func (c *RunLengthEncodedColumn) GetObject(position int32) (interface{}, error) {
-	return c.value.GetObject(position)
+func (c *RunLengthEncodedColumn) GetObject(_ int32) (interface{}, error) {
+	return c.value.GetObject(0)
 }
 
 func (c *RunLengthEncodedColumn) GetBooleans() ([]bool, error) {
@@ -803,7 +803,7 @@ func (c *RunLengthEncodedColumn) MayHaveNull() bool {
 	return c.value.MayHaveNull()
 }
 
-func (c *RunLengthEncodedColumn) IsNull(position int32) bool {
+func (c *RunLengthEncodedColumn) IsNull(_ int32) bool {
 	return c.value.IsNull(0)
 }
 
