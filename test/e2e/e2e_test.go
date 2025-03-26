@@ -384,7 +384,7 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	s.session.DeleteStorageGroup("root.ln.**")
 }
 
-func (s *e2eTestSuite) Test_SmallFetchSize() {
+func (s *e2eTestSuite) Test_FetchMoreData() {
 	var timeseries = []string{"root.ln.device1.**"}
 	s.session.SetFetchSize(1000)
 	s.session.DeleteTimeseries(timeseries)
@@ -407,4 +407,113 @@ func (s *e2eTestSuite) Test_SmallFetchSize() {
 	}
 	s.Assert().Equal(writeCount, count)
 	s.session.DeleteStorageGroup("root.ln.**")
+}
+
+func (s *e2eTestSuite) Test_QueryAllDataType() {
+	measurementSchemas := []*client.MeasurementSchema{
+		{
+			Measurement: "s0",
+			DataType:    client.BOOLEAN,
+		},
+		{
+			Measurement: "s1",
+			DataType:    client.INT32,
+		},
+		{
+			Measurement: "s2",
+			DataType:    client.INT64,
+		},
+		{
+			Measurement: "s3",
+			DataType:    client.FLOAT,
+		},
+		{
+			Measurement: "s4",
+			DataType:    client.DOUBLE,
+		},
+		{
+			Measurement: "s5",
+			DataType:    client.TEXT,
+		},
+		{
+			Measurement: "s6",
+			DataType:    client.TIMESTAMP,
+		},
+		{
+			Measurement: "s7",
+			DataType:    client.DATE,
+		},
+		{
+			Measurement: "s8",
+			DataType:    client.BLOB,
+		},
+		{
+			Measurement: "s9",
+			DataType:    client.STRING,
+		},
+	}
+	tablet, err := client.NewTablet("root.tsg1.d1", measurementSchemas, 100)
+	s.NoError(err)
+	tablet.SetTimestamp(1, 0)
+	tablet.SetValueAt(true, 0, 0)
+	tablet.SetValueAt(int32(1), 1, 0)
+	tablet.SetValueAt(int64(1), 2, 0)
+	tablet.SetValueAt(float32(1), 3, 0)
+	tablet.SetValueAt(float64(1), 4, 0)
+	tablet.SetValueAt("text", 5, 0)
+	tablet.SetValueAt(int64(1), 6, 0)
+	expectedDate, _ := client.Int32ToDate(20250326)
+	tablet.SetValueAt(expectedDate, 7, 0)
+	tablet.SetValueAt([]byte{1}, 8, 0)
+	tablet.SetValueAt("string", 9, 0)
+	tablet.RowSize = 1
+
+	r, err := s.session.InsertAlignedTablet(tablet, true)
+	s.checkError(r, err)
+
+	sessionDataSet, err := s.session.ExecuteQueryStatement("select * from root.tsg1.d1 limit 1", nil)
+	for {
+		if hasNext, err := sessionDataSet.Next(); err != nil || !hasNext {
+			break
+		}
+		boolValue, err := sessionDataSet.GetBoolean("root.tsg1.d1.s0")
+		s.NoError(err)
+		s.Equal(true, boolValue)
+
+		intValue, err := sessionDataSet.GetInt("root.tsg1.d1.s1")
+		s.NoError(err)
+		s.Equal(int32(1), intValue)
+
+		longValue, err := sessionDataSet.GetLong("root.tsg1.d1.s2")
+		s.NoError(err)
+		s.Equal(int64(1), longValue)
+
+		floatValue, err := sessionDataSet.GetFloat("root.tsg1.d1.s3")
+		s.NoError(err)
+		s.Equal(float32(1), floatValue)
+
+		doubleValue, err := sessionDataSet.GetDouble("root.tsg1.d1.s4")
+		s.NoError(err)
+		s.Equal(float64(1), doubleValue)
+
+		textValue, err := sessionDataSet.GetString("root.tsg1.d1.s5")
+		s.NoError(err)
+		s.Equal("text", textValue)
+
+		timestampValue, err := sessionDataSet.GetTimestamp("root.tsg1.d1.s6")
+		s.NoError(err)
+		s.Equal(time.UnixMilli(1), timestampValue)
+
+		dateValue, err := sessionDataSet.GetDate("root.tsg1.d1.s7")
+		s.NoError(err)
+		s.Equal(expectedDate, dateValue)
+
+		blobValue, err := sessionDataSet.GetBlob("root.tsg1.d1.s8")
+		s.NoError(err)
+		s.Equal([]byte{1}, blobValue.GetValues())
+
+		stringValue, err := sessionDataSet.GetString("root.tsg1.d1.s9")
+		s.NoError(err)
+		s.Equal("string", stringValue)
+	}
 }

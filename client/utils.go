@@ -81,7 +81,7 @@ func bytesToHexString(input []byte) string {
 	return hexString
 }
 
-func dateToInt32(localDate time.Time) (int32, error) {
+func DateToInt32(localDate time.Time) (int32, error) {
 	if localDate.IsZero() {
 		return 0, errors.New("date expression is null or empty")
 	}
@@ -96,7 +96,7 @@ func dateToInt32(localDate time.Time) (int32, error) {
 	return int32(result), nil
 }
 
-func int32ToDate(val int32) (time.Time, error) {
+func Int32ToDate(val int32) (time.Time, error) {
 	date := int(val)
 	year := date / 10000
 	month := (date / 100) % 100
@@ -112,7 +112,7 @@ func int32ToDate(val int32) (time.Time, error) {
 }
 
 func bytesToDate(bys []byte) (time.Time, error) {
-	return int32ToDate(bytesToInt32(bys))
+	return Int32ToDate(bytesToInt32(bys))
 }
 
 func verifySuccesses(statuses []*common.TSStatus) error {
@@ -160,4 +160,8 @@ func NewBinary(v []byte) *Binary {
 
 func (b *Binary) GetStringValue() string {
 	return string(b.values)
+}
+
+func (b *Binary) GetValues() []byte {
+	return b.values
 }
