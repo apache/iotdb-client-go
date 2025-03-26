@@ -1196,3 +1196,7 @@ func (s *Session) reconnect() bool {
 	}
 	return connectedSuccess
 }
+
+func (s *Session) SetFetchSize(fetchSize int32) {
+	s.config.FetchSize = fetchSize
+}

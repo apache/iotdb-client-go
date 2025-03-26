@@ -383,3 +383,28 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	assert.Equal(status, "8")
 	s.session.DeleteStorageGroup("root.ln.**")
 }
+
+func (s *e2eTestSuite) Test_SmallFetchSize() {
+	var timeseries = []string{"root.ln.device1.**"}
+	s.session.SetFetchSize(1000)
+	s.session.DeleteTimeseries(timeseries)
+	writeCount := 10000
+	tablet1, err := createTablet(writeCount)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tablets := []*client.Tablet{tablet1}
+	s.checkError(s.session.InsertAlignedTablets(tablets, false))
+
+	ds, err := s.session.ExecuteQueryStatement("select * from root.ln.device1", nil)
+	count := 0
+	for {
+		if hasNext, err := ds.Next(); err != nil || !hasNext {
+			break
+		}
+		count += 1
+	}
+	s.Assert().Equal(writeCount, count)
+	s.session.DeleteStorageGroup("root.ln.**")
+}
