@@ -9,7 +9,7 @@ type SessionDataSet struct {
 	ioTDBRpcDataSet *IoTDBRpcDataSet
 }
 
-func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, ignoreTimestamp bool, timeout int64, moreData bool, fetchSize int32) (*SessionDataSet, error) {
+func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, ignoreTimestamp bool, timeout *int64, moreData bool, fetchSize int32) (*SessionDataSet, error) {
 	rpcDataSet, err := NewIoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex, ignoreTimestamp, moreData, queryId, statementId, client, sessionId, queryResult, fetchSize, timeout)
 	if err != nil {
 		return nil, err

@@ -20,7 +20,7 @@ type IoTDBRpcDataSet struct {
 	columnOrdinalMap           map[string]int32
 	columnTypeDeduplicatedList []TSDataType
 	fetchSize                  int32
-	timeout                    int64
+	timeout                    *int64
 	hasCachedRecord            bool
 	lastReadWasNull            bool
 
@@ -42,7 +42,7 @@ type IoTDBRpcDataSet struct {
 	tsBlockIndex     int32 // the row index in current tsBlock
 }
 
-func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, ignoreTimestamp bool, moreData bool, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, fetchSize int32, timeout int64) (rpcDataSet *IoTDBRpcDataSet, err error) {
+func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, ignoreTimestamp bool, moreData bool, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, fetchSize int32, timeout *int64) (rpcDataSet *IoTDBRpcDataSet, err error) {
 	ds := &IoTDBRpcDataSet{
 		sessionId:        sessionId,
 		statementId:      statementId,
@@ -195,7 +195,7 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 		QueryId:   s.queryId,
 		IsAlign:   true,
 	}
-	req.Timeout = &s.timeout
+	req.Timeout = s.timeout
 
 	resp, err := s.client.FetchResultsV2(context.Background(), &req)
 
@@ -444,6 +444,33 @@ func (s *IoTDBRpcDataSet) GetTimestampByIndex(columnIndex int32) (time.Time, err
 
 func (s *IoTDBRpcDataSet) GetTimestamp(columnName string) (time.Time, error) {
 	return s.GetTimestampByIndex(s.findColumn(columnName))
+}
+
+func (s *IoTDBRpcDataSet) GetDateByIndex(columnIndex int32) (time.Time, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return s.GetDate(columnName)
+}
+
+func (s *IoTDBRpcDataSet) GetDate(columnName string) (time.Time, error) {
+	err := s.checkRecord()
+	if err != nil {
+		return time.Time{}, err
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		if value, err := s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex); err != nil {
+			return time.Time{}, err
+		} else {
+			return int32ToDate(value)
+		}
+	} else {
+		s.lastReadWasNull = true
+		return time.Time{}, nil
+	}
 }
 
 func (s *IoTDBRpcDataSet) findColumn(columnName string) int32 {
