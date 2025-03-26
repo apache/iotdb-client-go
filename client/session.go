@@ -1026,7 +1026,7 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 		case DATE:
 			switch s := v.(type) {
 			case time.Time:
-				date, err := dateToInt32(s)
+				date, err := DateToInt32(s)
 				if err != nil {
 					return nil, err
 				}

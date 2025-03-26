@@ -89,6 +89,22 @@ func (s *SessionDataSet) GetTimestamp(columnName string) (time.Time, error) {
 	return s.ioTDBRpcDataSet.GetTimestamp(columnName)
 }
 
+func (s *SessionDataSet) GetDateByIndex(columnIndex int32) (time.Time, error) {
+	return s.ioTDBRpcDataSet.GetDateByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetDate(columnName string) (time.Time, error) {
+	return s.ioTDBRpcDataSet.GetDate(columnName)
+}
+
+func (s *SessionDataSet) GetBlobByIndex(columnIndex int32) (*Binary, error) {
+	return s.ioTDBRpcDataSet.getBinaryByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetBlob(columnName string) (*Binary, error) {
+	return s.ioTDBRpcDataSet.getBinary(columnName)
+}
+
 func (s *SessionDataSet) FindColumn(columnName string) int32 {
 	return s.ioTDBRpcDataSet.findColumn(columnName)
 }

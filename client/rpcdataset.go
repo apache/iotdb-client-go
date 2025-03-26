@@ -435,15 +435,30 @@ func (s *IoTDBRpcDataSet) getStringByIndex(columnIndex int32) (string, error) {
 }
 
 func (s *IoTDBRpcDataSet) GetTimestampByIndex(columnIndex int32) (time.Time, error) {
-	longValue, err := s.getLongByIndex(columnIndex)
+	columnName, err := s.findColumnNameByIndex(columnIndex)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return time.UnixMilli(longValue), nil
+	return s.GetTimestamp(columnName)
 }
 
 func (s *IoTDBRpcDataSet) GetTimestamp(columnName string) (time.Time, error) {
-	return s.GetTimestampByIndex(s.findColumn(columnName))
+	err := s.checkRecord()
+	if err != nil {
+		return time.Time{}, err
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		if longValue, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
+			return time.Time{}, err
+		} else {
+			return time.UnixMilli(longValue), nil
+		}
+	} else {
+		s.lastReadWasNull = true
+		return time.Time{}, nil
+	}
 }
 
 func (s *IoTDBRpcDataSet) GetDateByIndex(columnIndex int32) (time.Time, error) {
@@ -465,7 +480,7 @@ func (s *IoTDBRpcDataSet) GetDate(columnName string) (time.Time, error) {
 		if value, err := s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex); err != nil {
 			return time.Time{}, err
 		} else {
-			return int32ToDate(value)
+			return Int32ToDate(value)
 		}
 	} else {
 		s.lastReadWasNull = true
@@ -547,7 +562,7 @@ func (s *IoTDBRpcDataSet) getString(index int32, tsDataType TSDataType) (string,
 		if err != nil {
 			return "", err
 		}
-		t, err := int32ToDate(v)
+		t, err := Int32ToDate(v)
 		if err != nil {
 			return "", err
 		}
