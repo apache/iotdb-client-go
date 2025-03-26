@@ -43,7 +43,7 @@ func TestE2ETestSuite(t *testing.T) {
 
 func (s *e2eTestSuite) SetupSuite() {
 	clusterConfig := client.ClusterConfig{
-		NodeUrls: strings.Split("iotdb:6668,iotdb:6667,iotdb:6669", ","),
+		NodeUrls: strings.Split("127.0.0.1:6667", ","),
 		UserName: "root",
 		Password: "root",
 	}
@@ -100,8 +100,8 @@ func (s *e2eTestSuite) Test_CreateTimeseries() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var timeseries string
-	assert.NoError(ds.Scan(&timeseries))
+	timeseries, err := ds.GetStringByIndex(1)
+	assert.NoError(err)
 	assert.Equal(timeseries, "root.tsg1.dev1.status")
 }
 
@@ -133,8 +133,8 @@ func (s *e2eTestSuite) Test_CreateAlignedTimeseries() {
 		assert.NoError(err)
 		defer ds.Close()
 		assert.True(ds.Next())
-		var timeseries string
-		assert.NoError(ds.Scan(&timeseries))
+		timeseries, err := ds.GetStringByIndex(1)
+		assert.NoError(err)
 		assert.Equal(timeseries, fullPath)
 	}
 }
@@ -154,8 +154,8 @@ func (s *e2eTestSuite) Test_InsertRecords() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var status string
-	assert.NoError(ds.Scan(&status))
+	status, err := ds.GetString("root.tsg1.dev1.status")
+	assert.NoError(err)
 	assert.Equal(status, "Working")
 }
 
@@ -174,9 +174,9 @@ func (s *e2eTestSuite) Test_InsertAlignedRecord() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var status string
-	assert.NoError(ds.Scan(&status))
-	assert.Equal(status, "Working")
+	status, err := ds.GetString("root.tsg2.dev1.status")
+	assert.NoError(err)
+	assert.Equal("Working", status)
 }
 
 func (s *e2eTestSuite) Test_InsertAlignedRecords() {
@@ -193,8 +193,8 @@ func (s *e2eTestSuite) Test_InsertAlignedRecords() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var temperature string
-	assert.NoError(ds.Scan(&temperature))
+	temperature, err := ds.GetString("root.al1.dev3.temperature")
+	assert.NoError(err)
 	assert.Equal(temperature, "44")
 }
 
@@ -225,10 +225,11 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var status string
-	assert.NoError(ds.Scan(&status))
-	assert.Equal(status, "2024-04-01")
+	date, err := ds.GetString("root.al1.dev4.date")
+	assert.NoError(err)
+	assert.Equal("2024-04-01", date)
 }
+
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	var timeseries = []string{"root.ln.device1.**"}
 	s.session.DeleteTimeseries(timeseries)
@@ -245,8 +246,8 @@ func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var status string
-	assert.NoError(ds.Scan(&status))
+	status, err := ds.GetStringByIndex(1)
+	assert.NoError(err)
 	assert.Equal(status, "12")
 	s.session.DeleteStorageGroup("root.ln.**")
 }
@@ -267,8 +268,8 @@ func (s *e2eTestSuite) Test_InsertAlignedTabletWithNilValue() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var status string
-	assert.NoError(ds.Scan(&status))
+	status, err := ds.GetStringByIndex(1)
+	assert.NoError(err)
 	assert.Equal(status, "12")
 	s.session.DeleteStorageGroup("root.ln.**")
 }
@@ -387,8 +388,8 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	assert.NoError(err)
 	defer ds.Close()
 	assert.True(ds.Next())
-	var status string
-	assert.NoError(ds.Get(&status))
+	status, err := ds.GetStringByIndex(1)
+	assert.NoError(err)
 	assert.Equal(status, "8")
 	s.session.DeleteStorageGroup("root.ln.**")
 }
