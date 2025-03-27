@@ -442,24 +442,31 @@ func (s *Session) SetTimeZone(timeZone string) (r *common.TSStatus, err error) {
 	return r, err
 }
 
-func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
+func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{
 		SessionId:   s.sessionId,
 		Statement:   sql,
 		StatementId: s.requestStatementId,
 		FetchSize:   &s.config.FetchSize,
 	}
-	resp, err := s.client.ExecuteStatement(context.Background(), &request)
+	resp, err := s.client.ExecuteStatement(ctx, &request)
 
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteStatement(context.Background(), &request)
+			resp, err = s.client.ExecuteStatement(ctx, &request)
 		}
+	}
+	if resp.Status != nil && resp.Status.Code != 200 {
+		return nil, errors.New(*resp.Status.Message)
 	}
 
 	return s.genDataSet(sql, resp), err
+}
+
+func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
+	return s.ExecuteStatementWithContext(context.Background(), sql)
 }
 
 func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {

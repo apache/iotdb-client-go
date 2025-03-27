@@ -20,13 +20,15 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/apache/iotdb-client-go/common"
 
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/stretchr/testify/suite"
@@ -391,4 +393,10 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	assert.NoError(ds.Scan(&status))
 	assert.Equal(status, "8")
 	s.session.DeleteStorageGroup("root.ln.**")
+}
+
+func (s *e2eTestSuite) Test_InvalidSQL() {
+	_, err := s.session.ExecuteStatementWithContext(context.Background(), "select1 from device")
+	assert := s.Require()
+	assert.Error(err)
 }
