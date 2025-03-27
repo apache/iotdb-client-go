@@ -472,7 +472,6 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 	s.checkError(r, err)
 
 	sessionDataSet, err := s.session.ExecuteQueryStatement("select * from root.tsg1.d1 limit 1", nil)
-	defer sessionDataSet.Close()
 	for {
 		if hasNext, err := sessionDataSet.Next(); err != nil || !hasNext {
 			break
@@ -521,5 +520,57 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 		stringValue, err := sessionDataSet.GetString("root.tsg1.d1.s9")
 		s.NoError(err)
 		s.Equal("string", stringValue)
+	}
+	sessionDataSet.Close()
+
+	sessionDataSet, err = s.session.ExecuteQueryStatement("select * from root.tsg1.d1 limit 1", nil)
+	for {
+		if hasNext, err := sessionDataSet.Next(); err != nil || !hasNext {
+			break
+		}
+		for _, columnName := range sessionDataSet.GetColumnNames() {
+			isNull, err := sessionDataSet.IsNull(columnName)
+			s.NoError(err)
+			s.False(isNull)
+		}
+		boolValue, err := sessionDataSet.GetObject("root.tsg1.d1.s0")
+		s.NoError(err)
+		s.Equal(true, boolValue)
+
+		intValue, err := sessionDataSet.GetObject("root.tsg1.d1.s1")
+		s.NoError(err)
+		s.Equal(int32(1), intValue)
+
+		longValue, err := sessionDataSet.GetObject("root.tsg1.d1.s2")
+		s.NoError(err)
+		s.Equal(int64(1), longValue)
+
+		floatValue, err := sessionDataSet.GetObject("root.tsg1.d1.s3")
+		s.NoError(err)
+		s.Equal(float32(1), floatValue)
+
+		doubleValue, err := sessionDataSet.GetObject("root.tsg1.d1.s4")
+		s.NoError(err)
+		s.Equal(float64(1), doubleValue)
+
+		textValue, err := sessionDataSet.GetObject("root.tsg1.d1.s5")
+		s.NoError(err)
+		s.Equal("text", textValue.(*client.Binary).GetStringValue())
+
+		timestampValue, err := sessionDataSet.GetObject("root.tsg1.d1.s6")
+		s.NoError(err)
+		s.Equal(int64(1), timestampValue)
+
+		dateValue, err := sessionDataSet.GetObject("root.tsg1.d1.s7")
+		s.NoError(err)
+		s.Equal(int32(20250326), dateValue)
+
+		blobValue, err := sessionDataSet.GetObject("root.tsg1.d1.s8")
+		s.NoError(err)
+		s.Equal([]byte{1}, blobValue.(*client.Binary).GetValues())
+
+		stringValue, err := sessionDataSet.GetObject("root.tsg1.d1.s9")
+		s.NoError(err)
+		s.Equal("string", stringValue.(*client.Binary).GetStringValue())
 	}
 }

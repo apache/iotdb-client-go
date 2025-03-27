@@ -286,8 +286,7 @@ func (s *IoTDBRpcDataSet) getBooleanByIndex(columnIndex int32) (bool, error) {
 }
 
 func (s *IoTDBRpcDataSet) getBoolean(columnName string) (bool, error) {
-	err := s.checkRecord()
-	if err != nil {
+	if err := s.checkRecord(); err != nil {
 		return false, err
 	}
 	index := s.columnOrdinalMap[columnName] - startIndex
@@ -309,8 +308,7 @@ func (s *IoTDBRpcDataSet) getDoubleByIndex(columnIndex int32) (float64, error) {
 }
 
 func (s *IoTDBRpcDataSet) getDouble(columnName string) (float64, error) {
-	err := s.checkRecord()
-	if err != nil {
+	if err := s.checkRecord(); err != nil {
 		return 0, err
 	}
 	index := s.columnOrdinalMap[columnName] - startIndex
@@ -332,8 +330,7 @@ func (s *IoTDBRpcDataSet) getFloatByIndex(columnIndex int32) (float32, error) {
 }
 
 func (s *IoTDBRpcDataSet) getFloat(columnName string) (float32, error) {
-	err := s.checkRecord()
-	if err != nil {
+	if err := s.checkRecord(); err != nil {
 		return 0, err
 	}
 	index := s.columnOrdinalMap[columnName] - startIndex
@@ -355,8 +352,7 @@ func (s *IoTDBRpcDataSet) getIntByIndex(columnIndex int32) (int32, error) {
 }
 
 func (s *IoTDBRpcDataSet) getInt(columnName string) (int32, error) {
-	err := s.checkRecord()
-	if err != nil {
+	if err := s.checkRecord(); err != nil {
 		return 0, err
 	}
 	index := s.columnOrdinalMap[columnName] - startIndex
@@ -386,8 +382,7 @@ func (s *IoTDBRpcDataSet) getLongByIndex(columnIndex int32) (int64, error) {
 }
 
 func (s *IoTDBRpcDataSet) getLong(columnName string) (int64, error) {
-	err := s.checkRecord()
-	if err != nil {
+	if err := s.checkRecord(); err != nil {
 		return 0, err
 	}
 	if columnName == TimestampColumnName {
@@ -412,8 +407,7 @@ func (s *IoTDBRpcDataSet) getBinaryByIndex(columnIndex int32) (*Binary, error) {
 }
 
 func (s *IoTDBRpcDataSet) getBinary(columnName string) (*Binary, error) {
-	err := s.checkRecord()
-	if err != nil {
+	if err := s.checkRecord(); err != nil {
 		return nil, err
 	}
 	index := s.columnOrdinalMap[columnName] - startIndex
@@ -426,6 +420,34 @@ func (s *IoTDBRpcDataSet) getBinary(columnName string) (*Binary, error) {
 	}
 }
 
+func (s *IoTDBRpcDataSet) getObjectByIndex(columnIndex int32) (interface{}, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return nil, err
+	}
+	return s.getObject(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getObject(columnName string) (interface{}, error) {
+	if err := s.checkRecord(); err != nil {
+		return nil, err
+	}
+	if columnName == TimestampColumnName {
+		if value, err := s.curTsBlock.GetTimeByIndex(s.tsBlockIndex); err != nil {
+			return nil, err
+		} else {
+			return time.UnixMilli(value), nil
+		}
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if index < 0 || index >= int32(len(s.columnTypeDeduplicatedList)) || s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = true
+		return nil, nil
+	}
+	s.lastReadWasNull = false
+	return s.curTsBlock.GetColumn(index).GetObject(s.tsBlockIndex)
+}
+
 func (s *IoTDBRpcDataSet) getStringByIndex(columnIndex int32) (string, error) {
 	columnName, err := s.findColumnNameByIndex(columnIndex)
 	if err != nil {
@@ -434,15 +456,15 @@ func (s *IoTDBRpcDataSet) getStringByIndex(columnIndex int32) (string, error) {
 	return s.getValueByName(columnName)
 }
 
-func (s *IoTDBRpcDataSet) GetTimestampByIndex(columnIndex int32) (time.Time, error) {
+func (s *IoTDBRpcDataSet) getTimestampByIndex(columnIndex int32) (time.Time, error) {
 	columnName, err := s.findColumnNameByIndex(columnIndex)
 	if err != nil {
 		return time.Time{}, err
 	}
-	return s.GetTimestamp(columnName)
+	return s.getTimestamp(columnName)
 }
 
-func (s *IoTDBRpcDataSet) GetTimestamp(columnName string) (time.Time, error) {
+func (s *IoTDBRpcDataSet) getTimestamp(columnName string) (time.Time, error) {
 	err := s.checkRecord()
 	if err != nil {
 		return time.Time{}, err
