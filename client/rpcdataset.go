@@ -259,7 +259,7 @@ func (s *IoTDBRpcDataSet) isNullByIndex(columnIndex int32) (bool, error) {
 	index := s.columnOrdinalMap[columnName] - startIndex
 	// time column will never be null
 	if index < 0 {
-		return true, nil
+		return false, nil
 	}
 	return s.isNull(index, s.tsBlockIndex), nil
 }
@@ -268,7 +268,7 @@ func (s *IoTDBRpcDataSet) isNullByColumnName(columnName string) bool {
 	index := s.columnOrdinalMap[columnName] - startIndex
 	// time column will never be null
 	if index < 0 {
-		return true
+		return false
 	}
 	return s.isNull(index, s.tsBlockIndex)
 }
