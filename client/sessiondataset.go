@@ -73,6 +73,14 @@ func (s *SessionDataSet) GetLong(columnName string) (int64, error) {
 	return s.ioTDBRpcDataSet.getLong(columnName)
 }
 
+func (s *SessionDataSet) GetObjectByIndex(columnIndex int32) (interface{}, error) {
+	return s.ioTDBRpcDataSet.getObjectByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetObject(columnName string) (interface{}, error) {
+	return s.ioTDBRpcDataSet.getObject(columnName)
+}
+
 func (s *SessionDataSet) GetStringByIndex(columnIndex int32) (string, error) {
 	return s.ioTDBRpcDataSet.getStringByIndex(columnIndex)
 }
@@ -82,11 +90,11 @@ func (s *SessionDataSet) GetString(columnName string) (string, error) {
 }
 
 func (s *SessionDataSet) GetTimestampByIndex(columnIndex int32) (time.Time, error) {
-	return s.ioTDBRpcDataSet.GetTimestampByIndex(columnIndex)
+	return s.ioTDBRpcDataSet.getTimestampByIndex(columnIndex)
 }
 
 func (s *SessionDataSet) GetTimestamp(columnName string) (time.Time, error) {
-	return s.ioTDBRpcDataSet.GetTimestamp(columnName)
+	return s.ioTDBRpcDataSet.getTimestamp(columnName)
 }
 
 func (s *SessionDataSet) GetDateByIndex(columnIndex int32) (time.Time, error) {
