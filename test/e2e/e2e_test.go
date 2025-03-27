@@ -482,9 +482,15 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 	s.checkError(r, err)
 
 	sessionDataSet, err := s.session.ExecuteQueryStatement("select * from root.tsg1.d1 limit 1", nil)
+	defer sessionDataSet.Close()
 	for {
 		if hasNext, err := sessionDataSet.Next(); err != nil || !hasNext {
 			break
+		}
+		for _, columnName := range sessionDataSet.GetColumnNames() {
+			isNull, err := sessionDataSet.IsNull(columnName)
+			s.NoError(err)
+			s.False(isNull)
 		}
 		boolValue, err := sessionDataSet.GetBoolean("root.tsg1.d1.s0")
 		s.NoError(err)
