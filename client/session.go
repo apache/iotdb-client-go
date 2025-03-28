@@ -858,8 +858,12 @@ func (s *Session) genDataSet(sql string, resp *rpc.TSExecuteStatementResp) (*Ses
 	} else {
 		queryId = *resp.QueryId
 	}
+	moreData := false
+	if resp.MoreData != nil {
+		moreData = *resp.MoreData
+	}
 	return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap,
-		queryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, nil, *resp.MoreData, s.config.FetchSize)
+		queryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, nil, moreData, s.config.FetchSize)
 }
 
 func (s *Session) genInsertTabletsReq(tablets []*Tablet, isAligned bool) (*rpc.TSInsertTabletsReq, error) {

@@ -75,6 +75,11 @@ func (s *e2eTestSuite) checkError(status *common.TSStatus, err error) {
 	}
 }
 
+func (s *e2eTestSuite) Test_NonQuery() {
+	_, err := s.session.ExecuteStatement("flush")
+	s.Require().NoError(err)
+}
+
 func (s *e2eTestSuite) Test_CreateTimeseries() {
 	var (
 		path       = "root.tsg1.dev1.status"
