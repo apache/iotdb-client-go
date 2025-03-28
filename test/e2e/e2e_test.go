@@ -43,7 +43,7 @@ func TestE2ETestSuite(t *testing.T) {
 
 func (s *e2eTestSuite) SetupSuite() {
 	clusterConfig := client.ClusterConfig{
-		NodeUrls: strings.Split("127.0.0.1:6667", ","),
+		NodeUrls: strings.Split("iotdb:6668,iotdb:6667,iotdb:6669", ","),
 		UserName: "root",
 		Password: "root",
 	}
@@ -83,6 +83,11 @@ func (s *e2eTestSuite) Test_WrongURL() {
 	}
 	_, err := client.NewClusterSession(&clusterConfig)
 	s.Require().Error(err)
+}
+
+func (s *e2eTestSuite) Test_NonQuery() {
+	_, err := s.session.ExecuteStatement("flush")
+	s.Require().NoError(err)
 }
 
 func (s *e2eTestSuite) Test_CreateTimeseries() {
