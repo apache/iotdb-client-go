@@ -40,7 +40,7 @@ Apache IoTDB可以满足物联网工业领域的海量数据存储、高速数�
 本仓库是Apache IoTDB的Go语言客户端.
 
 Apache IoTDB website: https://iotdb.apache.org
-Apache IoTDB Github: https://github.com/apache/iotdb
+Apache IoTDB GitHub: https://github.com/apache/iotdb
 
 ## 环境准备
 
