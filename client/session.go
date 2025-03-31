@@ -602,9 +602,9 @@ func (s *Session) ExecuteGroupByQuery(database *string, device, measurement stri
 		Timeout: timeoutMs, IsAligned: isAligned}
 	if resp, err := s.client.ExecuteGroupByQueryIntervalQuery(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-			return nil, nil
-			//return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId,
-			//	s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			// return nil, nil
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId,
+				s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
 		} else {
 			return nil, statusErr
 		}
