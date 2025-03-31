@@ -31,10 +31,11 @@ import (
 )
 
 const (
-	TIME_PRECISION = "timestamp_precision"
-	MILLISECOND    = "ms"
-	MICROSECOND    = "us"
-	NANOSECOND     = "ns"
+	DEFAULT_TIME_FORMAT = "default"
+	TIME_PRECISION      = "timestamp_precision"
+	MILLISECOND         = "ms"
+	MICROSECOND         = "us"
+	NANOSECOND          = "ns"
 )
 
 func getTimeFactor(openResp *rpc.TSOpenSessionResp) (int32, error) {
@@ -55,6 +56,87 @@ func getTimeFactor(openResp *rpc.TSOpenSessionResp) (int32, error) {
 	default:
 		return 0, fmt.Errorf("unknown time precision: %v", precision)
 	}
+}
+
+func getTimePrecision(timeFactor int32) (string, error) {
+	switch timeFactor {
+	case 1_000:
+		return MILLISECOND, nil
+	case 1_000_000:
+		return MICROSECOND, nil
+	case 1_000_000_000:
+		return NANOSECOND, nil
+	default:
+		return "", fmt.Errorf("unknown time factor: %v", timeFactor)
+	}
+}
+
+func formatDatetime(timeFormat, timePrecision string, timestamp int64, zone *time.Location) string {
+	switch timeFormat {
+	case "long", "number":
+		return strconv.FormatInt(timestamp, 10)
+	case "default", "iso8601":
+		return parseLongToDateWithPrecision(timestamp, zone, timePrecision)
+	default:
+		sec := timestamp / 1000
+		nsec := (timestamp % 1000) * int64(time.Millisecond)
+		t := time.Unix(sec, nsec).In(zone)
+		return t.Format(timeFormat)
+	}
+}
+
+func parseLongToDateWithPrecision(timestamp int64, zone *time.Location, precision string) string {
+	var divisor int64
+	var digits int
+
+	switch precision {
+	case "millisecond":
+		divisor = 1000
+		digits = 3
+	case "microsecond":
+		divisor = 1_000_000
+		digits = 6
+	case "nanosecond":
+		divisor = 1_000_000_000
+		digits = 9
+	default:
+		return ""
+	}
+
+	quotient := timestamp / divisor
+	remainder := timestamp % divisor
+
+	if timestamp < 0 && remainder != 0 {
+		quotient--
+		remainder += divisor
+	}
+
+	t := time.Unix(quotient, 0).In(zone)
+	year, month, day := t.Date()
+	hour, min, sec := t.Clock()
+
+	_, offset := t.Zone()
+	offsetSeconds := offset
+	sign := "+"
+	if offsetSeconds < 0 {
+		sign = "-"
+		offsetSeconds = -offsetSeconds
+	}
+	hours := offsetSeconds / 3600
+	minutes := (offsetSeconds % 3600) / 60
+
+	zoneOffset := fmt.Sprintf("%s%02d:%02d", sign, hours, minutes)
+	if offset == 0 {
+		zoneOffset = "Z"
+	}
+
+	formatStr := fmt.Sprintf("%%0%dd", digits)
+	fraction := fmt.Sprintf(formatStr, remainder)
+
+	isoStr := fmt.Sprintf("%04d-%02d-%02dT%02d:%02d:%02d.%s%s",
+		year, month, day, hour, min, sec, fraction, zoneOffset)
+
+	return isoStr
 }
 
 func int32ToString(n int32) string {

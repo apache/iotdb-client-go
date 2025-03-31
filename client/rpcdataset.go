@@ -46,11 +46,13 @@ type IoTDBRpcDataSet struct {
 	tsBlockSize      int32 // the size of current tsBlock
 	tsBlockIndex     int32 // the row index in current tsBlock
 
+	zoneId        *time.Location
+	timeFormat    string
 	timeFactor    int32
 	timePrecision string
 }
 
-func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, ignoreTimestamp bool, moreData bool, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, fetchSize int32, timeout *int64, timeFactor int32, columnIndex2TsBlockColumnIndexList []int32) (rpcDataSet *IoTDBRpcDataSet, err error) {
+func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, ignoreTimestamp bool, moreData bool, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, fetchSize int32, timeout *int64, zoneId string, timeFormat string, timeFactor int32, columnIndex2TsBlockColumnIndexList []int32) (rpcDataSet *IoTDBRpcDataSet, err error) {
 	ds := &IoTDBRpcDataSet{
 		sessionId:                        sessionId,
 		statementId:                      statementId,
@@ -138,6 +140,9 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []st
 	ds.queryResultIndex = 0
 	ds.tsBlockSize = 0
 	ds.tsBlockIndex = -1
+	if ds.zoneId, err = time.LoadLocation(zoneId); err != nil {
+		return nil, err
+	}
 	ds.timeFactor = timeFactor
 	if ds.timePrecision, err = getTimePrecision(timeFactor); err != nil {
 		return nil, err
@@ -147,19 +152,6 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []st
 	}
 	ds.columnIndex2TsBlockColumnIndexList = columnIndex2TsBlockColumnIndexList
 	return ds, nil
-}
-
-func getTimePrecision(timeFactor int32) (string, error) {
-	switch timeFactor {
-	case 1_000:
-		return MILLISECOND, nil
-	case 1_000_000:
-		return MICROSECOND, nil
-	case 1_000_000_000:
-		return NANOSECOND, nil
-	default:
-		return "", fmt.Errorf("unknown time factor: %v", timeFactor)
-	}
 }
 
 func (s *IoTDBRpcDataSet) Close() (err error) {
@@ -601,11 +593,17 @@ func (s *IoTDBRpcDataSet) getStringByTsBlockColumnIndexAndDataType(index int32, 
 		} else {
 			return int32ToString(v), nil
 		}
-	case INT64, TIMESTAMP:
+	case INT64:
 		if v, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return int64ToString(v), nil
+		}
+	case TIMESTAMP:
+		if v, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return formatDatetime(DEFAULT_TIME_FORMAT, s.timePrecision, v, s.zoneId), nil
 		}
 	case FLOAT:
 		if v, err := s.curTsBlock.GetColumn(index).GetFloat(s.tsBlockIndex); err != nil {
