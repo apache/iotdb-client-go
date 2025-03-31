@@ -525,7 +525,7 @@ func (s *IoTDBRpcDataSet) getObjectByTsBlockIndex(tsBlockColumnIndex int32) (int
 		if err != nil {
 			return nil, err
 		}
-		return time.UnixMilli(timestamp), nil
+		return convertToTimestamp(timestamp, s.timeFactor), nil
 	case BLOB:
 		if binary, err := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBinary(s.tsBlockIndex); err != nil {
 			return nil, err
@@ -663,7 +663,7 @@ func (s *IoTDBRpcDataSet) getTimestampByTsBlockColumnIndex(tsBlockColumnIndex in
 	if value, err := s.getLongByTsBlockColumnIndex(tsBlockColumnIndex); err != nil {
 		return time.Time{}, err
 	} else {
-		return time.UnixMilli(value), nil
+		return convertToTimestamp(value, s.timeFactor), nil
 	}
 }
 
