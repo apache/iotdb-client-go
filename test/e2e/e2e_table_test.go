@@ -23,6 +23,7 @@ import (
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/apache/iotdb-client-go/common"
 	"github.com/stretchr/testify/suite"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -204,7 +205,9 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 			dataSet, queryErr := session.ExecuteQueryStatement("show tables", &timeoutInMs)
 			assert.NoError(queryErr)
 			assert.True(dataSet.Next())
-			assert.Equal("table_in_"+database, dataSet.GetText("TableName"))
+			value, err := dataSet.GetString("TableName")
+			assert.NoError(err)
+			assert.Equal("table_in_"+database, value)
 
 			// modify using database
 			s.checkError(session.ExecuteNonQueryStatement("use " + currentDbName))
@@ -231,7 +234,9 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 			dataSet, queryErr := session.ExecuteQueryStatement("show tables", &timeoutInMs)
 			assert.NoError(queryErr)
 			assert.True(dataSet.Next())
-			assert.Equal("table_in_"+database, dataSet.GetText("TableName"))
+			value, err := dataSet.GetString("TableName")
+			assert.NoError(err)
+			assert.Equal("table_in_"+database, value)
 		}()
 	}
 	wg.Wait()
@@ -250,7 +255,9 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 	hasNext, err := dataSet.Next()
 	assert.NoError(err)
 	assert.True(hasNext)
-	assert.Equal("t1", dataSet.GetText("TableName"))
+	value, err := dataSet.GetString("TableName")
+	assert.NoError(err)
+	assert.Equal("t1", value)
 
 	// insert relational tablet
 	tablet, err := client.NewRelationalTablet("t1", []*client.MeasurementSchema{
@@ -307,7 +314,9 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 		if !hasNext {
 			break
 		}
-		assert.Equal(count, dataSet.GetInt64("time"))
+		value, err := dataSet.GetLong("time")
+		assert.NoError(err)
+		assert.Equal(count, value)
 		assert.Equal(values[count][0], getValueFromDataSet(dataSet, "tag1"))
 		assert.Equal(values[count][1], getValueFromDataSet(dataSet, "tag2"))
 		assert.Equal(values[count][2], getValueFromDataSet(dataSet, "s1"))
@@ -318,11 +327,16 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 }
 
 func getValueFromDataSet(dataSet *client.SessionDataSet, columnName string) interface{} {
-	if dataSet.IsNull(columnName) {
-		return nil
-	} else {
-		return dataSet.GetText(columnName)
+	if isNull, err := dataSet.IsNull(columnName); err != nil {
+		log.Fatal(err)
+	} else if isNull {
+		return "null"
 	}
+	v, err := dataSet.GetString(columnName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return v
 }
 
 func (s *e2eTableTestSuite) checkError(status *common.TSStatus, err error) {

@@ -53,11 +53,16 @@ func main() {
 }
 
 func getTextValueFromDataSet(dataSet *client.SessionDataSet, columnName string) string {
-	if dataSet.IsNull(columnName) {
+	if isNull, err := dataSet.IsNull(columnName); err != nil {
+		log.Fatal(err)
+	} else if isNull {
 		return "null"
-	} else {
-		return dataSet.GetText(columnName)
 	}
+	v, err := dataSet.GetString(columnName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return v
 }
 
 func insertRelationalTablet(session client.ITableSession) {
@@ -114,6 +119,7 @@ func insertRelationalTablet(session client.ITableSession) {
 func showTables(session client.ITableSession) {
 	timeout := int64(2000)
 	dataSet, err := session.ExecuteQueryStatement("show tables", &timeout)
+	defer dataSet.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,13 +131,18 @@ func showTables(session client.ITableSession) {
 		if !hasNext {
 			break
 		}
-		log.Printf("tableName is", dataSet.GetText("TableName"))
+		value, err := dataSet.GetString("TableName")
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Printf("tableName is %v", value)
 	}
 }
 
 func query(session client.ITableSession) {
 	timeout := int64(2000)
 	dataSet, err := session.ExecuteQueryStatement("select * from t1", &timeout)
+	defer dataSet.Close()
 	if err != nil {
 		log.Fatal(err)
 	}
