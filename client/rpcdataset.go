@@ -88,6 +88,7 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []st
 			newColumnIndex2TsBlockColumnIndexList = append(newColumnIndex2TsBlockColumnIndexList, -1)
 			newColumnIndex2TsBlockColumnIndexList = append(newColumnIndex2TsBlockColumnIndexList, columnIndex2TsBlockColumnIndexList...)
 			columnIndex2TsBlockColumnIndexList = newColumnIndex2TsBlockColumnIndexList
+			startIndexForColumnIndex2TsBlockColumnIndexList = 1
 		}
 		columnStartIndex += 1
 		resultSetColumnSize += 1
@@ -292,7 +293,8 @@ func (s *IoTDBRpcDataSet) isNullByColumnName(columnName string) (bool, error) {
 }
 
 func (s *IoTDBRpcDataSet) isNull(index int32, rowNum int32) bool {
-	return s.curTsBlock.GetColumn(index).IsNull(rowNum)
+	// -1 for time column which will never be null
+	return index >= 0 && s.curTsBlock.GetColumn(index).IsNull(rowNum)
 }
 
 func (s *IoTDBRpcDataSet) getBooleanByIndex(columnIndex int32) (bool, error) {
@@ -526,6 +528,12 @@ func (s *IoTDBRpcDataSet) getObjectByTsBlockIndex(tsBlockColumnIndex int32) (int
 			return nil, err
 		}
 		return convertToTimestamp(timestamp, s.timeFactor), nil
+	case TEXT, STRING:
+		if binary, err := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBinary(s.tsBlockIndex); err != nil {
+			return nil, err
+		} else {
+			return binary.GetStringValue(), nil
+		}
 	case BLOB:
 		if binary, err := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBinary(s.tsBlockIndex); err != nil {
 			return nil, err
@@ -564,11 +572,11 @@ func (s *IoTDBRpcDataSet) getStringByTsBlockColumnIndex(tsBlockColumnIndex int32
 		return "", err
 	}
 	// to keep compatibility, tree model should return a long value for time column
-	timestamp, err := s.curTsBlock.GetTimeByIndex(s.tsBlockIndex)
-	if err != nil {
-		return "", err
-	}
 	if tsBlockColumnIndex == -1 {
+		timestamp, err := s.curTsBlock.GetTimeByIndex(s.tsBlockIndex)
+		if err != nil {
+			return "", err
+		}
 		return int64ToString(timestamp), nil
 	}
 	if s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {

@@ -227,7 +227,7 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 		timestamps = []int64{ts, ts - 1, ts - 2}
 	)
 	s.checkError(s.session.InsertAlignedRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
-	ds, err := s.session.ExecuteStatement("select * from root.al1.dev4")
+	ds, err := s.session.ExecuteQueryStatement("select * from root.al1.dev4", nil)
 	assert := s.Require()
 	assert.NoError(err)
 	defer ds.Close()
@@ -572,23 +572,24 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 
 		textValue, err := sessionDataSet.GetObject("root.tsg1.d1.s5")
 		s.NoError(err)
-		s.Equal("text", textValue.(*client.Binary).GetStringValue())
+		s.Equal("text", textValue)
 
 		timestampValue, err := sessionDataSet.GetObject("root.tsg1.d1.s6")
 		s.NoError(err)
-		s.Equal(int64(1), timestampValue)
+		s.Equal(int64(1), timestampValue.(time.Time).UnixMilli())
 
 		dateValue, err := sessionDataSet.GetObject("root.tsg1.d1.s7")
 		s.NoError(err)
-		s.Equal(int32(20250326), dateValue)
+		expectedDate, _ := client.Int32ToDate(int32(20250326))
+		s.Equal(expectedDate, dateValue)
 
 		blobValue, err := sessionDataSet.GetObject("root.tsg1.d1.s8")
 		s.NoError(err)
-		s.Equal([]byte{1}, blobValue.(*client.Binary).GetValues())
+		s.Equal([]byte{1}, blobValue)
 
 		stringValue, err := sessionDataSet.GetObject("root.tsg1.d1.s9")
 		s.NoError(err)
-		s.Equal("string", stringValue.(*client.Binary).GetStringValue())
+		s.Equal("string", stringValue)
 	}
 }
 
