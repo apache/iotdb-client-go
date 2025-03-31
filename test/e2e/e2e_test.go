@@ -401,7 +401,6 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	s.session.DeleteStorageGroup("root.ln.**")
 }
 
-<<<<<<< HEAD
 func (s *e2eTestSuite) Test_FetchMoreData() {
 	var timeseries = []string{"root.ln.device1.**"}
 	s.session.SetFetchSize(1000)
