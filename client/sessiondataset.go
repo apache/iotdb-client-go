@@ -9,8 +9,8 @@ type SessionDataSet struct {
 	ioTDBRpcDataSet *IoTDBRpcDataSet
 }
 
-func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, ignoreTimestamp bool, timeout *int64, moreData bool, fetchSize int32) (*SessionDataSet, error) {
-	rpcDataSet, err := NewIoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex, ignoreTimestamp, moreData, queryId, statementId, client, sessionId, queryResult, fetchSize, timeout)
+func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, ignoreTimestamp bool, timeout *int64, moreData bool, fetchSize int32, timeFactor int32, columnIndex2TsBlockColumnIndexList []int32) (*SessionDataSet, error) {
+	rpcDataSet, err := NewIoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex, ignoreTimestamp, moreData, queryId, statementId, client, sessionId, queryResult, fetchSize, timeout, timeFactor, columnIndex2TsBlockColumnIndexList)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func (s *SessionDataSet) Close() error {
 }
 
 func (s *SessionDataSet) IsNull(columnName string) (bool, error) {
-	return s.ioTDBRpcDataSet.isNullByColumnName(columnName), nil
+	return s.ioTDBRpcDataSet.isNullByColumnName(columnName)
 }
 
 func (s *SessionDataSet) IsNullByIndex(columnIndex int32) (bool, error) {
@@ -86,7 +86,7 @@ func (s *SessionDataSet) GetStringByIndex(columnIndex int32) (string, error) {
 }
 
 func (s *SessionDataSet) GetString(columnName string) (string, error) {
-	return s.ioTDBRpcDataSet.getValueByName(columnName)
+	return s.ioTDBRpcDataSet.getString(columnName)
 }
 
 func (s *SessionDataSet) GetTimestampByIndex(columnIndex int32) (time.Time, error) {

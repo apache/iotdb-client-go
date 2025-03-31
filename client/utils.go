@@ -25,9 +25,37 @@ import (
 	"errors"
 	"fmt"
 	"github.com/apache/iotdb-client-go/common"
+	"github.com/apache/iotdb-client-go/rpc"
 	"strconv"
 	"time"
 )
+
+const (
+	TIME_PRECISION = "timestamp_precision"
+	MILLISECOND    = "ms"
+	MICROSECOND    = "us"
+	NANOSECOND     = "ns"
+)
+
+func getTimeFactor(openResp *rpc.TSOpenSessionResp) (int32, error) {
+	if !openResp.IsSetConfiguration() {
+		return 1_000, nil
+	}
+	precision, exists := openResp.GetConfiguration()[TIME_PRECISION]
+	if !exists {
+		return 1_000, nil
+	}
+	switch precision {
+	case MILLISECOND:
+		return 1_000, nil
+	case MICROSECOND:
+		return 1_000_000, nil
+	case NANOSECOND:
+		return 1_000_000_000, nil
+	default:
+		return 0, fmt.Errorf("unknown time precision: %v", precision)
+	}
+}
 
 func int32ToString(n int32) string {
 	return strconv.Itoa(int(n))
