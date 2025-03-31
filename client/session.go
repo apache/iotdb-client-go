@@ -25,13 +25,14 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"net"
 	"reflect"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/apache/iotdb-client-go/common"
 
 	"github.com/apache/iotdb-client-go/rpc"
 	"github.com/apache/thrift/lib/go/thrift"
@@ -415,24 +416,32 @@ func (s *Session) SetTimeZone(timeZone string) (r *common.TSStatus, err error) {
 	return r, err
 }
 
-func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
+func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{
 		SessionId:   s.sessionId,
 		Statement:   sql,
 		StatementId: s.requestStatementId,
 		FetchSize:   &s.config.FetchSize,
 	}
-	resp, err := s.client.ExecuteStatement(context.Background(), &request)
+	resp, err := s.client.ExecuteStatement(ctx, &request)
 
 	if err != nil && resp == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteStatement(context.Background(), &request)
+			resp, err = s.client.ExecuteStatement(ctx, &request)
 		}
 	}
 
+	if statusErr := VerifySuccess(resp.Status); statusErr != nil {
+		return nil, statusErr
+	}
+
 	return s.genDataSet(sql, resp), err
+}
+
+func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
+	return s.ExecuteStatementWithContext(context.Background(), sql)
 }
 
 func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {
