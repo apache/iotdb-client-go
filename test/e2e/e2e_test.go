@@ -43,7 +43,7 @@ func TestE2ETestSuite(t *testing.T) {
 
 func (s *e2eTestSuite) SetupSuite() {
 	clusterConfig := client.ClusterConfig{
-		NodeUrls: strings.Split("iotdb:6668,iotdb:6667,iotdb:6669", ","),
+		NodeUrls: strings.Split("iotdb:6668,localhost:6667,iotdb:6669", ","),
 		UserName: "root",
 		Password: "root",
 	}
@@ -522,7 +522,7 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 
 		timestampValue, err := sessionDataSet.GetTimestamp("root.tsg1.d1.s6")
 		s.NoError(err)
-		s.Equal(time.UnixMilli(1), timestampValue)
+		s.Equal(time.Unix(0, 1e6), timestampValue)
 
 		dateValue, err := sessionDataSet.GetDate("root.tsg1.d1.s7")
 		s.NoError(err)

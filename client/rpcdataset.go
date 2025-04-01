@@ -436,7 +436,7 @@ func (s *IoTDBRpcDataSet) getObject(columnName string) (interface{}, error) {
 		if value, err := s.curTsBlock.GetTimeByIndex(s.tsBlockIndex); err != nil {
 			return nil, err
 		} else {
-			return time.UnixMilli(value), nil
+			return time.Unix(value/1e3, (value%1e3)*1e6), nil
 		}
 	}
 	index := s.columnOrdinalMap[columnName] - startIndex
@@ -475,7 +475,7 @@ func (s *IoTDBRpcDataSet) getTimestamp(columnName string) (time.Time, error) {
 		if longValue, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
 			return time.Time{}, err
 		} else {
-			return time.UnixMilli(longValue), nil
+			return time.Unix(longValue/1e3, (longValue%1e3)*1e6), nil
 		}
 	} else {
 		s.lastReadWasNull = true
