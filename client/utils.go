@@ -96,7 +96,7 @@ func getNanoSecond(timeValue int64, timeFactor int32) int {
 func convertToTimestamp(timeValue int64, timeFactor int32) time.Time {
 	millis := getMilliSecond(timeValue, timeFactor)
 	nanos := getNanoSecond(timeValue, timeFactor)
-	return time.UnixMilli(millis).Add(time.Duration(nanos) * time.Nanosecond)
+	return time.Unix(millis/1e3, (millis%1e3)*1e6).Add(time.Duration(nanos) * time.Nanosecond)
 }
 
 func parseLongToDateWithPrecision(timestamp int64, zone *time.Location, precision string) string {
