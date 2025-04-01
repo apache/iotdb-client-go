@@ -203,6 +203,7 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 
 			timeoutInMs := int64(3000)
 			dataSet, queryErr := session.ExecuteQueryStatement("show tables", &timeoutInMs)
+			defer dataSet.Close()
 			assert.NoError(queryErr)
 			assert.True(dataSet.Next())
 			value, err := dataSet.GetString("TableName")
@@ -232,6 +233,7 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 
 			timeoutInMs := int64(3000)
 			dataSet, queryErr := session.ExecuteQueryStatement("show tables", &timeoutInMs)
+			defer dataSet.Close()
 			assert.NoError(queryErr)
 			assert.True(dataSet.Next())
 			value, err := dataSet.GetString("TableName")
@@ -258,6 +260,7 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 	value, err := dataSet.GetString("TableName")
 	assert.NoError(err)
 	assert.Equal("t1", value)
+	dataSet.Close()
 
 	// insert relational tablet
 	tablet, err := client.NewRelationalTablet("t1", []*client.MeasurementSchema{
@@ -324,6 +327,43 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 		count++
 	}
 	assert.Equal(int64(8), count)
+	dataSet.Close()
+
+	// query
+	dataSet, err = s.session.ExecuteQueryStatement("select s1, s1 from t1 order by time asc", &timeoutInMs)
+	assert.NoError(err)
+
+	count = int64(0)
+	for {
+		hasNext, err := dataSet.Next()
+		assert.NoError(err)
+		if !hasNext {
+			break
+		}
+		assert.Equal(values[count][2], getValueFromDataSetByIndex(dataSet, 1))
+		assert.Equal(values[count][2], getValueFromDataSetByIndex(dataSet, 2))
+		count++
+	}
+	assert.Equal(int64(8), count)
+	dataSet.Close()
+
+	// query
+	dataSet, err = s.session.ExecuteQueryStatement("select s1, s2 as s1 from t1 order by time asc", &timeoutInMs)
+	defer dataSet.Close()
+	assert.NoError(err)
+
+	count = int64(0)
+	for {
+		hasNext, err := dataSet.Next()
+		assert.NoError(err)
+		if !hasNext {
+			break
+		}
+		assert.Equal(values[count][2], getValueFromDataSetByIndex(dataSet, 1))
+		assert.Equal(values[count][3], getValueFromDataSetByIndex(dataSet, 2))
+		count++
+	}
+	assert.Equal(int64(8), count)
 }
 
 func getValueFromDataSet(dataSet *client.SessionDataSet, columnName string) interface{} {
@@ -333,6 +373,19 @@ func getValueFromDataSet(dataSet *client.SessionDataSet, columnName string) inte
 		return nil
 	}
 	v, err := dataSet.GetString(columnName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return v
+}
+
+func getValueFromDataSetByIndex(dataSet *client.SessionDataSet, columnIndex int32) interface{} {
+	if isNull, err := dataSet.IsNullByIndex(columnIndex); err != nil {
+		log.Fatal(err)
+	} else if isNull {
+		return nil
+	}
+	v, err := dataSet.GetStringByIndex(columnIndex)
 	if err != nil {
 		log.Fatal(err)
 	}
