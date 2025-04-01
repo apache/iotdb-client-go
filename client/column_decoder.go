@@ -26,7 +26,6 @@ import (
 )
 
 type ColumnDecoder interface {
-	ReadTimeColumn(reader *bytes.Reader, positionCount int32) (*TimeColumn, error)
 	ReadColumn(reader *bytes.Reader, dataType TSDataType, positionCount int32) (Column, error)
 }
 
@@ -85,10 +84,6 @@ func deserializeBooleanArray(reader *bytes.Reader, size int32) ([]bool, error) {
 
 type baseColumnDecoder struct{}
 
-func (_ *baseColumnDecoder) ReadTimeColumn(_ *bytes.Reader, _ int32) (*TimeColumn, error) {
-	return nil, fmt.Errorf("unsupported operation: ReadTimeColumn")
-}
-
 type Int32ArrayColumnDecoder struct {
 	baseColumnDecoder
 }
@@ -135,28 +130,6 @@ func (decoder *Int32ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 
 type Int64ArrayColumnDecoder struct {
 	baseColumnDecoder
-}
-
-func (decoder *Int64ArrayColumnDecoder) ReadTimeColumn(reader *bytes.Reader, positionCount int32) (*TimeColumn, error) {
-	// Serialized data layout:
-	//    +---------------+-----------------+-------------+
-	//    | may have null | null indicators |   values    |
-	//    +---------------+-----------------+-------------+
-	//    | byte          | list[byte]      | list[int64] |
-	//    +---------------+-----------------+-------------+
-
-	nullIndicators, err := deserializeNullIndicators(reader, positionCount)
-	if err != nil {
-		return nil, err
-	}
-	if nullIndicators != nil {
-		return nil, fmt.Errorf("time column should not contain null values")
-	}
-	values := make([]int64, positionCount)
-	for i := int32(0); i < positionCount; i++ {
-		err = binary.Read(reader, binary.BigEndian, &values[i])
-	}
-	return NewTimeColumn(0, positionCount, values)
 }
 
 func (decoder *Int64ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataType TSDataType, positionCount int32) (Column, error) {

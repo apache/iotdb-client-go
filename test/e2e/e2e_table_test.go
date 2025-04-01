@@ -330,7 +330,7 @@ func getValueFromDataSet(dataSet *client.SessionDataSet, columnName string) inte
 	if isNull, err := dataSet.IsNull(columnName); err != nil {
 		log.Fatal(err)
 	} else if isNull {
-		return "null"
+		return nil
 	}
 	v, err := dataSet.GetString(columnName)
 	if err != nil {

@@ -26,12 +26,12 @@ import (
 )
 
 type TsBlock struct {
-	timeColumn    *TimeColumn
+	timeColumn    Column
 	valueColumns  []Column
 	positionCount int32
 }
 
-func NewTsBlock(positionCount int32, timeColumn *TimeColumn, valueColumns ...Column) (*TsBlock, error) {
+func NewTsBlock(positionCount int32, timeColumn Column, valueColumns ...Column) (*TsBlock, error) {
 	if valueColumns == nil {
 		return nil, fmt.Errorf("blocks is null")
 	}
@@ -88,7 +88,7 @@ func DeserializeTsBlock(data []byte) (*TsBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	timeColumn, err := timeColumnDecoder.ReadTimeColumn(reader, positionCount)
+	timeColumn, err := timeColumnDecoder.ReadColumn(reader, INT64, positionCount)
 	if err != nil {
 		return nil, err
 	}
@@ -129,12 +129,12 @@ func (t *TsBlock) GetPositionCount() int32 {
 	return t.positionCount
 }
 
-func (t *TsBlock) GetStartTime() int64 {
-	return t.timeColumn.GetStartTime()
+func (t *TsBlock) GetStartTime() (int64, error) {
+	return t.timeColumn.GetLong(0)
 }
 
-func (t *TsBlock) GetEndTime() int64 {
-	return t.timeColumn.GetEndTime()
+func (t *TsBlock) GetEndTime() (int64, error) {
+	return t.timeColumn.GetLong(t.positionCount - 1)
 }
 
 func (t *TsBlock) IsEmpty() bool {

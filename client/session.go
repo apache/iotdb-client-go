@@ -193,6 +193,11 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 	if err != nil {
 		return err
 	}
+	if timeFactor, err := getTimeFactor(resp); err != nil {
+		return err
+	} else {
+		s.timeFactor = timeFactor
+	}
 	s.sessionId = resp.GetSessionId()
 	s.requestStatementId, err = s.client.RequestStatementId(context.Background(), s.sessionId)
 	return err

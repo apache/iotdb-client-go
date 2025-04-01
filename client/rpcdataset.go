@@ -144,6 +144,7 @@ func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []st
 	if ds.zoneId, err = time.LoadLocation(zoneId); err != nil {
 		return nil, err
 	}
+	ds.timeFormat = timeFormat
 	ds.timeFactor = timeFactor
 	if ds.timePrecision, err = getTimePrecision(timeFactor); err != nil {
 		return nil, err
