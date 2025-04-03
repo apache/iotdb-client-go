@@ -576,7 +576,7 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 
 		timestampValue, err := sessionDataSet.GetObject("root.tsg1.d1.s6")
 		s.NoError(err)
-		s.Equal(int64(1), timestampValue.(time.Time).UnixMilli())
+		s.Equal(time.Unix(0, 1*1e6), timestampValue)
 
 		dateValue, err := sessionDataSet.GetObject("root.tsg1.d1.s7")
 		s.NoError(err)
