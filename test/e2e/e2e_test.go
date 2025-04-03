@@ -20,13 +20,15 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/apache/iotdb-client-go/common"
 
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/stretchr/testify/suite"
@@ -588,4 +590,10 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 		s.NoError(err)
 		s.Equal("string", stringValue.(*client.Binary).GetStringValue())
 	}
+}
+
+func (s *e2eTestSuite) Test_InvalidSQL() {
+	_, err := s.session.ExecuteStatementWithContext(context.Background(), "select1 from device")
+	assert := s.Require()
+	assert.Error(err)
 }
