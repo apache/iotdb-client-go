@@ -204,7 +204,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		values := t.values[columnIndex].([]int32)
 		switch v := value.(type) {
 		case time.Time:
-			val, err := dateToInt32(v)
+			val, err := DateToInt32(v)
 			if err != nil {
 				return err
 			}
@@ -250,7 +250,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 	case BLOB:
 		return t.values[columnIndex].([][]byte)[rowIndex], nil
 	case DATE:
-		return int32ToDate(t.values[columnIndex].([]int32)[rowIndex])
+		return Int32ToDate(t.values[columnIndex].([]int32)[rowIndex])
 	default:
 		return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 	}

@@ -1,128 +1,126 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 package client
 
 import (
 	"github.com/apache/iotdb-client-go/rpc"
-)
-
-const (
-	TimestampColumnName = "Time"
+	"time"
 )
 
 type SessionDataSet struct {
 	ioTDBRpcDataSet *IoTDBRpcDataSet
 }
 
-// Next prepares the next result row for reading,
-// returns true on success, or false if there is no next result row or an error
-// appened while preparing it.
-// consulted Err should be consulted to distinguish between the two cases.
-// This is not goroutine safe
+func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, ignoreTimestamp bool, timeout *int64, moreData bool, fetchSize int32, zoneId string, timeFactor int32, columnIndex2TsBlockColumnIndexList []int32) (*SessionDataSet, error) {
+	rpcDataSet, err := NewIoTDBRpcDataSet(sql, columnNameList, columnTypeList, columnNameIndex, ignoreTimestamp, moreData, queryId, statementId, client, sessionId, queryResult, fetchSize, timeout, zoneId, DEFAULT_TIME_FORMAT, timeFactor, columnIndex2TsBlockColumnIndexList)
+	if err != nil {
+		return nil, err
+	}
+	return &SessionDataSet{ioTDBRpcDataSet: rpcDataSet}, nil
+}
+
 func (s *SessionDataSet) Next() (bool, error) {
-	return s.ioTDBRpcDataSet.next()
-}
-
-// GetText returns string value of column value on row.
-// This is not goroutine safe
-func (s *SessionDataSet) GetText(columnName string) string {
-	return s.ioTDBRpcDataSet.getText(columnName)
-}
-
-func (s *SessionDataSet) IsNull(columnName string) bool {
-	return s.ioTDBRpcDataSet.isNullWithColumnName(columnName)
-}
-
-func (s *SessionDataSet) GetBool(columnName string) bool {
-	return s.ioTDBRpcDataSet.getBool(columnName)
-}
-
-func (s *SessionDataSet) Scan(dest ...interface{}) error {
-	return s.ioTDBRpcDataSet.scan(dest...)
-}
-
-func (s *SessionDataSet) GetFloat(columnName string) float32 {
-	return s.ioTDBRpcDataSet.getFloat(columnName)
-}
-
-func (s *SessionDataSet) GetDouble(columnName string) float64 {
-	return s.ioTDBRpcDataSet.getDouble(columnName)
-}
-
-func (s *SessionDataSet) GetInt32(columnName string) int32 {
-	return s.ioTDBRpcDataSet.getInt32(columnName)
-}
-
-func (s *SessionDataSet) GetInt64(columnName string) int64 {
-	return s.ioTDBRpcDataSet.getInt64(columnName)
-}
-
-func (s *SessionDataSet) GetTimestamp() int64 {
-	return s.ioTDBRpcDataSet.GetTimestamp()
-}
-
-func (s *SessionDataSet) GetValue(columnName string) interface{} {
-	return s.ioTDBRpcDataSet.getValue(columnName)
-}
-
-func (s *SessionDataSet) GetRowRecord() (*RowRecord, error) {
-	return s.ioTDBRpcDataSet.getRowRecord()
-}
-
-func (s *SessionDataSet) GetColumnCount() int {
-	return s.ioTDBRpcDataSet.columnCount
-}
-
-func (s *SessionDataSet) GetColumnDataType(columnIndex int) TSDataType {
-	return s.ioTDBRpcDataSet.columnTypeList[columnIndex]
-}
-
-func (s *SessionDataSet) GetColumnName(columnIndex int) string {
-	return s.ioTDBRpcDataSet.columnNameList[columnIndex]
-}
-
-func (s *SessionDataSet) GetColumnNames() []string {
-	return s.ioTDBRpcDataSet.columnNameList
-}
-
-func (s *SessionDataSet) IsIgnoreTimeStamp() bool {
-	return s.ioTDBRpcDataSet.ignoreTimeStamp
-}
-
-func (s *SessionDataSet) IsClosed() bool {
-	return s.ioTDBRpcDataSet.IsClosed()
+	return s.ioTDBRpcDataSet.Next()
 }
 
 func (s *SessionDataSet) Close() error {
 	return s.ioTDBRpcDataSet.Close()
 }
 
-func NewSessionDataSet(sql string, columnNameList []string, columnTypeList []string,
-	columnNameIndex map[string]int32,
-	queryId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
-	ignoreTimeStamp bool, fetchSize int32, timeoutMs *int64) *SessionDataSet {
+func (s *SessionDataSet) IsNull(columnName string) (bool, error) {
+	return s.ioTDBRpcDataSet.isNullByColumnName(columnName)
+}
 
-	return &SessionDataSet{
-		ioTDBRpcDataSet: NewIoTDBRpcDataSet(sql, columnNameList, columnTypeList,
-			columnNameIndex,
-			queryId, client, sessionId, queryDataSet,
-			ignoreTimeStamp, fetchSize, timeoutMs),
-	}
+func (s *SessionDataSet) IsNullByIndex(columnIndex int32) (bool, error) {
+	return s.ioTDBRpcDataSet.isNullByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetBooleanByIndex(columnIndex int32) (bool, error) {
+	return s.ioTDBRpcDataSet.getBooleanByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetBoolean(columnName string) (bool, error) {
+	return s.ioTDBRpcDataSet.getBoolean(columnName)
+}
+
+func (s *SessionDataSet) GetDoubleByIndex(columnIndex int32) (float64, error) {
+	return s.ioTDBRpcDataSet.getDoubleByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetDouble(columnName string) (float64, error) {
+	return s.ioTDBRpcDataSet.getDouble(columnName)
+}
+
+func (s *SessionDataSet) GetFloatByIndex(columnIndex int32) (float32, error) {
+	return s.ioTDBRpcDataSet.getFloatByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetFloat(columnName string) (float32, error) {
+	return s.ioTDBRpcDataSet.getFloat(columnName)
+}
+
+func (s *SessionDataSet) GetIntByIndex(columnIndex int32) (int32, error) {
+	return s.ioTDBRpcDataSet.getIntByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetInt(columnName string) (int32, error) {
+	return s.ioTDBRpcDataSet.getInt(columnName)
+}
+
+func (s *SessionDataSet) GetLongByIndex(columnIndex int32) (int64, error) {
+	return s.ioTDBRpcDataSet.getLongByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetLong(columnName string) (int64, error) {
+	return s.ioTDBRpcDataSet.getLong(columnName)
+}
+
+func (s *SessionDataSet) GetObjectByIndex(columnIndex int32) (interface{}, error) {
+	return s.ioTDBRpcDataSet.getObjectByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetObject(columnName string) (interface{}, error) {
+	return s.ioTDBRpcDataSet.getObject(columnName)
+}
+
+func (s *SessionDataSet) GetStringByIndex(columnIndex int32) (string, error) {
+	return s.ioTDBRpcDataSet.getStringByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetString(columnName string) (string, error) {
+	return s.ioTDBRpcDataSet.getString(columnName)
+}
+
+func (s *SessionDataSet) GetTimestampByIndex(columnIndex int32) (time.Time, error) {
+	return s.ioTDBRpcDataSet.getTimestampByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetTimestamp(columnName string) (time.Time, error) {
+	return s.ioTDBRpcDataSet.getTimestamp(columnName)
+}
+
+func (s *SessionDataSet) GetDateByIndex(columnIndex int32) (time.Time, error) {
+	return s.ioTDBRpcDataSet.GetDateByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetDate(columnName string) (time.Time, error) {
+	return s.ioTDBRpcDataSet.GetDate(columnName)
+}
+
+func (s *SessionDataSet) GetBlobByIndex(columnIndex int32) (*Binary, error) {
+	return s.ioTDBRpcDataSet.getBinaryByIndex(columnIndex)
+}
+
+func (s *SessionDataSet) GetBlob(columnName string) (*Binary, error) {
+	return s.ioTDBRpcDataSet.getBinary(columnName)
+}
+
+func (s *SessionDataSet) FindColumn(columnName string) int32 {
+	return s.ioTDBRpcDataSet.findColumn(columnName)
+}
+
+func (s *SessionDataSet) GetColumnNames() []string {
+	return s.ioTDBRpcDataSet.columnNameList
+}
+
+func (s *SessionDataSet) GetColumnTypes() []string {
+	return s.ioTDBRpcDataSet.columnTypeList
 }

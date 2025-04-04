@@ -95,8 +95,13 @@ func putBackToSessionPoolExample() {
 				if !hasNext {
 					break
 				}
-				log.Println("table is", dataSet.GetText("TableName"))
+				value, err := dataSet.GetString("TableName")
+				if err != nil {
+					log.Fatal(err)
+				}
+				log.Println("table is", value)
 			}
+			dataSet.Close()
 		}()
 	}
 	wg.Wait()

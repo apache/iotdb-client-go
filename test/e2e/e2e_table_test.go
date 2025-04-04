@@ -23,6 +23,7 @@ import (
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/apache/iotdb-client-go/common"
 	"github.com/stretchr/testify/suite"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -202,9 +203,12 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 
 			timeoutInMs := int64(3000)
 			dataSet, queryErr := session.ExecuteQueryStatement("show tables", &timeoutInMs)
+			defer dataSet.Close()
 			assert.NoError(queryErr)
 			assert.True(dataSet.Next())
-			assert.Equal("table_in_"+database, dataSet.GetText("TableName"))
+			value, err := dataSet.GetString("TableName")
+			assert.NoError(err)
+			assert.Equal("table_in_"+database, value)
 
 			// modify using database
 			s.checkError(session.ExecuteNonQueryStatement("use " + currentDbName))
@@ -229,9 +233,12 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 
 			timeoutInMs := int64(3000)
 			dataSet, queryErr := session.ExecuteQueryStatement("show tables", &timeoutInMs)
+			defer dataSet.Close()
 			assert.NoError(queryErr)
 			assert.True(dataSet.Next())
-			assert.Equal("table_in_"+database, dataSet.GetText("TableName"))
+			value, err := dataSet.GetString("TableName")
+			assert.NoError(err)
+			assert.Equal("table_in_"+database, value)
 		}()
 	}
 	wg.Wait()
@@ -250,7 +257,10 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 	hasNext, err := dataSet.Next()
 	assert.NoError(err)
 	assert.True(hasNext)
-	assert.Equal("t1", dataSet.GetText("TableName"))
+	value, err := dataSet.GetString("TableName")
+	assert.NoError(err)
+	assert.Equal("t1", value)
+	dataSet.Close()
 
 	// insert relational tablet
 	tablet, err := client.NewRelationalTablet("t1", []*client.MeasurementSchema{
@@ -307,7 +317,9 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 		if !hasNext {
 			break
 		}
-		assert.Equal(count, dataSet.GetInt64("time"))
+		value, err := dataSet.GetLong("time")
+		assert.NoError(err)
+		assert.Equal(count, value)
 		assert.Equal(values[count][0], getValueFromDataSet(dataSet, "tag1"))
 		assert.Equal(values[count][1], getValueFromDataSet(dataSet, "tag2"))
 		assert.Equal(values[count][2], getValueFromDataSet(dataSet, "s1"))
@@ -315,14 +327,69 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 		count++
 	}
 	assert.Equal(int64(8), count)
+	dataSet.Close()
+
+	// query
+	dataSet, err = s.session.ExecuteQueryStatement("select s1, s1 from t1 order by time asc", &timeoutInMs)
+	assert.NoError(err)
+
+	count = int64(0)
+	for {
+		hasNext, err := dataSet.Next()
+		assert.NoError(err)
+		if !hasNext {
+			break
+		}
+		assert.Equal(values[count][2], getValueFromDataSetByIndex(dataSet, 1))
+		assert.Equal(values[count][2], getValueFromDataSetByIndex(dataSet, 2))
+		count++
+	}
+	assert.Equal(int64(8), count)
+	dataSet.Close()
+
+	// query
+	dataSet, err = s.session.ExecuteQueryStatement("select s1, s2 as s1 from t1 order by time asc", &timeoutInMs)
+	defer dataSet.Close()
+	assert.NoError(err)
+
+	count = int64(0)
+	for {
+		hasNext, err := dataSet.Next()
+		assert.NoError(err)
+		if !hasNext {
+			break
+		}
+		assert.Equal(values[count][2], getValueFromDataSetByIndex(dataSet, 1))
+		assert.Equal(values[count][3], getValueFromDataSetByIndex(dataSet, 2))
+		count++
+	}
+	assert.Equal(int64(8), count)
 }
 
 func getValueFromDataSet(dataSet *client.SessionDataSet, columnName string) interface{} {
-	if dataSet.IsNull(columnName) {
+	if isNull, err := dataSet.IsNull(columnName); err != nil {
+		log.Fatal(err)
+	} else if isNull {
 		return nil
-	} else {
-		return dataSet.GetText(columnName)
 	}
+	v, err := dataSet.GetString(columnName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return v
+}
+
+func getValueFromDataSetByIndex(dataSet *client.SessionDataSet, columnIndex int32) interface{} {
+	if isNull, err := dataSet.IsNullByIndex(columnIndex); err != nil {
+		log.Fatal(err)
+	} else if isNull {
+		return nil
+	}
+	v, err := dataSet.GetStringByIndex(columnIndex)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return v
 }
 
 func (s *e2eTableTestSuite) checkError(status *common.TSStatus, err error) {
