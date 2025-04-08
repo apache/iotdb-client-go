@@ -40,9 +40,9 @@ func (p TSProtocolVersion) String() string {
 
 func TSProtocolVersionFromString(s string) (TSProtocolVersion, error) {
   switch s {
-  case "IOTDB_SERVICE_PROTOCOL_V1": return TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V1, nil 
-  case "IOTDB_SERVICE_PROTOCOL_V2": return TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V2, nil 
-  case "IOTDB_SERVICE_PROTOCOL_V3": return TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, nil 
+  case "IOTDB_SERVICE_PROTOCOL_V1": return TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V1, nil
+  case "IOTDB_SERVICE_PROTOCOL_V2": return TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V2, nil
+  case "IOTDB_SERVICE_PROTOCOL_V3": return TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, nil
   }
   return TSProtocolVersion(0), fmt.Errorf("not a valid TSProtocolVersion string")
 }
@@ -98,10 +98,10 @@ func (p TSConnectionType) String() string {
 
 func TSConnectionTypeFromString(s string) (TSConnectionType, error) {
   switch s {
-  case "THRIFT_BASED": return TSConnectionType_THRIFT_BASED, nil 
-  case "MQTT_BASED": return TSConnectionType_MQTT_BASED, nil 
-  case "INTERNAL": return TSConnectionType_INTERNAL, nil 
-  case "REST_BASED": return TSConnectionType_REST_BASED, nil 
+  case "THRIFT_BASED": return TSConnectionType_THRIFT_BASED, nil
+  case "MQTT_BASED": return TSConnectionType_MQTT_BASED, nil
+  case "INTERNAL": return TSConnectionType_INTERNAL, nil
+  case "REST_BASED": return TSConnectionType_REST_BASED, nil
   }
   return TSConnectionType(0), fmt.Errorf("not a valid TSConnectionType string")
 }
@@ -13236,614 +13236,665 @@ func (p *TSAggregationQueryReq) String() string {
 //  - Interval
 //  - FetchSize
 //  - Timeout
+//  - IsAligned
 type TSGroupByQueryIntervalReq struct {
-  SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
-  StatementId int64 `thrift:"statementId,2,required" db:"statementId" json:"statementId"`
-  Device string `thrift:"device,3,required" db:"device" json:"device"`
-  Measurement string `thrift:"measurement,4,required" db:"measurement" json:"measurement"`
-  DataType int32 `thrift:"dataType,5,required" db:"dataType" json:"dataType"`
-  AggregationType common.TAggregationType `thrift:"aggregationType,6,required" db:"aggregationType" json:"aggregationType"`
-  Database *string `thrift:"database,7" db:"database" json:"database,omitempty"`
-  StartTime *int64 `thrift:"startTime,8" db:"startTime" json:"startTime,omitempty"`
-  EndTime *int64 `thrift:"endTime,9" db:"endTime" json:"endTime,omitempty"`
-  Interval *int64 `thrift:"interval,10" db:"interval" json:"interval,omitempty"`
-  FetchSize *int32 `thrift:"fetchSize,11" db:"fetchSize" json:"fetchSize,omitempty"`
-  Timeout *int64 `thrift:"timeout,12" db:"timeout" json:"timeout,omitempty"`
+	SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
+	StatementId int64 `thrift:"statementId,2,required" db:"statementId" json:"statementId"`
+	Device string `thrift:"device,3,required" db:"device" json:"device"`
+	Measurement string `thrift:"measurement,4,required" db:"measurement" json:"measurement"`
+	DataType int32 `thrift:"dataType,5,required" db:"dataType" json:"dataType"`
+	AggregationType common.TAggregationType `thrift:"aggregationType,6,required" db:"aggregationType" json:"aggregationType"`
+	Database *string `thrift:"database,7" db:"database" json:"database,omitempty"`
+	StartTime *int64 `thrift:"startTime,8" db:"startTime" json:"startTime,omitempty"`
+	EndTime *int64 `thrift:"endTime,9" db:"endTime" json:"endTime,omitempty"`
+	Interval *int64 `thrift:"interval,10" db:"interval" json:"interval,omitempty"`
+	FetchSize *int32 `thrift:"fetchSize,11" db:"fetchSize" json:"fetchSize,omitempty"`
+	Timeout *int64 `thrift:"timeout,12" db:"timeout" json:"timeout,omitempty"`
+	IsAligned *bool `thrift:"isAligned,13" db:"isAligned" json:"isAligned,omitempty"`
 }
 
 func NewTSGroupByQueryIntervalReq() *TSGroupByQueryIntervalReq {
-  return &TSGroupByQueryIntervalReq{}
+	return &TSGroupByQueryIntervalReq{}
 }
 
 
 func (p *TSGroupByQueryIntervalReq) GetSessionId() int64 {
-  return p.SessionId
+	return p.SessionId
 }
 
 func (p *TSGroupByQueryIntervalReq) GetStatementId() int64 {
-  return p.StatementId
+	return p.StatementId
 }
 
 func (p *TSGroupByQueryIntervalReq) GetDevice() string {
-  return p.Device
+	return p.Device
 }
 
 func (p *TSGroupByQueryIntervalReq) GetMeasurement() string {
-  return p.Measurement
+	return p.Measurement
 }
 
 func (p *TSGroupByQueryIntervalReq) GetDataType() int32 {
-  return p.DataType
+	return p.DataType
 }
 
 func (p *TSGroupByQueryIntervalReq) GetAggregationType() common.TAggregationType {
-  return p.AggregationType
+	return p.AggregationType
 }
 var TSGroupByQueryIntervalReq_Database_DEFAULT string
 func (p *TSGroupByQueryIntervalReq) GetDatabase() string {
-  if !p.IsSetDatabase() {
-    return TSGroupByQueryIntervalReq_Database_DEFAULT
-  }
-return *p.Database
+	if !p.IsSetDatabase() {
+		return TSGroupByQueryIntervalReq_Database_DEFAULT
+	}
+	return *p.Database
 }
 var TSGroupByQueryIntervalReq_StartTime_DEFAULT int64
 func (p *TSGroupByQueryIntervalReq) GetStartTime() int64 {
-  if !p.IsSetStartTime() {
-    return TSGroupByQueryIntervalReq_StartTime_DEFAULT
-  }
-return *p.StartTime
+	if !p.IsSetStartTime() {
+		return TSGroupByQueryIntervalReq_StartTime_DEFAULT
+	}
+	return *p.StartTime
 }
 var TSGroupByQueryIntervalReq_EndTime_DEFAULT int64
 func (p *TSGroupByQueryIntervalReq) GetEndTime() int64 {
-  if !p.IsSetEndTime() {
-    return TSGroupByQueryIntervalReq_EndTime_DEFAULT
-  }
-return *p.EndTime
+	if !p.IsSetEndTime() {
+		return TSGroupByQueryIntervalReq_EndTime_DEFAULT
+	}
+	return *p.EndTime
 }
 var TSGroupByQueryIntervalReq_Interval_DEFAULT int64
 func (p *TSGroupByQueryIntervalReq) GetInterval() int64 {
-  if !p.IsSetInterval() {
-    return TSGroupByQueryIntervalReq_Interval_DEFAULT
-  }
-return *p.Interval
+	if !p.IsSetInterval() {
+		return TSGroupByQueryIntervalReq_Interval_DEFAULT
+	}
+	return *p.Interval
 }
 var TSGroupByQueryIntervalReq_FetchSize_DEFAULT int32
 func (p *TSGroupByQueryIntervalReq) GetFetchSize() int32 {
-  if !p.IsSetFetchSize() {
-    return TSGroupByQueryIntervalReq_FetchSize_DEFAULT
-  }
-return *p.FetchSize
+	if !p.IsSetFetchSize() {
+		return TSGroupByQueryIntervalReq_FetchSize_DEFAULT
+	}
+	return *p.FetchSize
 }
 var TSGroupByQueryIntervalReq_Timeout_DEFAULT int64
 func (p *TSGroupByQueryIntervalReq) GetTimeout() int64 {
-  if !p.IsSetTimeout() {
-    return TSGroupByQueryIntervalReq_Timeout_DEFAULT
-  }
-return *p.Timeout
+	if !p.IsSetTimeout() {
+		return TSGroupByQueryIntervalReq_Timeout_DEFAULT
+	}
+	return *p.Timeout
+}
+var TSGroupByQueryIntervalReq_IsAligned_DEFAULT bool
+func (p *TSGroupByQueryIntervalReq) GetIsAligned() bool {
+	if !p.IsSetIsAligned() {
+		return TSGroupByQueryIntervalReq_IsAligned_DEFAULT
+	}
+	return *p.IsAligned
 }
 func (p *TSGroupByQueryIntervalReq) IsSetDatabase() bool {
-  return p.Database != nil
+	return p.Database != nil
 }
 
 func (p *TSGroupByQueryIntervalReq) IsSetStartTime() bool {
-  return p.StartTime != nil
+	return p.StartTime != nil
 }
 
 func (p *TSGroupByQueryIntervalReq) IsSetEndTime() bool {
-  return p.EndTime != nil
+	return p.EndTime != nil
 }
 
 func (p *TSGroupByQueryIntervalReq) IsSetInterval() bool {
-  return p.Interval != nil
+	return p.Interval != nil
 }
 
 func (p *TSGroupByQueryIntervalReq) IsSetFetchSize() bool {
-  return p.FetchSize != nil
+	return p.FetchSize != nil
 }
 
 func (p *TSGroupByQueryIntervalReq) IsSetTimeout() bool {
-  return p.Timeout != nil
+	return p.Timeout != nil
+}
+
+func (p *TSGroupByQueryIntervalReq) IsSetIsAligned() bool {
+	return p.IsAligned != nil
 }
 
 func (p *TSGroupByQueryIntervalReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
-  if _, err := iprot.ReadStructBegin(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
-  }
+	if _, err := iprot.ReadStructBegin(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+	}
 
-  var issetSessionId bool = false;
-  var issetStatementId bool = false;
-  var issetDevice bool = false;
-  var issetMeasurement bool = false;
-  var issetDataType bool = false;
-  var issetAggregationType bool = false;
+	var issetSessionId bool = false;
+	var issetStatementId bool = false;
+	var issetDevice bool = false;
+	var issetMeasurement bool = false;
+	var issetDataType bool = false;
+	var issetAggregationType bool = false;
 
-  for {
-    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
-    if err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
-    }
-    if fieldTypeId == thrift.STOP { break; }
-    switch fieldId {
-    case 1:
-      if fieldTypeId == thrift.I64 {
-        if err := p.ReadField1(ctx, iprot); err != nil {
-          return err
-        }
-        issetSessionId = true
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 2:
-      if fieldTypeId == thrift.I64 {
-        if err := p.ReadField2(ctx, iprot); err != nil {
-          return err
-        }
-        issetStatementId = true
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 3:
-      if fieldTypeId == thrift.STRING {
-        if err := p.ReadField3(ctx, iprot); err != nil {
-          return err
-        }
-        issetDevice = true
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 4:
-      if fieldTypeId == thrift.STRING {
-        if err := p.ReadField4(ctx, iprot); err != nil {
-          return err
-        }
-        issetMeasurement = true
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 5:
-      if fieldTypeId == thrift.I32 {
-        if err := p.ReadField5(ctx, iprot); err != nil {
-          return err
-        }
-        issetDataType = true
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 6:
-      if fieldTypeId == thrift.I32 {
-        if err := p.ReadField6(ctx, iprot); err != nil {
-          return err
-        }
-        issetAggregationType = true
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 7:
-      if fieldTypeId == thrift.STRING {
-        if err := p.ReadField7(ctx, iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 8:
-      if fieldTypeId == thrift.I64 {
-        if err := p.ReadField8(ctx, iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 9:
-      if fieldTypeId == thrift.I64 {
-        if err := p.ReadField9(ctx, iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 10:
-      if fieldTypeId == thrift.I64 {
-        if err := p.ReadField10(ctx, iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 11:
-      if fieldTypeId == thrift.I32 {
-        if err := p.ReadField11(ctx, iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    case 12:
-      if fieldTypeId == thrift.I64 {
-        if err := p.ReadField12(ctx, iprot); err != nil {
-          return err
-        }
-      } else {
-        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-          return err
-        }
-      }
-    default:
-      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
-        return err
-      }
-    }
-    if err := iprot.ReadFieldEnd(ctx); err != nil {
-      return err
-    }
-  }
-  if err := iprot.ReadStructEnd(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
-  }
-  if !issetSessionId{
-    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
-  }
-  if !issetStatementId{
-    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field StatementId is not set"));
-  }
-  if !issetDevice{
-    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Device is not set"));
-  }
-  if !issetMeasurement{
-    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Measurement is not set"));
-  }
-  if !issetDataType{
-    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DataType is not set"));
-  }
-  if !issetAggregationType{
-    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field AggregationType is not set"));
-  }
-  return nil
+	for {
+		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+		if err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+		}
+		if fieldTypeId == thrift.STOP { break; }
+		switch fieldId {
+		case 1:
+			if fieldTypeId == thrift.I64 {
+				if err := p.ReadField1(ctx, iprot); err != nil {
+					return err
+				}
+				issetSessionId = true
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 2:
+			if fieldTypeId == thrift.I64 {
+				if err := p.ReadField2(ctx, iprot); err != nil {
+					return err
+				}
+				issetStatementId = true
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 3:
+			if fieldTypeId == thrift.STRING {
+				if err := p.ReadField3(ctx, iprot); err != nil {
+					return err
+				}
+				issetDevice = true
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 4:
+			if fieldTypeId == thrift.STRING {
+				if err := p.ReadField4(ctx, iprot); err != nil {
+					return err
+				}
+				issetMeasurement = true
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 5:
+			if fieldTypeId == thrift.I32 {
+				if err := p.ReadField5(ctx, iprot); err != nil {
+					return err
+				}
+				issetDataType = true
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 6:
+			if fieldTypeId == thrift.I32 {
+				if err := p.ReadField6(ctx, iprot); err != nil {
+					return err
+				}
+				issetAggregationType = true
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 7:
+			if fieldTypeId == thrift.STRING {
+				if err := p.ReadField7(ctx, iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 8:
+			if fieldTypeId == thrift.I64 {
+				if err := p.ReadField8(ctx, iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 9:
+			if fieldTypeId == thrift.I64 {
+				if err := p.ReadField9(ctx, iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 10:
+			if fieldTypeId == thrift.I64 {
+				if err := p.ReadField10(ctx, iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 11:
+			if fieldTypeId == thrift.I32 {
+				if err := p.ReadField11(ctx, iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 12:
+			if fieldTypeId == thrift.I64 {
+				if err := p.ReadField12(ctx, iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		case 13:
+			if fieldTypeId == thrift.BOOL {
+				if err := p.ReadField13(ctx, iprot); err != nil {
+					return err
+				}
+			} else {
+				if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+					return err
+				}
+			}
+		default:
+			if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+				return err
+			}
+		}
+		if err := iprot.ReadFieldEnd(ctx); err != nil {
+			return err
+		}
+	}
+	if err := iprot.ReadStructEnd(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+	}
+	if !issetSessionId{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field SessionId is not set"));
+	}
+	if !issetStatementId{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field StatementId is not set"));
+	}
+	if !issetDevice{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Device is not set"));
+	}
+	if !issetMeasurement{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Measurement is not set"));
+	}
+	if !issetDataType{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DataType is not set"));
+	}
+	if !issetAggregationType{
+		return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field AggregationType is not set"));
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI64(ctx); err != nil {
-  return thrift.PrependError("error reading field 1: ", err)
-} else {
-  p.SessionId = v
-}
-  return nil
+	if v, err := iprot.ReadI64(ctx); err != nil {
+		return thrift.PrependError("error reading field 1: ", err)
+	} else {
+		p.SessionId = v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI64(ctx); err != nil {
-  return thrift.PrependError("error reading field 2: ", err)
-} else {
-  p.StatementId = v
-}
-  return nil
+	if v, err := iprot.ReadI64(ctx); err != nil {
+		return thrift.PrependError("error reading field 2: ", err)
+	} else {
+		p.StatementId = v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadString(ctx); err != nil {
-  return thrift.PrependError("error reading field 3: ", err)
-} else {
-  p.Device = v
-}
-  return nil
+	if v, err := iprot.ReadString(ctx); err != nil {
+		return thrift.PrependError("error reading field 3: ", err)
+	} else {
+		p.Device = v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadString(ctx); err != nil {
-  return thrift.PrependError("error reading field 4: ", err)
-} else {
-  p.Measurement = v
-}
-  return nil
+	if v, err := iprot.ReadString(ctx); err != nil {
+		return thrift.PrependError("error reading field 4: ", err)
+	} else {
+		p.Measurement = v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField5(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI32(ctx); err != nil {
-  return thrift.PrependError("error reading field 5: ", err)
-} else {
-  p.DataType = v
-}
-  return nil
+	if v, err := iprot.ReadI32(ctx); err != nil {
+		return thrift.PrependError("error reading field 5: ", err)
+	} else {
+		p.DataType = v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField6(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI32(ctx); err != nil {
-  return thrift.PrependError("error reading field 6: ", err)
-} else {
-  temp := common.TAggregationType(v)
-  p.AggregationType = temp
-}
-  return nil
+	if v, err := iprot.ReadI32(ctx); err != nil {
+		return thrift.PrependError("error reading field 6: ", err)
+	} else {
+		temp := common.TAggregationType(v)
+		p.AggregationType = temp
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField7(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadString(ctx); err != nil {
-  return thrift.PrependError("error reading field 7: ", err)
-} else {
-  p.Database = &v
-}
-  return nil
+	if v, err := iprot.ReadString(ctx); err != nil {
+		return thrift.PrependError("error reading field 7: ", err)
+	} else {
+		p.Database = &v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField8(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI64(ctx); err != nil {
-  return thrift.PrependError("error reading field 8: ", err)
-} else {
-  p.StartTime = &v
-}
-  return nil
+	if v, err := iprot.ReadI64(ctx); err != nil {
+		return thrift.PrependError("error reading field 8: ", err)
+	} else {
+		p.StartTime = &v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField9(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI64(ctx); err != nil {
-  return thrift.PrependError("error reading field 9: ", err)
-} else {
-  p.EndTime = &v
-}
-  return nil
+	if v, err := iprot.ReadI64(ctx); err != nil {
+		return thrift.PrependError("error reading field 9: ", err)
+	} else {
+		p.EndTime = &v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField10(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI64(ctx); err != nil {
-  return thrift.PrependError("error reading field 10: ", err)
-} else {
-  p.Interval = &v
-}
-  return nil
+	if v, err := iprot.ReadI64(ctx); err != nil {
+		return thrift.PrependError("error reading field 10: ", err)
+	} else {
+		p.Interval = &v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField11(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI32(ctx); err != nil {
-  return thrift.PrependError("error reading field 11: ", err)
-} else {
-  p.FetchSize = &v
-}
-  return nil
+	if v, err := iprot.ReadI32(ctx); err != nil {
+		return thrift.PrependError("error reading field 11: ", err)
+	} else {
+		p.FetchSize = &v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq)  ReadField12(ctx context.Context, iprot thrift.TProtocol) error {
-  if v, err := iprot.ReadI64(ctx); err != nil {
-  return thrift.PrependError("error reading field 12: ", err)
-} else {
-  p.Timeout = &v
+	if v, err := iprot.ReadI64(ctx); err != nil {
+		return thrift.PrependError("error reading field 12: ", err)
+	} else {
+		p.Timeout = &v
+	}
+	return nil
 }
-  return nil
+
+func (p *TSGroupByQueryIntervalReq)  ReadField13(ctx context.Context, iprot thrift.TProtocol) error {
+	if v, err := iprot.ReadBool(ctx); err != nil {
+		return thrift.PrependError("error reading field 13: ", err)
+	} else {
+		p.IsAligned = &v
+	}
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
-  if err := oprot.WriteStructBegin(ctx, "TSGroupByQueryIntervalReq"); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
-  if p != nil {
-    if err := p.writeField1(ctx, oprot); err != nil { return err }
-    if err := p.writeField2(ctx, oprot); err != nil { return err }
-    if err := p.writeField3(ctx, oprot); err != nil { return err }
-    if err := p.writeField4(ctx, oprot); err != nil { return err }
-    if err := p.writeField5(ctx, oprot); err != nil { return err }
-    if err := p.writeField6(ctx, oprot); err != nil { return err }
-    if err := p.writeField7(ctx, oprot); err != nil { return err }
-    if err := p.writeField8(ctx, oprot); err != nil { return err }
-    if err := p.writeField9(ctx, oprot); err != nil { return err }
-    if err := p.writeField10(ctx, oprot); err != nil { return err }
-    if err := p.writeField11(ctx, oprot); err != nil { return err }
-    if err := p.writeField12(ctx, oprot); err != nil { return err }
-  }
-  if err := oprot.WriteFieldStop(ctx); err != nil {
-    return thrift.PrependError("write field stop error: ", err) }
-  if err := oprot.WriteStructEnd(ctx); err != nil {
-    return thrift.PrependError("write struct stop error: ", err) }
-  return nil
+	if err := oprot.WriteStructBegin(ctx, "TSGroupByQueryIntervalReq"); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+	if p != nil {
+		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField2(ctx, oprot); err != nil { return err }
+		if err := p.writeField3(ctx, oprot); err != nil { return err }
+		if err := p.writeField4(ctx, oprot); err != nil { return err }
+		if err := p.writeField5(ctx, oprot); err != nil { return err }
+		if err := p.writeField6(ctx, oprot); err != nil { return err }
+		if err := p.writeField7(ctx, oprot); err != nil { return err }
+		if err := p.writeField8(ctx, oprot); err != nil { return err }
+		if err := p.writeField9(ctx, oprot); err != nil { return err }
+		if err := p.writeField10(ctx, oprot); err != nil { return err }
+		if err := p.writeField11(ctx, oprot); err != nil { return err }
+		if err := p.writeField12(ctx, oprot); err != nil { return err }
+		if err := p.writeField13(ctx, oprot); err != nil { return err }
+	}
+	if err := oprot.WriteFieldStop(ctx); err != nil {
+		return thrift.PrependError("write field stop error: ", err) }
+	if err := oprot.WriteStructEnd(ctx); err != nil {
+		return thrift.PrependError("write struct stop error: ", err) }
+	return nil
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
-  if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
-  return thrift.PrependError(fmt.Sprintf("%T.sessionId (1) field write error: ", p), err) }
-  if err := oprot.WriteFieldEnd(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:sessionId: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin(ctx, "sessionId", thrift.I64, 1); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:sessionId: ", p), err) }
+	if err := oprot.WriteI64(ctx, int64(p.SessionId)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.sessionId (1) field write error: ", p), err) }
+	if err := oprot.WriteFieldEnd(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 1:sessionId: ", p), err) }
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin(ctx, "statementId", thrift.I64, 2); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:statementId: ", p), err) }
-  if err := oprot.WriteI64(ctx, int64(p.StatementId)); err != nil {
-  return thrift.PrependError(fmt.Sprintf("%T.statementId (2) field write error: ", p), err) }
-  if err := oprot.WriteFieldEnd(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 2:statementId: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin(ctx, "statementId", thrift.I64, 2); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:statementId: ", p), err) }
+	if err := oprot.WriteI64(ctx, int64(p.StatementId)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.statementId (2) field write error: ", p), err) }
+	if err := oprot.WriteFieldEnd(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 2:statementId: ", p), err) }
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin(ctx, "device", thrift.STRING, 3); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:device: ", p), err) }
-  if err := oprot.WriteString(ctx, string(p.Device)); err != nil {
-  return thrift.PrependError(fmt.Sprintf("%T.device (3) field write error: ", p), err) }
-  if err := oprot.WriteFieldEnd(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 3:device: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin(ctx, "device", thrift.STRING, 3); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:device: ", p), err) }
+	if err := oprot.WriteString(ctx, string(p.Device)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.device (3) field write error: ", p), err) }
+	if err := oprot.WriteFieldEnd(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 3:device: ", p), err) }
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin(ctx, "measurement", thrift.STRING, 4); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:measurement: ", p), err) }
-  if err := oprot.WriteString(ctx, string(p.Measurement)); err != nil {
-  return thrift.PrependError(fmt.Sprintf("%T.measurement (4) field write error: ", p), err) }
-  if err := oprot.WriteFieldEnd(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 4:measurement: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin(ctx, "measurement", thrift.STRING, 4); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:measurement: ", p), err) }
+	if err := oprot.WriteString(ctx, string(p.Measurement)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.measurement (4) field write error: ", p), err) }
+	if err := oprot.WriteFieldEnd(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 4:measurement: ", p), err) }
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField5(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin(ctx, "dataType", thrift.I32, 5); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 5:dataType: ", p), err) }
-  if err := oprot.WriteI32(ctx, int32(p.DataType)); err != nil {
-  return thrift.PrependError(fmt.Sprintf("%T.dataType (5) field write error: ", p), err) }
-  if err := oprot.WriteFieldEnd(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 5:dataType: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin(ctx, "dataType", thrift.I32, 5); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 5:dataType: ", p), err) }
+	if err := oprot.WriteI32(ctx, int32(p.DataType)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.dataType (5) field write error: ", p), err) }
+	if err := oprot.WriteFieldEnd(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 5:dataType: ", p), err) }
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField6(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if err := oprot.WriteFieldBegin(ctx, "aggregationType", thrift.I32, 6); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:aggregationType: ", p), err) }
-  if err := oprot.WriteI32(ctx, int32(p.AggregationType)); err != nil {
-  return thrift.PrependError(fmt.Sprintf("%T.aggregationType (6) field write error: ", p), err) }
-  if err := oprot.WriteFieldEnd(ctx); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T write field end error 6:aggregationType: ", p), err) }
-  return err
+	if err := oprot.WriteFieldBegin(ctx, "aggregationType", thrift.I32, 6); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field begin error 6:aggregationType: ", p), err) }
+	if err := oprot.WriteI32(ctx, int32(p.AggregationType)); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T.aggregationType (6) field write error: ", p), err) }
+	if err := oprot.WriteFieldEnd(ctx); err != nil {
+		return thrift.PrependError(fmt.Sprintf("%T write field end error 6:aggregationType: ", p), err) }
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField7(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if p.IsSetDatabase() {
-    if err := oprot.WriteFieldBegin(ctx, "database", thrift.STRING, 7); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 7:database: ", p), err) }
-    if err := oprot.WriteString(ctx, string(*p.Database)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T.database (7) field write error: ", p), err) }
-    if err := oprot.WriteFieldEnd(ctx); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 7:database: ", p), err) }
-  }
-  return err
+	if p.IsSetDatabase() {
+		if err := oprot.WriteFieldBegin(ctx, "database", thrift.STRING, 7); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 7:database: ", p), err) }
+		if err := oprot.WriteString(ctx, string(*p.Database)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.database (7) field write error: ", p), err) }
+		if err := oprot.WriteFieldEnd(ctx); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 7:database: ", p), err) }
+	}
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField8(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if p.IsSetStartTime() {
-    if err := oprot.WriteFieldBegin(ctx, "startTime", thrift.I64, 8); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 8:startTime: ", p), err) }
-    if err := oprot.WriteI64(ctx, int64(*p.StartTime)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T.startTime (8) field write error: ", p), err) }
-    if err := oprot.WriteFieldEnd(ctx); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 8:startTime: ", p), err) }
-  }
-  return err
+	if p.IsSetStartTime() {
+		if err := oprot.WriteFieldBegin(ctx, "startTime", thrift.I64, 8); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 8:startTime: ", p), err) }
+		if err := oprot.WriteI64(ctx, int64(*p.StartTime)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.startTime (8) field write error: ", p), err) }
+		if err := oprot.WriteFieldEnd(ctx); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 8:startTime: ", p), err) }
+	}
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField9(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if p.IsSetEndTime() {
-    if err := oprot.WriteFieldBegin(ctx, "endTime", thrift.I64, 9); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 9:endTime: ", p), err) }
-    if err := oprot.WriteI64(ctx, int64(*p.EndTime)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T.endTime (9) field write error: ", p), err) }
-    if err := oprot.WriteFieldEnd(ctx); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 9:endTime: ", p), err) }
-  }
-  return err
+	if p.IsSetEndTime() {
+		if err := oprot.WriteFieldBegin(ctx, "endTime", thrift.I64, 9); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 9:endTime: ", p), err) }
+		if err := oprot.WriteI64(ctx, int64(*p.EndTime)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.endTime (9) field write error: ", p), err) }
+		if err := oprot.WriteFieldEnd(ctx); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 9:endTime: ", p), err) }
+	}
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField10(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if p.IsSetInterval() {
-    if err := oprot.WriteFieldBegin(ctx, "interval", thrift.I64, 10); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 10:interval: ", p), err) }
-    if err := oprot.WriteI64(ctx, int64(*p.Interval)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T.interval (10) field write error: ", p), err) }
-    if err := oprot.WriteFieldEnd(ctx); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 10:interval: ", p), err) }
-  }
-  return err
+	if p.IsSetInterval() {
+		if err := oprot.WriteFieldBegin(ctx, "interval", thrift.I64, 10); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 10:interval: ", p), err) }
+		if err := oprot.WriteI64(ctx, int64(*p.Interval)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.interval (10) field write error: ", p), err) }
+		if err := oprot.WriteFieldEnd(ctx); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 10:interval: ", p), err) }
+	}
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField11(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if p.IsSetFetchSize() {
-    if err := oprot.WriteFieldBegin(ctx, "fetchSize", thrift.I32, 11); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 11:fetchSize: ", p), err) }
-    if err := oprot.WriteI32(ctx, int32(*p.FetchSize)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T.fetchSize (11) field write error: ", p), err) }
-    if err := oprot.WriteFieldEnd(ctx); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 11:fetchSize: ", p), err) }
-  }
-  return err
+	if p.IsSetFetchSize() {
+		if err := oprot.WriteFieldBegin(ctx, "fetchSize", thrift.I32, 11); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 11:fetchSize: ", p), err) }
+		if err := oprot.WriteI32(ctx, int32(*p.FetchSize)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.fetchSize (11) field write error: ", p), err) }
+		if err := oprot.WriteFieldEnd(ctx); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 11:fetchSize: ", p), err) }
+	}
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) writeField12(ctx context.Context, oprot thrift.TProtocol) (err error) {
-  if p.IsSetTimeout() {
-    if err := oprot.WriteFieldBegin(ctx, "timeout", thrift.I64, 12); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field begin error 12:timeout: ", p), err) }
-    if err := oprot.WriteI64(ctx, int64(*p.Timeout)); err != nil {
-    return thrift.PrependError(fmt.Sprintf("%T.timeout (12) field write error: ", p), err) }
-    if err := oprot.WriteFieldEnd(ctx); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T write field end error 12:timeout: ", p), err) }
-  }
-  return err
+	if p.IsSetTimeout() {
+		if err := oprot.WriteFieldBegin(ctx, "timeout", thrift.I64, 12); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 12:timeout: ", p), err) }
+		if err := oprot.WriteI64(ctx, int64(*p.Timeout)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.timeout (12) field write error: ", p), err) }
+		if err := oprot.WriteFieldEnd(ctx); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 12:timeout: ", p), err) }
+	}
+	return err
+}
+
+func (p *TSGroupByQueryIntervalReq) writeField13(ctx context.Context, oprot thrift.TProtocol) (err error) {
+	if p.IsSetIsAligned() {
+		if err := oprot.WriteFieldBegin(ctx, "isAligned", thrift.BOOL, 13); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field begin error 13:isAligned: ", p), err) }
+		if err := oprot.WriteBool(ctx, bool(*p.IsAligned)); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T.isAligned (13) field write error: ", p), err) }
+		if err := oprot.WriteFieldEnd(ctx); err != nil {
+			return thrift.PrependError(fmt.Sprintf("%T write field end error 13:isAligned: ", p), err) }
+	}
+	return err
 }
 
 func (p *TSGroupByQueryIntervalReq) Equals(other *TSGroupByQueryIntervalReq) bool {
-  if p == other {
-    return true
-  } else if p == nil || other == nil {
-    return false
-  }
-  if p.SessionId != other.SessionId { return false }
-  if p.StatementId != other.StatementId { return false }
-  if p.Device != other.Device { return false }
-  if p.Measurement != other.Measurement { return false }
-  if p.DataType != other.DataType { return false }
-  if p.AggregationType != other.AggregationType { return false }
-  if p.Database != other.Database {
-    if p.Database == nil || other.Database == nil {
-      return false
-    }
-    if (*p.Database) != (*other.Database) { return false }
-  }
-  if p.StartTime != other.StartTime {
-    if p.StartTime == nil || other.StartTime == nil {
-      return false
-    }
-    if (*p.StartTime) != (*other.StartTime) { return false }
-  }
-  if p.EndTime != other.EndTime {
-    if p.EndTime == nil || other.EndTime == nil {
-      return false
-    }
-    if (*p.EndTime) != (*other.EndTime) { return false }
-  }
-  if p.Interval != other.Interval {
-    if p.Interval == nil || other.Interval == nil {
-      return false
-    }
-    if (*p.Interval) != (*other.Interval) { return false }
-  }
-  if p.FetchSize != other.FetchSize {
-    if p.FetchSize == nil || other.FetchSize == nil {
-      return false
-    }
-    if (*p.FetchSize) != (*other.FetchSize) { return false }
-  }
-  if p.Timeout != other.Timeout {
-    if p.Timeout == nil || other.Timeout == nil {
-      return false
-    }
-    if (*p.Timeout) != (*other.Timeout) { return false }
-  }
-  return true
+	if p == other {
+		return true
+	} else if p == nil || other == nil {
+		return false
+	}
+	if p.SessionId != other.SessionId { return false }
+	if p.StatementId != other.StatementId { return false }
+	if p.Device != other.Device { return false }
+	if p.Measurement != other.Measurement { return false }
+	if p.DataType != other.DataType { return false }
+	if p.AggregationType != other.AggregationType { return false }
+	if p.Database != other.Database {
+		if p.Database == nil || other.Database == nil {
+			return false
+		}
+		if (*p.Database) != (*other.Database) { return false }
+	}
+	if p.StartTime != other.StartTime {
+		if p.StartTime == nil || other.StartTime == nil {
+			return false
+		}
+		if (*p.StartTime) != (*other.StartTime) { return false }
+	}
+	if p.EndTime != other.EndTime {
+		if p.EndTime == nil || other.EndTime == nil {
+			return false
+		}
+		if (*p.EndTime) != (*other.EndTime) { return false }
+	}
+	if p.Interval != other.Interval {
+		if p.Interval == nil || other.Interval == nil {
+			return false
+		}
+		if (*p.Interval) != (*other.Interval) { return false }
+	}
+	if p.FetchSize != other.FetchSize {
+		if p.FetchSize == nil || other.FetchSize == nil {
+			return false
+		}
+		if (*p.FetchSize) != (*other.FetchSize) { return false }
+	}
+	if p.Timeout != other.Timeout {
+		if p.Timeout == nil || other.Timeout == nil {
+			return false
+		}
+		if (*p.Timeout) != (*other.Timeout) { return false }
+	}
+	if p.IsAligned != other.IsAligned {
+		if p.IsAligned == nil || other.IsAligned == nil {
+			return false
+		}
+		if (*p.IsAligned) != (*other.IsAligned) { return false }
+	}
+	return true
 }
 
 func (p *TSGroupByQueryIntervalReq) String() string {
-  if p == nil {
-    return "<nil>"
-  }
-  return fmt.Sprintf("TSGroupByQueryIntervalReq(%+v)", *p)
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("TSGroupByQueryIntervalReq(%+v)", *p)
 }
 
 // Attributes:
