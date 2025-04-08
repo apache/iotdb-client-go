@@ -599,7 +599,7 @@ func (s *Session) ExecuteGroupByQuery(database *string, device, measurement stri
 	request := rpc.TSGroupByQueryIntervalReq{SessionId: s.sessionId, StatementId: s.requestStatementId,
 		Database: database, Device: device, Measurement: measurement, AggregationType: aggregationType, DataType: dataType,
 		StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize,
-		Timeout: timeoutMs, IsAligned: isAligned}
+		Timeout: timeoutMs}
 	if resp, err := s.client.ExecuteGroupByQueryIntervalQuery(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			// return nil, nil
