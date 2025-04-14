@@ -541,6 +541,33 @@ func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregat
 	}
 }
 
+func (s *Session) ExecuteGroupByQueryIntervalQuery(database *string, device, measurement string, aggregationType common.TAggregationType,
+	dataType int32, startTime *int64, endTime *int64, interval *int64, timeoutMs *int64, isAligned *bool) (*SessionDataSet, error) {
+
+	request := rpc.TSGroupByQueryIntervalReq{SessionId: s.sessionId, StatementId: s.requestStatementId,
+		Database: database, Device: device, Measurement: measurement, AggregationType: aggregationType, DataType: dataType,
+		StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize,
+		Timeout: timeoutMs, IsAligned: isAligned}
+	if resp, err := s.client.ExecuteGroupByQueryIntervalQuery(context.Background(), &request); err == nil {
+		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+		} else {
+			return nil, statusErr
+		}
+	} else {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			resp, err = s.client.ExecuteGroupByQueryIntervalQuery(context.Background(), &request)
+			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			} else {
+				return nil, statusErr
+			}
+		}
+		return nil, err
+	}
+}
+
 func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	measurements []string,
 	types []TSDataType,
