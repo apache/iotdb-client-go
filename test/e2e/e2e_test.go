@@ -488,7 +488,7 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 	r, err := s.session.InsertAlignedTablet(tablet, true)
 	s.checkError(r, err)
 
-	sessionDataSet, err := s.session.ExecuteQueryStatement("select * from root.tsg1.d1 limit 1", nil)
+	sessionDataSet, err := s.session.ExecuteQueryStatement("select s0, s1, s2, s3, s4, s5, s6, s7, s8, s9 from root.tsg1.d1 limit 1", nil)
 	for {
 		if hasNext, err := sessionDataSet.Next(); err != nil || !hasNext {
 			break
@@ -498,6 +498,65 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 			s.NoError(err)
 			s.False(isNull)
 		}
+		timeValue, err := sessionDataSet.GetLongByIndex(1)
+		s.NoError(err)
+		s.Equal(int64(1), timeValue)
+		boolValue, err := sessionDataSet.GetBooleanByIndex(2)
+		s.NoError(err)
+		s.Equal(true, boolValue)
+
+		intValue, err := sessionDataSet.GetIntByIndex(3)
+		s.NoError(err)
+		s.Equal(int32(1), intValue)
+
+		longValue, err := sessionDataSet.GetLongByIndex(4)
+		s.NoError(err)
+		s.Equal(int64(1), longValue)
+
+		floatValue, err := sessionDataSet.GetFloatByIndex(5)
+		s.NoError(err)
+		s.Equal(float32(1), floatValue)
+
+		doubleValue, err := sessionDataSet.GetDoubleByIndex(6)
+		s.NoError(err)
+		s.Equal(float64(1), doubleValue)
+
+		textValue, err := sessionDataSet.GetStringByIndex(7)
+		s.NoError(err)
+		s.Equal("text", textValue)
+
+		timestampValue, err := sessionDataSet.GetTimestampByIndex(8)
+		s.NoError(err)
+		s.Equal(time.Unix(0, 1e6), timestampValue)
+
+		dateValue, err := sessionDataSet.GetDateByIndex(9)
+		s.NoError(err)
+		s.Equal(expectedDate, dateValue)
+
+		blobValue, err := sessionDataSet.GetBlobByIndex(10)
+		s.NoError(err)
+		s.Equal([]byte{1}, blobValue.GetValues())
+
+		stringValue, err := sessionDataSet.GetStringByIndex(11)
+		s.NoError(err)
+		s.Equal("string", stringValue)
+	}
+	sessionDataSet.Close()
+
+	sessionDataSet, err = s.session.ExecuteQueryStatement("select s0, s1, s2, s3, s4, s5, s6, s7, s8, s9 from root.tsg1.d1 limit 1", nil)
+	for {
+		if hasNext, err := sessionDataSet.Next(); err != nil || !hasNext {
+			break
+		}
+		for _, columnName := range sessionDataSet.GetColumnNames() {
+			isNull, err := sessionDataSet.IsNull(columnName)
+			s.NoError(err)
+			s.False(isNull)
+		}
+		timeValue, err := sessionDataSet.GetLong("Time")
+		s.NoError(err)
+		s.Equal(int64(1), timeValue)
+
 		boolValue, err := sessionDataSet.GetBoolean("root.tsg1.d1.s0")
 		s.NoError(err)
 		s.Equal(true, boolValue)
@@ -550,6 +609,10 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 			s.NoError(err)
 			s.False(isNull)
 		}
+		timeValue, err := sessionDataSet.GetObject("Time")
+		s.NoError(err)
+		s.Equal(time.Unix(0, 1*1e6), timeValue)
+
 		boolValue, err := sessionDataSet.GetObject("root.tsg1.d1.s0")
 		s.NoError(err)
 		s.Equal(true, boolValue)
@@ -591,6 +654,7 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 		s.NoError(err)
 		s.Equal("string", stringValue)
 	}
+	sessionDataSet.Close()
 }
 
 func (s *e2eTestSuite) Test_InvalidSQL() {

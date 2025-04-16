@@ -442,6 +442,10 @@ func (s *IoTDBRpcDataSet) getLongByTsBlockColumnIndex(tsBlockColumnIndex int32) 
 	if err := s.checkRecord(); err != nil {
 		return 0, err
 	}
+	if tsBlockColumnIndex < 0 {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetTimeByIndex(s.tsBlockIndex)
+	}
 	if !s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {
 		s.lastReadWasNull = false
 		dataType := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetDataType()
