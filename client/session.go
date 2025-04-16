@@ -550,7 +550,7 @@ func (s *Session) ExecuteGroupByQueryIntervalQuery(database *string, device, mea
 		Timeout: timeoutMs, IsAligned: isAligned}
 	if resp, err := s.client.ExecuteGroupByQueryIntervalQuery(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize)
 		} else {
 			return nil, statusErr
 		}
@@ -559,7 +559,7 @@ func (s *Session) ExecuteGroupByQueryIntervalQuery(database *string, device, mea
 			request.SessionId = s.sessionId
 			resp, err = s.client.ExecuteGroupByQueryIntervalQuery(context.Background(), &request)
 			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.client, s.sessionId, resp.QueryDataSet, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, s.config.FetchSize, timeoutMs), err
+				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize)
 			} else {
 				return nil, statusErr
 			}
