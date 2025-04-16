@@ -1,504 +1,203 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
 package client
 
 import (
 	"context"
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/apache/iotdb-client-go/common"
-	"math"
-	"time"
-
 	"github.com/apache/iotdb-client-go/rpc"
+	"strconv"
+	"time"
 )
 
-const (
-	startIndex = 2
-	flag       = 0x80
-)
-
-var (
-	errClosed error                 = errors.New("DataSet is Closed")
-	tsTypeMap map[string]TSDataType = map[string]TSDataType{
-		"BOOLEAN":   BOOLEAN,
-		"INT32":     INT32,
-		"INT64":     INT64,
-		"FLOAT":     FLOAT,
-		"DOUBLE":    DOUBLE,
-		"TEXT":      TEXT,
-		"TIMESTAMP": TIMESTAMP,
-		"DATE":      DATE,
-		"BLOB":      BLOB,
-		"STRING":    STRING,
-	}
-)
+const startIndex = int32(2)
 
 type IoTDBRpcDataSet struct {
-	columnCount                int
-	sessionId                  int64
-	queryId                    int64
-	lastReadWasNull            bool
-	rowsIndex                  int
-	queryDataSet               *rpc.TSQueryDataSet
 	sql                        string
-	fetchSize                  int32
+	isClosed                   bool
+	client                     *rpc.IClientRPCServiceClient
 	columnNameList             []string
-	columnTypeList             []TSDataType
+	columnTypeList             []string
 	columnOrdinalMap           map[string]int32
 	columnTypeDeduplicatedList []TSDataType
-	currentBitmap              []byte
-	time                       []byte
-	values                     [][]byte
-	client                     *rpc.IClientRPCServiceClient
-	emptyResultSet             bool
-	ignoreTimeStamp            bool
-	closed                     bool
-	timeoutMs                  *int64
+	fetchSize                  int32
+	timeout                    *int64
+	hasCachedRecord            bool
+	lastReadWasNull            bool
+
+	columnSize int32
+
+	sessionId       int64
+	queryId         int64
+	statementId     int64
+	time            int64
+	ignoreTimestamp bool
+	// indicates that there is still more data in server side and we can call fetchResult to get more
+	moreData bool
+
+	queryResult      [][]byte
+	curTsBlock       *TsBlock
+	queryResultSize  int32 // the length of queryResult
+	queryResultIndex int32 // the index of bytebuffer in queryResult
+	tsBlockSize      int32 // the size of current tsBlock
+	tsBlockIndex     int32 // the row index in current tsBlock
 }
 
-func (s *IoTDBRpcDataSet) getColumnIndex(columnName string) int32 {
-	if s.closed {
-		return -1
+func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypeList []string, columnNameIndex map[string]int32, ignoreTimestamp bool, moreData bool, queryId int64, statementId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryResult [][]byte, fetchSize int32, timeout *int64) (rpcDataSet *IoTDBRpcDataSet, err error) {
+	ds := &IoTDBRpcDataSet{
+		sessionId:        sessionId,
+		statementId:      statementId,
+		ignoreTimestamp:  ignoreTimestamp,
+		sql:              sql,
+		queryId:          queryId,
+		client:           client,
+		fetchSize:        fetchSize,
+		timeout:          timeout,
+		moreData:         moreData,
+		columnSize:       int32(len(columnNameList)),
+		columnNameList:   make([]string, 0, len(columnNameList)+1),
+		columnTypeList:   make([]string, 0, len(columnTypeList)+1),
+		columnOrdinalMap: make(map[string]int32),
 	}
-	return s.columnOrdinalMap[columnName] - startIndex
-}
-
-func (s *IoTDBRpcDataSet) getColumnType(columnName string) TSDataType {
-	if s.closed {
-		return UNKNOWN
+	if !ignoreTimestamp {
+		ds.columnNameList = append(ds.columnNameList, TimestampColumnName)
+		ds.columnTypeList = append(ds.columnTypeList, "INT64")
+		ds.columnOrdinalMap[TimestampColumnName] = 1
 	}
-	return s.columnTypeDeduplicatedList[s.getColumnIndex(columnName)]
-}
+	ds.columnNameList = append(ds.columnNameList, columnNameList...)
+	ds.columnTypeList = append(ds.columnTypeList, columnTypeList...)
 
-func (s *IoTDBRpcDataSet) isNullWithColumnName(columnName string) bool {
-	return s.isNull(int(s.getColumnIndex(columnName)), s.rowsIndex-1)
-}
-
-func (s *IoTDBRpcDataSet) isNull(columnIndex int, rowIndex int) bool {
-	if s.closed {
-		return true
-	}
-	bitmap := s.currentBitmap[columnIndex]
-	shift := rowIndex % 8
-	return ((flag >> shift) & (bitmap & 0xff)) == 0
-}
-
-func (s *IoTDBRpcDataSet) constructOneRow() error {
-	if s.closed {
-		return errClosed
-	}
-
-	// simulating buffer, read 8 bytes from data set and discard first 8 bytes which have been read.
-	s.time = s.queryDataSet.Time[:8]
-	s.queryDataSet.Time = s.queryDataSet.Time[8:]
-
-	for i := 0; i < len(s.queryDataSet.BitmapList); i++ {
-		bitmapBuffer := s.queryDataSet.BitmapList[i]
-		if s.rowsIndex%8 == 0 {
-			s.currentBitmap[i] = bitmapBuffer[0]
-			s.queryDataSet.BitmapList[i] = bitmapBuffer[1:]
-		}
-		if !s.isNull(i, s.rowsIndex) {
-			valueBuffer := s.queryDataSet.ValueList[i]
-			dataType := s.columnTypeDeduplicatedList[i]
-			switch dataType {
-			case BOOLEAN:
-				s.values[i] = valueBuffer[:1]
-				s.queryDataSet.ValueList[i] = valueBuffer[1:]
-			case INT32, DATE:
-				s.values[i] = valueBuffer[:4]
-				s.queryDataSet.ValueList[i] = valueBuffer[4:]
-			case INT64, TIMESTAMP:
-				s.values[i] = valueBuffer[:8]
-				s.queryDataSet.ValueList[i] = valueBuffer[8:]
-			case FLOAT:
-				s.values[i] = valueBuffer[:4]
-				s.queryDataSet.ValueList[i] = valueBuffer[4:]
-			case DOUBLE:
-				s.values[i] = valueBuffer[:8]
-				s.queryDataSet.ValueList[i] = valueBuffer[8:]
-			case TEXT, BLOB, STRING:
-				length := bytesToInt32(valueBuffer[:4])
-				s.values[i] = valueBuffer[4 : 4+length]
-				s.queryDataSet.ValueList[i] = valueBuffer[4+length:]
-			default:
-				return fmt.Errorf("unsupported data type %d", dataType)
+	if columnNameIndex != nil {
+		deduplicatedColumnSize := getDeduplicatedColumnSize(columnNameIndex)
+		ds.columnTypeDeduplicatedList = make([]TSDataType, deduplicatedColumnSize)
+		for i, name := range columnNameList {
+			if _, exists := ds.columnOrdinalMap[name]; exists {
+				continue
 			}
-		}
-	}
-	s.rowsIndex++
-	return nil
-}
 
-func (s *IoTDBRpcDataSet) GetTimestamp() int64 {
-	if s.closed {
-		return -1
-	}
-	return bytesToInt64(s.time)
-}
+			index := columnNameIndex[name]
+			targetIndex := index + startIndex
 
-func (s *IoTDBRpcDataSet) getText(columnName string) string {
-	if s.closed {
-		return ""
-	}
-	if columnName == TimestampColumnName {
-		return time.Unix(0, bytesToInt64(s.time)*1000000).Format(time.RFC3339)
-	}
-
-	columnIndex := s.getColumnIndex(columnName)
-	if columnIndex < 0 || int(columnIndex) >= len(s.values) || s.isNull(int(columnIndex), s.rowsIndex-1) {
-		s.lastReadWasNull = true
-		return ""
-	}
-	s.lastReadWasNull = false
-	return s.getString(int(columnIndex), s.columnTypeDeduplicatedList[columnIndex])
-}
-
-func (s *IoTDBRpcDataSet) getString(columnIndex int, dataType TSDataType) string {
-	if s.closed {
-		return ""
-	}
-	valueBytes := s.values[columnIndex]
-	switch dataType {
-	case BOOLEAN:
-		if valueBytes[0] != 0 {
-			return "true"
-		}
-		return "false"
-	case INT32:
-		return int32ToString(bytesToInt32(valueBytes))
-	case INT64, TIMESTAMP:
-		return int64ToString(bytesToInt64(valueBytes))
-	case FLOAT:
-		bits := binary.BigEndian.Uint32(valueBytes)
-		return float32ToString(math.Float32frombits(bits))
-	case DOUBLE:
-		bits := binary.BigEndian.Uint64(valueBytes)
-		return float64ToString(math.Float64frombits(bits))
-	case TEXT, STRING:
-		return string(valueBytes)
-	case BLOB:
-		return bytesToHexString(valueBytes)
-	case DATE:
-		date, err := bytesToDate(valueBytes)
-		if err != nil {
-			return ""
-		}
-		return date.Format("2006-01-02")
-	default:
-		return ""
-	}
-}
-
-func (s *IoTDBRpcDataSet) getValue(columnName string) interface{} {
-	if s.closed {
-		return nil
-	}
-	columnIndex := int(s.getColumnIndex(columnName))
-	if s.isNull(columnIndex, s.rowsIndex-1) {
-		return nil
-	}
-
-	dataType := s.getColumnType(columnName)
-	valueBytes := s.values[columnIndex]
-	switch dataType {
-	case BOOLEAN:
-		return valueBytes[0] != 0
-	case INT32:
-		return bytesToInt32(valueBytes)
-	case INT64, TIMESTAMP:
-		return bytesToInt64(valueBytes)
-	case FLOAT:
-		bits := binary.BigEndian.Uint32(valueBytes)
-		return math.Float32frombits(bits)
-	case DOUBLE:
-		bits := binary.BigEndian.Uint64(valueBytes)
-		return math.Float64frombits(bits)
-	case TEXT, STRING:
-		return string(valueBytes)
-	case BLOB:
-		return valueBytes
-	case DATE:
-		date, err := bytesToDate(valueBytes)
-		if err != nil {
-			return nil
-		}
-		return date
-	default:
-		return nil
-	}
-}
-
-func (s *IoTDBRpcDataSet) getRowRecord() (*RowRecord, error) {
-	if s.closed {
-		return nil, errClosed
-	}
-
-	fields := make([]*Field, s.columnCount)
-	for i := 0; i < s.columnCount; i++ {
-		columnName := s.columnNameList[i]
-		field := Field{
-			name:     columnName,
-			dataType: s.getColumnType(columnName),
-			value:    s.getValue(columnName),
-		}
-		fields[i] = &field
-	}
-	return &RowRecord{
-		timestamp: s.GetTimestamp(),
-		fields:    fields,
-	}, nil
-}
-
-func (s *IoTDBRpcDataSet) getBool(columnName string) bool {
-	if s.closed {
-		return false
-	}
-	columnIndex := s.getColumnIndex(columnName)
-	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
-		return s.values[columnIndex][0] != 0
-	}
-	s.lastReadWasNull = true
-	return false
-}
-
-func (s *IoTDBRpcDataSet) scan(dest ...interface{}) error {
-	if s.closed {
-		return errClosed
-	}
-
-	count := s.columnCount
-	if count > len(dest) {
-		count = len(dest)
-	}
-
-	for i := 0; i < count; i++ {
-		columnName := s.columnNameList[i]
-		columnIndex := int(s.getColumnIndex(columnName))
-		if s.isNull(columnIndex, s.rowsIndex-1) {
-			continue
-		}
-
-		dataType := s.getColumnType(columnName)
-		d := dest[i]
-		valueBytes := s.values[columnIndex]
-		switch dataType {
-		case BOOLEAN:
-			switch t := d.(type) {
-			case *bool:
-				*t = valueBytes[0] != 0
-			case *string:
-				if valueBytes[0] != 0 {
-					*t = "true"
-				} else {
-					*t = "false"
+			valueExists := false
+			for _, v := range ds.columnOrdinalMap {
+				if v == targetIndex {
+					valueExists = true
+					break
 				}
-			default:
-				return fmt.Errorf("dest[%d] types must be *bool or *string", i)
 			}
 
-		case INT32:
-			switch t := d.(type) {
-			case *int32:
-				*t = bytesToInt32(valueBytes)
-			case *string:
-				*t = int32ToString(bytesToInt32(valueBytes))
-			default:
-				return fmt.Errorf("dest[%d] types must be *int32 or *string", i)
+			if !valueExists {
+				if int(index) < len(ds.columnTypeDeduplicatedList) {
+					if ds.columnTypeDeduplicatedList[index], err = GetDataTypeByStr(columnTypeList[i]); err != nil {
+						return nil, err
+					}
+				}
 			}
-		case INT64, TIMESTAMP:
-			switch t := d.(type) {
-			case *int64:
-				*t = bytesToInt64(valueBytes)
-			case *string:
-				*t = int64ToString(bytesToInt64(valueBytes))
-			default:
-				return fmt.Errorf("dest[%d] types must be *int64 or *string", i)
-			}
-		case FLOAT:
-			switch t := d.(type) {
-			case *float32:
-				bits := binary.BigEndian.Uint32(valueBytes)
-				*t = math.Float32frombits(bits)
-			case *string:
-				bits := binary.BigEndian.Uint32(valueBytes)
-				*t = float32ToString(math.Float32frombits(bits))
-			default:
-				return fmt.Errorf("dest[%d] types must be *float32 or *string", i)
-			}
-		case DOUBLE:
-			switch t := d.(type) {
-			case *float64:
-				bits := binary.BigEndian.Uint64(valueBytes)
-				*t = math.Float64frombits(bits)
-			case *string:
-				bits := binary.BigEndian.Uint64(valueBytes)
-				*t = float64ToString(math.Float64frombits(bits))
-			default:
-				return fmt.Errorf("dest[%d] types must be *float64 or *string", i)
-			}
-		case TEXT, STRING:
-			switch t := d.(type) {
-			case *[]byte:
-				*t = valueBytes
-			case *string:
-				*t = string(valueBytes)
-			default:
-				return fmt.Errorf("dest[%d] types must be *[]byte or *string", i)
-			}
-		case BLOB:
-			switch t := d.(type) {
-			case *[]byte:
-				*t = valueBytes
-			case *string:
-				*t = bytesToHexString(valueBytes)
-			default:
-				return fmt.Errorf("dest[%d] types must be *[]byte or *string", i)
-			}
-		case DATE:
-			switch t := d.(type) {
-			case *time.Time:
-				*t, _ = bytesToDate(valueBytes)
-			case *string:
-				*t = int32ToString(bytesToInt32(valueBytes))
-				date, err := bytesToDate(valueBytes)
+			ds.columnOrdinalMap[name] = targetIndex
+		}
+	} else {
+		ds.columnTypeDeduplicatedList = make([]TSDataType, 0)
+		index := startIndex
+		for i := 0; i < len(columnNameList); i++ {
+			name := columnNameList[i]
+			if _, exists := ds.columnOrdinalMap[name]; !exists {
+				dataType, err := GetDataTypeByStr(columnTypeList[i])
 				if err != nil {
-					*t = ""
+					return nil, err
 				}
-				*t = date.Format("2006-01-02")
-			default:
-				return fmt.Errorf("dest[%d] types must be *time.Time or *string", i)
+				ds.columnTypeDeduplicatedList = append(ds.columnTypeDeduplicatedList, dataType)
+				ds.columnOrdinalMap[name] = int32(index)
+				index++
 			}
-		default:
-			return nil
 		}
 	}
-	return nil
+	ds.queryResult = queryResult
+	if queryResult != nil {
+		ds.queryResultSize = int32(len(queryResult))
+	} else {
+		ds.queryResultSize = 0
+	}
+	ds.queryResultIndex = 0
+	ds.tsBlockSize = 0
+	ds.tsBlockIndex = -1
+	return ds, nil
 }
 
-func (s *IoTDBRpcDataSet) getFloat(columnName string) float32 {
-	if s.closed {
-		return 0
+func getDeduplicatedColumnSize(columnNameList map[string]int32) int {
+	uniqueIndexes := make(map[int32]struct{})
+	for _, idx := range columnNameList {
+		uniqueIndexes[idx] = struct{}{}
 	}
-	columnIndex := s.getColumnIndex(columnName)
-	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
+	return len(uniqueIndexes)
+}
+
+func (s *IoTDBRpcDataSet) Close() (err error) {
+	if s.isClosed {
+		return nil
+	}
+	closeRequest := &rpc.TSCloseOperationReq{
+		SessionId:   s.sessionId,
+		StatementId: &s.statementId,
+		QueryId:     &s.queryId,
+	}
+
+	var status *common.TSStatus
+	status, err = s.client.CloseOperation(context.Background(), closeRequest)
+	if err == nil {
+		err = VerifySuccess(status)
+	}
+	s.client = nil
+	s.isClosed = true
+	return err
+}
+
+func (s *IoTDBRpcDataSet) Next() (result bool, err error) {
+	if s.hasCachedBlock() {
 		s.lastReadWasNull = false
-		bits := binary.BigEndian.Uint32(s.values[columnIndex])
-		return math.Float32frombits(bits)
+		err = s.constructOneRow()
+		return true, err
 	}
-	s.lastReadWasNull = true
-	return 0
-}
-
-func (s *IoTDBRpcDataSet) getDouble(columnName string) float64 {
-	if s.closed {
-		return 0
-	}
-	columnIndex := s.getColumnIndex(columnName)
-
-	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
-		s.lastReadWasNull = false
-		bits := binary.BigEndian.Uint64(s.values[columnIndex])
-		return math.Float64frombits(bits)
-	}
-	s.lastReadWasNull = true
-	return 0
-}
-
-func (s *IoTDBRpcDataSet) getInt32(columnName string) int32 {
-	if s.closed {
-		return 0
-	}
-	columnIndex := s.getColumnIndex(columnName)
-	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
-		s.lastReadWasNull = false
-		return bytesToInt32(s.values[columnIndex])
+	if s.hasCachedByteBuffer() {
+		if err = s.constructOneTsBlock(); err != nil {
+			return false, err
+		}
+		err = s.constructOneRow()
+		return true, err
 	}
 
-	s.lastReadWasNull = true
-	return 0
-}
-
-func (s *IoTDBRpcDataSet) getInt64(columnName string) int64 {
-	if s.closed {
-		return 0
+	if s.moreData {
+		hasResultSet, err := s.fetchResults()
+		if err != nil {
+			return false, err
+		}
+		if hasResultSet && s.hasCachedByteBuffer() {
+			if err = s.constructOneTsBlock(); err != nil {
+				return false, err
+			}
+			err = s.constructOneRow()
+			return true, err
+		}
 	}
-	if columnName == TimestampColumnName {
-		return bytesToInt64(s.time)
-	}
-
-	columnIndex := s.getColumnIndex(columnName)
-	bys := s.values[columnIndex]
-
-	if !s.isNull(int(columnIndex), s.rowsIndex-1) {
-		s.lastReadWasNull = false
-		return bytesToInt64(bys)
-	}
-	s.lastReadWasNull = true
-	return 0
-}
-
-func (s *IoTDBRpcDataSet) hasCachedResults() bool {
-	if s.closed {
-		return false
-	}
-	return s.queryDataSet != nil && len(s.queryDataSet.Time) > 0
-}
-
-func (s *IoTDBRpcDataSet) next() (bool, error) {
-	if s.closed {
-		return false, errClosed
-	}
-
-	if s.hasCachedResults() {
-		s.constructOneRow()
-		return true, nil
-	}
-	if s.emptyResultSet {
-		return false, nil
-	}
-
-	r, err := s.fetchResults()
-	if err == nil && r {
-		s.constructOneRow()
-		return true, nil
+	err = s.Close()
+	if err != nil {
+		return false, err
 	}
 	return false, nil
 }
 
 func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
-	if s.closed {
-		return false, errClosed
+	if s.isClosed {
+		return false, fmt.Errorf("this data set is already closed")
 	}
-	s.rowsIndex = 0
 	req := rpc.TSFetchResultsReq{
 		SessionId: s.sessionId,
 		Statement: s.sql,
 		FetchSize: s.fetchSize,
 		QueryId:   s.queryId,
 		IsAlign:   true,
-		Timeout:   s.timeoutMs,
 	}
-	resp, err := s.client.FetchResults(context.Background(), &req)
+	req.Timeout = s.timeout
+
+	resp, err := s.client.FetchResultsV2(context.Background(), &req)
 
 	if err != nil {
 		return false, err
@@ -509,108 +208,393 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 	}
 
 	if !resp.HasResultSet {
-		s.emptyResultSet = true
+		err = s.Close()
 	} else {
-		s.queryDataSet = resp.GetQueryDataSet()
+		s.queryResult = resp.GetQueryResult_()
+		s.queryResultIndex = 0
+		if s.queryResult != nil {
+			s.queryResultSize = int32(len(s.queryResult))
+		} else {
+			s.queryResultSize = 0
+		}
+		s.tsBlockSize = 0
+		s.tsBlockIndex = -1
 	}
-	return resp.HasResultSet, nil
+	return resp.HasResultSet, err
 }
 
-func (s *IoTDBRpcDataSet) IsClosed() bool {
-	return s.closed
+func (s *IoTDBRpcDataSet) hasCachedBlock() bool {
+	return s.curTsBlock != nil && s.tsBlockIndex < s.tsBlockSize-1
 }
 
-func (s *IoTDBRpcDataSet) Close() (err error) {
-	if s.IsClosed() {
-		return nil
-	}
-	if s.client != nil {
-		closeRequest := &rpc.TSCloseOperationReq{
-			SessionId: s.sessionId,
-			QueryId:   &s.queryId,
-		}
+func (s *IoTDBRpcDataSet) hasCachedByteBuffer() bool {
+	return s.queryResult != nil && s.queryResultIndex < s.queryResultSize
+}
 
-		var status *common.TSStatus
-		status, err = s.client.CloseOperation(context.Background(), closeRequest)
-		if err == nil {
-			err = VerifySuccess(status)
-		}
-	}
-
-	s.columnCount = 0
-	s.sessionId = -1
-	s.queryId = -1
-	s.rowsIndex = -1
-	s.queryDataSet = nil
-	s.sql = ""
-	s.fetchSize = 0
-	s.columnNameList = nil
-	s.columnTypeList = nil
-	s.columnOrdinalMap = nil
-	s.columnTypeDeduplicatedList = nil
-	s.currentBitmap = nil
-	s.time = nil
-	s.values = nil
-	s.client = nil
-	s.emptyResultSet = true
-	s.closed = true
+func (s *IoTDBRpcDataSet) constructOneRow() (err error) {
+	s.tsBlockIndex++
+	s.hasCachedRecord = true
+	s.time, err = s.curTsBlock.GetTimeColumn().GetLong(s.tsBlockIndex)
 	return err
 }
 
-func NewIoTDBRpcDataSet(sql string, columnNameList []string, columnTypes []string,
-	columnNameIndex map[string]int32,
-	queryId int64, client *rpc.IClientRPCServiceClient, sessionId int64, queryDataSet *rpc.TSQueryDataSet,
-	ignoreTimeStamp bool, fetchSize int32, timeoutMs *int64) *IoTDBRpcDataSet {
-
-	ds := &IoTDBRpcDataSet{
-		sql:             sql,
-		columnNameList:  columnNameList,
-		ignoreTimeStamp: ignoreTimeStamp,
-		queryId:         queryId,
-		client:          client,
-		sessionId:       sessionId,
-		queryDataSet:    queryDataSet,
-		fetchSize:       fetchSize,
-		currentBitmap:   make([]byte, len(columnNameList)),
-		values:          make([][]byte, len(columnTypes)),
-		columnCount:     len(columnNameList),
-		closed:          false,
-		timeoutMs:       timeoutMs,
+func (s *IoTDBRpcDataSet) constructOneTsBlock() (err error) {
+	s.lastReadWasNull = false
+	curTsBlockBytes := s.queryResult[s.queryResultIndex]
+	s.queryResultIndex = s.queryResultIndex + 1
+	s.curTsBlock, err = DeserializeTsBlock(curTsBlockBytes)
+	if err != nil {
+		return err
 	}
+	s.tsBlockIndex = -1
+	s.tsBlockSize = s.curTsBlock.GetPositionCount()
+	return nil
+}
 
-	ds.columnTypeList = make([]TSDataType, 0)
-
-	// deduplicate and map
-	ds.columnOrdinalMap = make(map[string]int32)
-	if !ignoreTimeStamp {
-		ds.columnOrdinalMap[TimestampColumnName] = 1
+func (s *IoTDBRpcDataSet) isNullByIndex(columnIndex int32) (bool, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return false, err
 	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	// time column will never be null
+	if index < 0 {
+		return false, nil
+	}
+	return s.isNull(index, s.tsBlockIndex), nil
+}
 
-	if columnNameIndex != nil {
-		ds.columnTypeDeduplicatedList = make([]TSDataType, len(columnNameIndex))
-		for i, name := range columnNameList {
-			columnTypeString := columnTypes[i]
-			columnDataType := tsTypeMap[columnTypeString]
-			ds.columnTypeList = append(ds.columnTypeList, columnDataType)
-			if _, exists := ds.columnOrdinalMap[name]; !exists {
-				index := columnNameIndex[name]
-				ds.columnOrdinalMap[name] = index + startIndex
-				ds.columnTypeDeduplicatedList[index] = tsTypeMap[columnTypeString]
-			}
-		}
+func (s *IoTDBRpcDataSet) isNullByColumnName(columnName string) bool {
+	index := s.columnOrdinalMap[columnName] - startIndex
+	// time column will never be null
+	if index < 0 {
+		return false
+	}
+	return s.isNull(index, s.tsBlockIndex)
+}
+
+func (s *IoTDBRpcDataSet) isNull(index int32, rowNum int32) bool {
+	return s.curTsBlock.GetColumn(index).IsNull(rowNum)
+}
+
+func (s *IoTDBRpcDataSet) getBooleanByIndex(columnIndex int32) (bool, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return false, err
+	}
+	return s.getBoolean(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getBoolean(columnName string) (bool, error) {
+	if err := s.checkRecord(); err != nil {
+		return false, err
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetBoolean(s.tsBlockIndex)
 	} else {
-		ds.columnTypeDeduplicatedList = make([]TSDataType, ds.columnCount)
-		index := startIndex
-		for i := 0; i < len(columnNameList); i++ {
-			name := columnNameList[i]
-			dataType := tsTypeMap[columnTypes[i]]
-			ds.columnTypeList = append(ds.columnTypeList, dataType)
-			ds.columnTypeDeduplicatedList[i] = dataType
-			if _, exists := ds.columnOrdinalMap[name]; !exists {
-				ds.columnOrdinalMap[name] = int32(index)
-				index++
+		s.lastReadWasNull = true
+		return false, nil
+	}
+}
+
+func (s *IoTDBRpcDataSet) getDoubleByIndex(columnIndex int32) (float64, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return 0, err
+	}
+	return s.getDouble(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getDouble(columnName string) (float64, error) {
+	if err := s.checkRecord(); err != nil {
+		return 0, err
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetDouble(s.tsBlockIndex)
+	} else {
+		s.lastReadWasNull = true
+		return 0, nil
+	}
+}
+
+func (s *IoTDBRpcDataSet) getFloatByIndex(columnIndex int32) (float32, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return 0, err
+	}
+	return s.getFloat(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getFloat(columnName string) (float32, error) {
+	if err := s.checkRecord(); err != nil {
+		return 0, err
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetFloat(s.tsBlockIndex)
+	} else {
+		s.lastReadWasNull = true
+		return 0, nil
+	}
+}
+
+func (s *IoTDBRpcDataSet) getIntByIndex(columnIndex int32) (int32, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return 0, err
+	}
+	return s.getInt(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getInt(columnName string) (int32, error) {
+	if err := s.checkRecord(); err != nil {
+		return 0, err
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		dataType := s.curTsBlock.GetColumn(index).GetDataType()
+		if dataType == INT64 {
+			if v, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
+				return 0, err
+			} else {
+				return int32(v), nil
 			}
 		}
+		return s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex)
+	} else {
+		s.lastReadWasNull = true
+		return 0, nil
 	}
-	return ds
+}
+
+func (s *IoTDBRpcDataSet) getLongByIndex(columnIndex int32) (int64, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return 0, err
+	}
+	return s.getLong(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getLong(columnName string) (int64, error) {
+	if err := s.checkRecord(); err != nil {
+		return 0, err
+	}
+	if columnName == TimestampColumnName {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetTimeByIndex(s.tsBlockIndex)
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex)
+	} else {
+		s.lastReadWasNull = true
+		return 0, nil
+	}
+}
+
+func (s *IoTDBRpcDataSet) getBinaryByIndex(columnIndex int32) (*Binary, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return nil, err
+	}
+	return s.getBinary(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getBinary(columnName string) (*Binary, error) {
+	if err := s.checkRecord(); err != nil {
+		return nil, err
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if !s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = false
+		return s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex)
+	} else {
+		s.lastReadWasNull = true
+		return nil, nil
+	}
+}
+
+func (s *IoTDBRpcDataSet) getObjectByIndex(columnIndex int32) (interface{}, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return nil, err
+	}
+	return s.getObject(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getObject(columnName string) (interface{}, error) {
+	if err := s.checkRecord(); err != nil {
+		return nil, err
+	}
+	if columnName == TimestampColumnName {
+		s.lastReadWasNull = false
+		if value, err := s.curTsBlock.GetTimeByIndex(s.tsBlockIndex); err != nil {
+			return nil, err
+		} else {
+			return time.Unix(value/1e3, (value%1e3)*1e6), nil
+		}
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if index < 0 || index >= int32(len(s.columnTypeDeduplicatedList)) || s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = true
+		return nil, nil
+	}
+	s.lastReadWasNull = false
+	return s.curTsBlock.GetColumn(index).GetObject(s.tsBlockIndex)
+}
+
+func (s *IoTDBRpcDataSet) getStringByIndex(columnIndex int32) (string, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return "", err
+	}
+	return s.getValueByName(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getTimestampByIndex(columnIndex int32) (time.Time, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return s.getTimestamp(columnName)
+}
+
+func (s *IoTDBRpcDataSet) getTimestamp(columnName string) (time.Time, error) {
+	longValue, err := s.getLong(columnName)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if s.lastReadWasNull {
+		return time.Time{}, err
+	} else {
+		return time.Unix(longValue/1e3, (longValue%1e3)*1e6), nil
+	}
+}
+
+func (s *IoTDBRpcDataSet) GetDateByIndex(columnIndex int32) (time.Time, error) {
+	columnName, err := s.findColumnNameByIndex(columnIndex)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return s.GetDate(columnName)
+}
+
+func (s *IoTDBRpcDataSet) GetDate(columnName string) (time.Time, error) {
+	intValue, err := s.getInt(columnName)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if s.lastReadWasNull {
+		return time.Time{}, err
+	} else {
+		return Int32ToDate(intValue)
+	}
+}
+
+func (s *IoTDBRpcDataSet) findColumn(columnName string) int32 {
+	return s.columnOrdinalMap[columnName]
+}
+
+func (s *IoTDBRpcDataSet) getValueByName(columnName string) (string, error) {
+	err := s.checkRecord()
+	if err != nil {
+		return "", err
+	}
+	if columnName == TimestampColumnName {
+		s.lastReadWasNull = false
+		if t, err := s.curTsBlock.GetTimeByIndex(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return int64ToString(t), nil
+		}
+	}
+	index := s.columnOrdinalMap[columnName] - startIndex
+	if index < 0 || index >= int32(len(s.columnTypeDeduplicatedList)) || s.isNull(index, s.tsBlockIndex) {
+		s.lastReadWasNull = true
+		return "", err
+	}
+	s.lastReadWasNull = false
+	return s.getString(index, s.columnTypeDeduplicatedList[index])
+}
+
+func (s *IoTDBRpcDataSet) getString(index int32, tsDataType TSDataType) (string, error) {
+	switch tsDataType {
+	case BOOLEAN:
+		if v, err := s.curTsBlock.GetColumn(index).GetBoolean(s.tsBlockIndex); err != nil {
+			return "", nil
+		} else {
+			return strconv.FormatBool(v), nil
+		}
+	case INT32:
+		if v, err := s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return int32ToString(v), nil
+		}
+	case INT64, TIMESTAMP:
+		if v, err := s.curTsBlock.GetColumn(index).GetLong(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return int64ToString(v), nil
+		}
+	case FLOAT:
+		if v, err := s.curTsBlock.GetColumn(index).GetFloat(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return float32ToString(v), nil
+		}
+	case DOUBLE:
+		if v, err := s.curTsBlock.GetColumn(index).GetDouble(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return float64ToString(v), nil
+		}
+	case TEXT, STRING:
+		if v, err := s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return v.GetStringValue(), nil
+		}
+	case BLOB:
+		if v, err := s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return bytesToHexString(v.values), nil
+		}
+	case DATE:
+		v, err := s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex)
+		if err != nil {
+			return "", err
+		}
+		t, err := Int32ToDate(v)
+		if err != nil {
+			return "", err
+		}
+		return t.Format("2006-01-02"), nil
+	}
+	return "", nil
+}
+
+func (s *IoTDBRpcDataSet) findColumnNameByIndex(columnIndex int32) (string, error) {
+	if columnIndex <= 0 {
+		return "", fmt.Errorf("column index should start from 1")
+	}
+	if columnIndex > int32(len(s.columnNameList)) {
+		return "", fmt.Errorf("column index %d out of range %d", columnIndex, len(s.columnNameList))
+	}
+	return s.columnNameList[columnIndex-1], nil
+}
+
+func (s *IoTDBRpcDataSet) checkRecord() (err error) {
+	if s.queryResultIndex > s.queryResultSize || s.tsBlockIndex >= s.tsBlockSize || s.queryResult == nil || s.curTsBlock == nil {
+		err = fmt.Errorf("no record remains")
+	}
+	return err
 }
