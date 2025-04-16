@@ -550,6 +550,10 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 			s.NoError(err)
 			s.False(isNull)
 		}
+		timeValue, err := sessionDataSet.GetLong("Time")
+		s.NoError(err)
+		s.Equal(int64(1), timeValue)
+
 		boolValue, err := sessionDataSet.GetObject("root.tsg1.d1.s0")
 		s.NoError(err)
 		s.Equal(true, boolValue)
