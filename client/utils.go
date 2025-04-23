@@ -104,13 +104,13 @@ func parseLongToDateWithPrecision(timestamp int64, zone *time.Location, precisio
 	var digits int
 
 	switch precision {
-	case "millisecond":
+	case MILLISECOND:
 		divisor = 1000
 		digits = 3
-	case "microsecond":
+	case MICROSECOND:
 		divisor = 1_000_000
 		digits = 6
-	case "nanosecond":
+	case NANOSECOND:
 		divisor = 1_000_000_000
 		digits = 9
 	default:
