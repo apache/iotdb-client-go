@@ -1,4 +1,4 @@
-module github.com/apache/iotdb-client-go
+module github.com/apache/iotdb-client-go/v2
 
 go 1.13
 

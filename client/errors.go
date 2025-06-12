@@ -21,7 +21,8 @@ package client
 
 import (
 	"bytes"
-	"github.com/apache/iotdb-client-go/common"
+
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 type BatchError struct {

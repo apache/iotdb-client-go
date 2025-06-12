@@ -3,10 +3,11 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
-	"github.com/apache/iotdb-client-go/rpc"
 	"strconv"
 	"time"
+
+	"github.com/apache/iotdb-client-go/v2/common"
+	"github.com/apache/iotdb-client-go/v2/rpc"
 )
 
 const startIndex = int32(2)

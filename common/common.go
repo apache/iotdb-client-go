@@ -354,6 +354,9 @@ const (
   TAggregationType_LAST_BY TAggregationType = 26
   TAggregationType_MIN TAggregationType = 27
   TAggregationType_MAX TAggregationType = 28
+  TAggregationType_COUNT_ALL TAggregationType = 29
+  TAggregationType_APPROX_COUNT_DISTINCT TAggregationType = 30
+  TAggregationType_APPROX_MOST_FREQUENT TAggregationType = 31
 )
 
 func (p TAggregationType) String() string {
@@ -387,6 +390,9 @@ func (p TAggregationType) String() string {
   case TAggregationType_LAST_BY: return "LAST_BY"
   case TAggregationType_MIN: return "MIN"
   case TAggregationType_MAX: return "MAX"
+  case TAggregationType_COUNT_ALL: return "COUNT_ALL"
+  case TAggregationType_APPROX_COUNT_DISTINCT: return "APPROX_COUNT_DISTINCT"
+  case TAggregationType_APPROX_MOST_FREQUENT: return "APPROX_MOST_FREQUENT"
   }
   return "<UNSET>"
 }
@@ -422,6 +428,9 @@ func TAggregationTypeFromString(s string) (TAggregationType, error) {
   case "LAST_BY": return TAggregationType_LAST_BY, nil 
   case "MIN": return TAggregationType_MIN, nil 
   case "MAX": return TAggregationType_MAX, nil 
+  case "COUNT_ALL": return TAggregationType_COUNT_ALL, nil 
+  case "APPROX_COUNT_DISTINCT": return TAggregationType_APPROX_COUNT_DISTINCT, nil 
+  case "APPROX_MOST_FREQUENT": return TAggregationType_APPROX_MOST_FREQUENT, nil 
   }
   return TAggregationType(0), fmt.Errorf("not a valid TAggregationType string")
 }
@@ -567,6 +576,65 @@ return nil
 }
 
 func (p * Model) Value() (driver.Value, error) {
+  if p == nil {
+    return nil, nil
+  }
+return int64(*p), nil
+}
+type FunctionType int64
+const (
+  FunctionType_NONE FunctionType = 0
+  FunctionType_SCALAR FunctionType = 1
+  FunctionType_AGGREGATE FunctionType = 2
+  FunctionType_TABLE FunctionType = 3
+)
+
+func (p FunctionType) String() string {
+  switch p {
+  case FunctionType_NONE: return "NONE"
+  case FunctionType_SCALAR: return "SCALAR"
+  case FunctionType_AGGREGATE: return "AGGREGATE"
+  case FunctionType_TABLE: return "TABLE"
+  }
+  return "<UNSET>"
+}
+
+func FunctionTypeFromString(s string) (FunctionType, error) {
+  switch s {
+  case "NONE": return FunctionType_NONE, nil 
+  case "SCALAR": return FunctionType_SCALAR, nil 
+  case "AGGREGATE": return FunctionType_AGGREGATE, nil 
+  case "TABLE": return FunctionType_TABLE, nil 
+  }
+  return FunctionType(0), fmt.Errorf("not a valid FunctionType string")
+}
+
+
+func FunctionTypePtr(v FunctionType) *FunctionType { return &v }
+
+func (p FunctionType) MarshalText() ([]byte, error) {
+return []byte(p.String()), nil
+}
+
+func (p *FunctionType) UnmarshalText(text []byte) error {
+q, err := FunctionTypeFromString(string(text))
+if (err != nil) {
+return err
+}
+*p = q
+return nil
+}
+
+func (p *FunctionType) Scan(value interface{}) error {
+v, ok := value.(int64)
+if !ok {
+return errors.New("Scan value is not int64")
+}
+*p = FunctionType(v)
+return nil
+}
+
+func (p * FunctionType) Value() (driver.Value, error) {
   if p == nil {
     return nil, nil
   }
@@ -2767,9 +2835,11 @@ func (p *TAINodeConfiguration) String() string {
 // Attributes:
 //  - IsSeq
 //  - StorageGroups
+//  - RegionIds
 type TFlushReq struct {
   IsSeq *string `thrift:"isSeq,1" db:"isSeq" json:"isSeq,omitempty"`
   StorageGroups []string `thrift:"storageGroups,2" db:"storageGroups" json:"storageGroups,omitempty"`
+  RegionIds []string `thrift:"regionIds,3" db:"regionIds" json:"regionIds,omitempty"`
 }
 
 func NewTFlushReq() *TFlushReq {
@@ -2788,12 +2858,21 @@ var TFlushReq_StorageGroups_DEFAULT []string
 func (p *TFlushReq) GetStorageGroups() []string {
   return p.StorageGroups
 }
+var TFlushReq_RegionIds_DEFAULT []string
+
+func (p *TFlushReq) GetRegionIds() []string {
+  return p.RegionIds
+}
 func (p *TFlushReq) IsSetIsSeq() bool {
   return p.IsSeq != nil
 }
 
 func (p *TFlushReq) IsSetStorageGroups() bool {
   return p.StorageGroups != nil
+}
+
+func (p *TFlushReq) IsSetRegionIds() bool {
+  return p.RegionIds != nil
 }
 
 func (p *TFlushReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
@@ -2822,6 +2901,16 @@ func (p *TFlushReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
     case 2:
       if fieldTypeId == thrift.LIST {
         if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 3:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField3(ctx, iprot); err != nil {
           return err
         }
       } else {
@@ -2875,12 +2964,35 @@ var _elem4 string
   return nil
 }
 
+func (p *TFlushReq)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]string, 0, size)
+  p.RegionIds =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem5 string
+    if v, err := iprot.ReadString(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem5 = v
+}
+    p.RegionIds = append(p.RegionIds, _elem5)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
 func (p *TFlushReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
   if err := oprot.WriteStructBegin(ctx, "TFlushReq"); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
   if p != nil {
     if err := p.writeField1(ctx, oprot); err != nil { return err }
     if err := p.writeField2(ctx, oprot); err != nil { return err }
+    if err := p.writeField3(ctx, oprot); err != nil { return err }
   }
   if err := oprot.WriteFieldStop(ctx); err != nil {
     return thrift.PrependError("write field stop error: ", err) }
@@ -2921,6 +3033,26 @@ func (p *TFlushReq) writeField2(ctx context.Context, oprot thrift.TProtocol) (er
   return err
 }
 
+func (p *TFlushReq) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if p.IsSetRegionIds() {
+    if err := oprot.WriteFieldBegin(ctx, "regionIds", thrift.LIST, 3); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:regionIds: ", p), err) }
+    if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.RegionIds)); err != nil {
+      return thrift.PrependError("error writing list begin: ", err)
+    }
+    for _, v := range p.RegionIds {
+      if err := oprot.WriteString(ctx, string(v)); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+    }
+    if err := oprot.WriteListEnd(ctx); err != nil {
+      return thrift.PrependError("error writing list end: ", err)
+    }
+    if err := oprot.WriteFieldEnd(ctx); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field end error 3:regionIds: ", p), err) }
+  }
+  return err
+}
+
 func (p *TFlushReq) Equals(other *TFlushReq) bool {
   if p == other {
     return true
@@ -2935,8 +3067,13 @@ func (p *TFlushReq) Equals(other *TFlushReq) bool {
   }
   if len(p.StorageGroups) != len(other.StorageGroups) { return false }
   for i, _tgt := range p.StorageGroups {
-    _src5 := other.StorageGroups[i]
-    if _tgt != _src5 { return false }
+    _src6 := other.StorageGroups[i]
+    if _tgt != _src6 { return false }
+  }
+  if len(p.RegionIds) != len(other.RegionIds) { return false }
+  for i, _tgt := range p.RegionIds {
+    _src7 := other.RegionIds[i]
+    if _tgt != _src7 { return false }
   }
   return true
 }
@@ -3013,13 +3150,13 @@ func (p *TSettleReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) er
   tSlice := make([]string, 0, size)
   p.Paths =  tSlice
   for i := 0; i < size; i ++ {
-var _elem6 string
+var _elem8 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem6 = v
+    _elem8 = v
 }
-    p.Paths = append(p.Paths, _elem6)
+    p.Paths = append(p.Paths, _elem8)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -3066,8 +3203,8 @@ func (p *TSettleReq) Equals(other *TSettleReq) bool {
   }
   if len(p.Paths) != len(other.Paths) { return false }
   for i, _tgt := range p.Paths {
-    _src7 := other.Paths[i]
-    if _tgt != _src7 { return false }
+    _src9 := other.Paths[i]
+    if _tgt != _src9 { return false }
   }
   return true
 }
@@ -3314,19 +3451,19 @@ func (p *TSetConfigurationReq)  ReadField1(ctx context.Context, iprot thrift.TPr
   tMap := make(map[string]string, size)
   p.Configs =  tMap
   for i := 0; i < size; i ++ {
-var _key8 string
+var _key10 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _key8 = v
+    _key10 = v
 }
-var _val9 string
+var _val11 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _val9 = v
+    _val11 = v
 }
-    p.Configs[_key8] = _val9
+    p.Configs[_key10] = _val11
   }
   if err := iprot.ReadMapEnd(ctx); err != nil {
     return thrift.PrependError("error reading map end: ", err)
@@ -3395,8 +3532,8 @@ func (p *TSetConfigurationReq) Equals(other *TSetConfigurationReq) bool {
   }
   if len(p.Configs) != len(other.Configs) { return false }
   for k, _tgt := range p.Configs {
-    _src10 := other.Configs[k]
-    if _tgt != _src10 { return false }
+    _src12 := other.Configs[k]
+    if _tgt != _src12 { return false }
   }
   if p.NodeId != other.NodeId { return false }
   return true
@@ -3516,13 +3653,13 @@ func (p *TSetTTLReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) er
   tSlice := make([]string, 0, size)
   p.PathPattern =  tSlice
   for i := 0; i < size; i ++ {
-var _elem11 string
+var _elem13 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem11 = v
+    _elem13 = v
 }
-    p.PathPattern = append(p.PathPattern, _elem11)
+    p.PathPattern = append(p.PathPattern, _elem13)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -3609,8 +3746,8 @@ func (p *TSetTTLReq) Equals(other *TSetTTLReq) bool {
   }
   if len(p.PathPattern) != len(other.PathPattern) { return false }
   for i, _tgt := range p.PathPattern {
-    _src12 := other.PathPattern[i]
-    if _tgt != _src12 { return false }
+    _src14 := other.PathPattern[i]
+    if _tgt != _src14 { return false }
   }
   if p.TTL != other.TTL { return false }
   if p.IsDataBase != other.IsDataBase { return false }
@@ -3689,13 +3826,13 @@ func (p *TShowTTLReq)  ReadField1(ctx context.Context, iprot thrift.TProtocol) e
   tSlice := make([]string, 0, size)
   p.PathPattern =  tSlice
   for i := 0; i < size; i ++ {
-var _elem13 string
+var _elem15 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem13 = v
+    _elem15 = v
 }
-    p.PathPattern = append(p.PathPattern, _elem13)
+    p.PathPattern = append(p.PathPattern, _elem15)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -3742,8 +3879,8 @@ func (p *TShowTTLReq) Equals(other *TShowTTLReq) bool {
   }
   if len(p.PathPattern) != len(other.PathPattern) { return false }
   for i, _tgt := range p.PathPattern {
-    _src14 := other.PathPattern[i]
-    if _tgt != _src14 { return false }
+    _src16 := other.PathPattern[i]
+    if _tgt != _src16 { return false }
   }
   return true
 }
@@ -4004,11 +4141,11 @@ func (p *TFilesResp)  ReadField2(ctx context.Context, iprot thrift.TProtocol) er
   tSlice := make([]*TFile, 0, size)
   p.Files =  tSlice
   for i := 0; i < size; i ++ {
-    _elem15 := &TFile{}
-    if err := _elem15.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem15), err)
+    _elem17 := &TFile{}
+    if err := _elem17.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem17), err)
     }
-    p.Files = append(p.Files, _elem15)
+    p.Files = append(p.Files, _elem17)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -4069,8 +4206,8 @@ func (p *TFilesResp) Equals(other *TFilesResp) bool {
   if !p.Status.Equals(other.Status) { return false }
   if len(p.Files) != len(other.Files) { return false }
   for i, _tgt := range p.Files {
-    _src16 := other.Files[i]
-    if !_tgt.Equals(_src16) { return false }
+    _src18 := other.Files[i]
+    if !_tgt.Equals(_src18) { return false }
   }
   return true
 }
@@ -4558,18 +4695,18 @@ func (p *TThrottleQuota)  ReadField1(ctx context.Context, iprot thrift.TProtocol
   tMap := make(map[ThrottleType]*TTimedQuota, size)
   p.ThrottleLimit =  tMap
   for i := 0; i < size; i ++ {
-var _key17 ThrottleType
+var _key19 ThrottleType
     if v, err := iprot.ReadI32(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
     temp := ThrottleType(v)
-    _key17 = temp
+    _key19 = temp
 }
-    _val18 := &TTimedQuota{}
-    if err := _val18.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _val18), err)
+    _val20 := &TTimedQuota{}
+    if err := _val20.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _val20), err)
     }
-    p.ThrottleLimit[_key17] = _val18
+    p.ThrottleLimit[_key19] = _val20
   }
   if err := iprot.ReadMapEnd(ctx); err != nil {
     return thrift.PrependError("error reading map end: ", err)
@@ -4665,8 +4802,8 @@ func (p *TThrottleQuota) Equals(other *TThrottleQuota) bool {
   }
   if len(p.ThrottleLimit) != len(other.ThrottleLimit) { return false }
   for k, _tgt := range p.ThrottleLimit {
-    _src19 := other.ThrottleLimit[k]
-    if !_tgt.Equals(_src19) { return false }
+    _src21 := other.ThrottleLimit[k]
+    if !_tgt.Equals(_src21) { return false }
   }
   if p.MemLimit != other.MemLimit {
     if p.MemLimit == nil || other.MemLimit == nil {
@@ -4783,13 +4920,13 @@ func (p *TSetSpaceQuotaReq)  ReadField1(ctx context.Context, iprot thrift.TProto
   tSlice := make([]string, 0, size)
   p.Database =  tSlice
   for i := 0; i < size; i ++ {
-var _elem20 string
+var _elem22 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _elem20 = v
+    _elem22 = v
 }
-    p.Database = append(p.Database, _elem20)
+    p.Database = append(p.Database, _elem22)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -4856,8 +4993,8 @@ func (p *TSetSpaceQuotaReq) Equals(other *TSetSpaceQuotaReq) bool {
   }
   if len(p.Database) != len(other.Database) { return false }
   for i, _tgt := range p.Database {
-    _src21 := other.Database[i]
-    if _tgt != _src21 { return false }
+    _src23 := other.Database[i]
+    if _tgt != _src23 { return false }
   }
   if !p.SpaceLimit.Equals(other.SpaceLimit) { return false }
   return true
@@ -5661,9 +5798,11 @@ func (p *TLoadSample) String() string {
 // Attributes:
 //  - EndPoint
 //  - ServiceType
+//  - NodeId
 type TServiceProvider struct {
   EndPoint *TEndPoint `thrift:"endPoint,1,required" db:"endPoint" json:"endPoint"`
   ServiceType TServiceType `thrift:"serviceType,2,required" db:"serviceType" json:"serviceType"`
+  NodeId int32 `thrift:"nodeId,3,required" db:"nodeId" json:"nodeId"`
 }
 
 func NewTServiceProvider() *TServiceProvider {
@@ -5681,6 +5820,10 @@ return p.EndPoint
 func (p *TServiceProvider) GetServiceType() TServiceType {
   return p.ServiceType
 }
+
+func (p *TServiceProvider) GetNodeId() int32 {
+  return p.NodeId
+}
 func (p *TServiceProvider) IsSetEndPoint() bool {
   return p.EndPoint != nil
 }
@@ -5692,6 +5835,7 @@ func (p *TServiceProvider) Read(ctx context.Context, iprot thrift.TProtocol) err
 
   var issetEndPoint bool = false;
   var issetServiceType bool = false;
+  var issetNodeId bool = false;
 
   for {
     _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -5722,6 +5866,17 @@ func (p *TServiceProvider) Read(ctx context.Context, iprot thrift.TProtocol) err
           return err
         }
       }
+    case 3:
+      if fieldTypeId == thrift.I32 {
+        if err := p.ReadField3(ctx, iprot); err != nil {
+          return err
+        }
+        issetNodeId = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
     default:
       if err := iprot.Skip(ctx, fieldTypeId); err != nil {
         return err
@@ -5739,6 +5894,9 @@ func (p *TServiceProvider) Read(ctx context.Context, iprot thrift.TProtocol) err
   }
   if !issetServiceType{
     return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field ServiceType is not set"));
+  }
+  if !issetNodeId{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field NodeId is not set"));
   }
   return nil
 }
@@ -5761,12 +5919,22 @@ func (p *TServiceProvider)  ReadField2(ctx context.Context, iprot thrift.TProtoc
   return nil
 }
 
+func (p *TServiceProvider)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadI32(ctx); err != nil {
+  return thrift.PrependError("error reading field 3: ", err)
+} else {
+  p.NodeId = v
+}
+  return nil
+}
+
 func (p *TServiceProvider) Write(ctx context.Context, oprot thrift.TProtocol) error {
   if err := oprot.WriteStructBegin(ctx, "TServiceProvider"); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
   if p != nil {
     if err := p.writeField1(ctx, oprot); err != nil { return err }
     if err := p.writeField2(ctx, oprot); err != nil { return err }
+    if err := p.writeField3(ctx, oprot); err != nil { return err }
   }
   if err := oprot.WriteFieldStop(ctx); err != nil {
     return thrift.PrependError("write field stop error: ", err) }
@@ -5796,6 +5964,16 @@ func (p *TServiceProvider) writeField2(ctx context.Context, oprot thrift.TProtoc
   return err
 }
 
+func (p *TServiceProvider) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "nodeId", thrift.I32, 3); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:nodeId: ", p), err) }
+  if err := oprot.WriteI32(ctx, int32(p.NodeId)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.nodeId (3) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 3:nodeId: ", p), err) }
+  return err
+}
+
 func (p *TServiceProvider) Equals(other *TServiceProvider) bool {
   if p == other {
     return true
@@ -5804,6 +5982,7 @@ func (p *TServiceProvider) Equals(other *TServiceProvider) bool {
   }
   if !p.EndPoint.Equals(other.EndPoint) { return false }
   if p.ServiceType != other.ServiceType { return false }
+  if p.NodeId != other.NodeId { return false }
   return true
 }
 
@@ -6326,11 +6505,11 @@ func (p *TTestConnectionResp)  ReadField2(ctx context.Context, iprot thrift.TPro
   tSlice := make([]*TTestConnectionResult_, 0, size)
   p.ResultList =  tSlice
   for i := 0; i < size; i ++ {
-    _elem22 := &TTestConnectionResult_{}
-    if err := _elem22.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem22), err)
+    _elem24 := &TTestConnectionResult_{}
+    if err := _elem24.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem24), err)
     }
-    p.ResultList = append(p.ResultList, _elem22)
+    p.ResultList = append(p.ResultList, _elem24)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -6391,8 +6570,8 @@ func (p *TTestConnectionResp) Equals(other *TTestConnectionResp) bool {
   if !p.Status.Equals(other.Status) { return false }
   if len(p.ResultList) != len(other.ResultList) { return false }
   for i, _tgt := range p.ResultList {
-    _src23 := other.ResultList[i]
-    if !_tgt.Equals(_src23) { return false }
+    _src25 := other.ResultList[i]
+    if !_tgt.Equals(_src25) { return false }
   }
   return true
 }
@@ -6490,11 +6669,11 @@ func (p *TNodeLocations)  ReadField1(ctx context.Context, iprot thrift.TProtocol
   tSlice := make([]*TConfigNodeLocation, 0, size)
   p.ConfigNodeLocations =  tSlice
   for i := 0; i < size; i ++ {
-    _elem24 := &TConfigNodeLocation{}
-    if err := _elem24.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem24), err)
+    _elem26 := &TConfigNodeLocation{}
+    if err := _elem26.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem26), err)
     }
-    p.ConfigNodeLocations = append(p.ConfigNodeLocations, _elem24)
+    p.ConfigNodeLocations = append(p.ConfigNodeLocations, _elem26)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -6510,11 +6689,11 @@ func (p *TNodeLocations)  ReadField2(ctx context.Context, iprot thrift.TProtocol
   tSlice := make([]*TDataNodeLocation, 0, size)
   p.DataNodeLocations =  tSlice
   for i := 0; i < size; i ++ {
-    _elem25 := &TDataNodeLocation{}
-    if err := _elem25.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem25), err)
+    _elem27 := &TDataNodeLocation{}
+    if err := _elem27.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem27), err)
     }
-    p.DataNodeLocations = append(p.DataNodeLocations, _elem25)
+    p.DataNodeLocations = append(p.DataNodeLocations, _elem27)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -6586,13 +6765,13 @@ func (p *TNodeLocations) Equals(other *TNodeLocations) bool {
   }
   if len(p.ConfigNodeLocations) != len(other.ConfigNodeLocations) { return false }
   for i, _tgt := range p.ConfigNodeLocations {
-    _src26 := other.ConfigNodeLocations[i]
-    if !_tgt.Equals(_src26) { return false }
+    _src28 := other.ConfigNodeLocations[i]
+    if !_tgt.Equals(_src28) { return false }
   }
   if len(p.DataNodeLocations) != len(other.DataNodeLocations) { return false }
   for i, _tgt := range p.DataNodeLocations {
-    _src27 := other.DataNodeLocations[i]
-    if !_tgt.Equals(_src27) { return false }
+    _src29 := other.DataNodeLocations[i]
+    if !_tgt.Equals(_src29) { return false }
   }
   return true
 }
