@@ -32,10 +32,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apache/iotdb-client-go/common"
-
-	"github.com/apache/iotdb-client-go/rpc"
 	"github.com/apache/thrift/lib/go/thrift"
+
+	"github.com/apache/iotdb-client-go/v2/common"
+	"github.com/apache/iotdb-client-go/v2/rpc"
 )
 
 const (

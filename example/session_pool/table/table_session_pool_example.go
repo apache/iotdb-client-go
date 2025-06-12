@@ -20,13 +20,14 @@
 package main
 
 import (
-	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 func main() {

@@ -20,8 +20,9 @@
 package client
 
 import (
-	"github.com/apache/iotdb-client-go/common"
 	"testing"
+
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 func Test_bytesToInt32(t *testing.T) {

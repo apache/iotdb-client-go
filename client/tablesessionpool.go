@@ -20,9 +20,10 @@
 package client
 
 import (
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"sync/atomic"
+
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 // TableSessionPool manages a pool of ITableSession instances, enabling efficient

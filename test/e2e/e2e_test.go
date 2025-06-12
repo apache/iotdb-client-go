@@ -28,10 +28,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apache/iotdb-client-go/common"
-
-	"github.com/apache/iotdb-client-go/client"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 type e2eTestSuite struct {
