@@ -10,7 +10,8 @@ import(
 	"fmt"
 	"time"
 	"github.com/apache/thrift/lib/go/thrift"
-	"github.com/apache/iotdb-client-go/common"
+ 
+	"github.com/apache/iotdb-client-go/v2/common"
 
 )
 

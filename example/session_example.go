@@ -22,13 +22,13 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
 
-	"github.com/apache/iotdb-client-go/client"
+	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 var (

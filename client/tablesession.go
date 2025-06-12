@@ -19,7 +19,7 @@
 
 package client
 
-import "github.com/apache/iotdb-client-go/common"
+import "github.com/apache/iotdb-client-go/v2/common"
 
 // ITableSession defines an interface for interacting with IoTDB tables.
 // It supports operations such as data insertion, executing queries, and closing the session.

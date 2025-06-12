@@ -20,9 +20,6 @@
 package e2e
 
 import (
-	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/common"
-	"github.com/stretchr/testify/suite"
 	"log"
 	"strconv"
 	"strings"
@@ -30,6 +27,11 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/suite"
+
+	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 var (

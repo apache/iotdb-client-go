@@ -21,12 +21,13 @@ package main
 
 import (
 	"flag"
-	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strconv"
 	"time"
+
+	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 func main() {
