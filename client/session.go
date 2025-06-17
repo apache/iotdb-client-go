@@ -601,6 +601,33 @@ func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregat
 	}
 }
 
+func (s *Session) ExecuteFastLastDataQueryForOnePrefixPath(prefixes []string, timeoutMs *int64) (*SessionDataSet, error) {
+	request := rpc.TSFastLastDataQueryForOnePrefixPathReq{
+		SessionId:   s.sessionId,
+		StatementId: s.requestStatementId,
+		Prefixes:    prefixes,
+		Timeout:     timeoutMs,
+	}
+	if resp, err := s.client.ExecuteFastLastDataQueryForOnePrefixPath(context.Background(), &request); err != nil {
+		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
+		} else {
+			return nil, statusErr
+		}
+	} else {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			resp, err = s.client.ExecuteFastLastDataQueryForOnePrefixPath(context.Background(), &request)
+			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
+			} else {
+				return nil, statusErr
+			}
+		}
+		return nil, err
+	}
+}
+
 func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	measurements []string,
 	types []TSDataType,
