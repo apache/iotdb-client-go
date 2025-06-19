@@ -607,7 +607,7 @@ func (s *Session) ExecuteGroupByQueryIntervalQuery(database *string, device, mea
 	request := rpc.TSGroupByQueryIntervalReq{SessionId: s.sessionId, StatementId: s.requestStatementId,
 		Database: database, Device: device, Measurement: measurement, AggregationType: aggregationType, DataType: dataType,
 		StartTime: startTime, EndTime: endTime, Interval: interval, FetchSize: &s.config.FetchSize,
-		Timeout: timeoutMs}
+		Timeout: timeoutMs, IsAligned: isAligned}
 	if resp, err := s.client.ExecuteGroupByQueryIntervalQuery(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())

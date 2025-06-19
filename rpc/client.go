@@ -13706,6 +13706,7 @@ func (p *TSAggregationQueryReq) String() string {
 //  - Interval
 //  - FetchSize
 //  - Timeout
+//  - IsAligned
 type TSGroupByQueryIntervalReq struct {
   SessionId int64 `thrift:"sessionId,1,required" db:"sessionId" json:"sessionId"`
   StatementId int64 `thrift:"statementId,2,required" db:"statementId" json:"statementId"`
@@ -13719,6 +13720,7 @@ type TSGroupByQueryIntervalReq struct {
   Interval *int64 `thrift:"interval,10" db:"interval" json:"interval,omitempty"`
   FetchSize *int32 `thrift:"fetchSize,11" db:"fetchSize" json:"fetchSize,omitempty"`
   Timeout *int64 `thrift:"timeout,12" db:"timeout" json:"timeout,omitempty"`
+  IsAligned *bool `thrift:"isAligned,13" db:"isAligned" json:"isAligned,omitempty"`
 }
 
 func NewTSGroupByQueryIntervalReq() *TSGroupByQueryIntervalReq {
@@ -13791,6 +13793,13 @@ func (p *TSGroupByQueryIntervalReq) GetTimeout() int64 {
   }
 return *p.Timeout
 }
+var TSGroupByQueryIntervalReq_IsAligned_DEFAULT bool
+func (p *TSGroupByQueryIntervalReq) GetIsAligned() bool {
+  if !p.IsSetIsAligned() {
+    return TSGroupByQueryIntervalReq_IsAligned_DEFAULT
+  }
+return *p.IsAligned
+}
 func (p *TSGroupByQueryIntervalReq) IsSetDatabase() bool {
   return p.Database != nil
 }
@@ -13813,6 +13822,10 @@ func (p *TSGroupByQueryIntervalReq) IsSetFetchSize() bool {
 
 func (p *TSGroupByQueryIntervalReq) IsSetTimeout() bool {
   return p.Timeout != nil
+}
+
+func (p *TSGroupByQueryIntervalReq) IsSetIsAligned() bool {
+  return p.IsAligned != nil
 }
 
 func (p *TSGroupByQueryIntervalReq) Read(ctx context.Context, iprot thrift.TProtocol) error {
@@ -13953,6 +13966,16 @@ func (p *TSGroupByQueryIntervalReq) Read(ctx context.Context, iprot thrift.TProt
     case 12:
       if fieldTypeId == thrift.I64 {
         if err := p.ReadField12(ctx, iprot); err != nil {
+          return err
+        }
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 13:
+      if fieldTypeId == thrift.BOOL {
+        if err := p.ReadField13(ctx, iprot); err != nil {
           return err
         }
       } else {
@@ -14102,6 +14125,15 @@ func (p *TSGroupByQueryIntervalReq)  ReadField12(ctx context.Context, iprot thri
   return nil
 }
 
+func (p *TSGroupByQueryIntervalReq)  ReadField13(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadBool(ctx); err != nil {
+  return thrift.PrependError("error reading field 13: ", err)
+} else {
+  p.IsAligned = &v
+}
+  return nil
+}
+
 func (p *TSGroupByQueryIntervalReq) Write(ctx context.Context, oprot thrift.TProtocol) error {
   if err := oprot.WriteStructBegin(ctx, "TSGroupByQueryIntervalReq"); err != nil {
     return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
@@ -14118,6 +14150,7 @@ func (p *TSGroupByQueryIntervalReq) Write(ctx context.Context, oprot thrift.TPro
     if err := p.writeField10(ctx, oprot); err != nil { return err }
     if err := p.writeField11(ctx, oprot); err != nil { return err }
     if err := p.writeField12(ctx, oprot); err != nil { return err }
+    if err := p.writeField13(ctx, oprot); err != nil { return err }
   }
   if err := oprot.WriteFieldStop(ctx); err != nil {
     return thrift.PrependError("write field stop error: ", err) }
@@ -14258,6 +14291,18 @@ func (p *TSGroupByQueryIntervalReq) writeField12(ctx context.Context, oprot thri
   return err
 }
 
+func (p *TSGroupByQueryIntervalReq) writeField13(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if p.IsSetIsAligned() {
+    if err := oprot.WriteFieldBegin(ctx, "isAligned", thrift.BOOL, 13); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field begin error 13:isAligned: ", p), err) }
+    if err := oprot.WriteBool(ctx, bool(*p.IsAligned)); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T.isAligned (13) field write error: ", p), err) }
+    if err := oprot.WriteFieldEnd(ctx); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field end error 13:isAligned: ", p), err) }
+  }
+  return err
+}
+
 func (p *TSGroupByQueryIntervalReq) Equals(other *TSGroupByQueryIntervalReq) bool {
   if p == other {
     return true
@@ -14305,6 +14350,12 @@ func (p *TSGroupByQueryIntervalReq) Equals(other *TSGroupByQueryIntervalReq) boo
       return false
     }
     if (*p.Timeout) != (*other.Timeout) { return false }
+  }
+  if p.IsAligned != other.IsAligned {
+    if p.IsAligned == nil || other.IsAligned == nil {
+      return false
+    }
+    if (*p.IsAligned) != (*other.IsAligned) { return false }
   }
   return true
 }
