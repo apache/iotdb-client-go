@@ -635,7 +635,7 @@ func (s *Session) ExecuteFastLastDataQueryForOnePrefixPath(prefixes []string, ti
 		Prefixes:    prefixes,
 		Timeout:     timeoutMs,
 	}
-	if resp, err := s.client.ExecuteFastLastDataQueryForOnePrefixPath(context.Background(), &request); err != nil {
+	if resp, err := s.client.ExecuteFastLastDataQueryForOnePrefixPath(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
 		} else {
