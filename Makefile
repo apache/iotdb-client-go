@@ -63,9 +63,9 @@ generate:
 		curl -L -o thrift/iotdb-tools-thrift.zip https://repo1.maven.org/maven2/org/apache/iotdb/tools/iotdb-tools-thrift/0.14.1.0/iotdb-tools-thrift-0.14.1.0-$(OS_CLASSIFIER).zip; \
 		unzip -o thrift/iotdb-tools-thrift.zip -d thrift; \
 		curl -o common.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-commons/src/main/thrift/common.thrift; \
-		$(THRIFT_EXEC) -out . -gen go:package_prefix=github.com/apache/iotdb-client-go/ common.thrift; \
+		$(THRIFT_EXEC) -out . -gen go:package_prefix=github.com/apache/iotdb-client-go/v2/ common.thrift; \
 		curl -o client.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-datanode/src/main/thrift/client.thrift; \
-		$(THRIFT_EXEC) -out . -gen go:package_prefix=github.com/apache/iotdb-client-go/ client.thrift; \
+		$(THRIFT_EXEC) -out . -gen go:package_prefix=github.com/apache/iotdb-client-go/v2/ client.thrift; \
 		rm -f common.thrift; \
 		rm -f client.thrift; \
 	fi

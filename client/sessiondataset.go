@@ -1,8 +1,9 @@
 package client
 
 import (
-	"github.com/apache/iotdb-client-go/rpc"
 	"time"
+
+	"github.com/apache/iotdb-client-go/v2/rpc"
 )
 
 type SessionDataSet struct {
