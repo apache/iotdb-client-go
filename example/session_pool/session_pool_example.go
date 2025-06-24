@@ -44,7 +44,7 @@ func main() {
 	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
 	flag.StringVar(&port, "port", "6667", "--port=6667")
 	flag.StringVar(&user, "user", "root", "--user=root")
-	flag.StringVar(&password, "password", "root", "--password=root")
+	flag.StringVar(&password, "password", "IoTDB@2017", "--password=IoTDB@2017")
 	flag.Parse()
 	config := &client.PoolConfig{
 		Host:     host,

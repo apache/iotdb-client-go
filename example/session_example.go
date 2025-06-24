@@ -43,7 +43,7 @@ func main() {
 	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
 	flag.StringVar(&port, "port", "6667", "--port=6667")
 	flag.StringVar(&user, "user", "root", "--user=root")
-	flag.StringVar(&password, "password", "root", "--password=root")
+	flag.StringVar(&password, "password", "IoTDB@2017", "--password=IoTDB@2017")
 	flag.Parse()
 	config := &client.Config{
 		Host:     host,
@@ -660,7 +660,7 @@ func connectCluster() {
 	config := &client.ClusterConfig{
 		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669", ","),
 		UserName: "root",
-		Password: "root",
+		Password: "IoTDB@2017",
 	}
 	session = client.NewClusterSession(config)
 	if err := session.OpenCluster(false); err != nil {

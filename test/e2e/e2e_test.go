@@ -45,7 +45,7 @@ func (s *e2eTestSuite) SetupSuite() {
 		Host:     "iotdb",
 		Port:     "6667",
 		UserName: "root",
-		Password: "root",
+		Password: "IoTDB@2017",
 	}
 
 	s.session = client.NewSession(config)
