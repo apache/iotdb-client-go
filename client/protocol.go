@@ -19,6 +19,8 @@
 
 package client
 
+import "fmt"
+
 type TSDataType int8
 
 type TSEncoding uint8
@@ -26,42 +28,84 @@ type TSEncoding uint8
 type TSCompressionType uint8
 
 const (
-	UNKNOWN TSDataType = -1
-	BOOLEAN TSDataType = 0
-	INT32   TSDataType = 1
-	INT64   TSDataType = 2
-	FLOAT   TSDataType = 3
-	DOUBLE  TSDataType = 4
-	TEXT    TSDataType = 5
+	UNKNOWN   TSDataType = -1
+	BOOLEAN   TSDataType = 0
+	INT32     TSDataType = 1
+	INT64     TSDataType = 2
+	FLOAT     TSDataType = 3
+	DOUBLE    TSDataType = 4
+	TEXT      TSDataType = 5
+	TIMESTAMP TSDataType = 8
+	DATE      TSDataType = 9
+	BLOB      TSDataType = 10
+	STRING    TSDataType = 11
 )
 
+var tsTypeMap = map[string]TSDataType{
+	"BOOLEAN":   BOOLEAN,
+	"INT32":     INT32,
+	"INT64":     INT64,
+	"FLOAT":     FLOAT,
+	"DOUBLE":    DOUBLE,
+	"TEXT":      TEXT,
+	"TIMESTAMP": TIMESTAMP,
+	"DATE":      DATE,
+	"BLOB":      BLOB,
+	"STRING":    STRING,
+}
+
+var byteToTsDataType = map[byte]TSDataType{
+	0:  BOOLEAN,
+	1:  INT32,
+	2:  INT64,
+	3:  FLOAT,
+	4:  DOUBLE,
+	5:  TEXT,
+	8:  TIMESTAMP,
+	9:  DATE,
+	10: BLOB,
+	11: STRING,
+}
+
+func GetDataTypeByStr(name string) (TSDataType, error) {
+	dataType, exists := tsTypeMap[name]
+	if !exists {
+		return UNKNOWN, fmt.Errorf("invalid input: %v", name)
+	}
+	return dataType, nil
+}
+
+func getDataTypeByByte(b byte) (TSDataType, error) {
+	dataType, exists := byteToTsDataType[b]
+	if !exists {
+		return UNKNOWN, fmt.Errorf("invalid input: %v", b)
+	}
+	return dataType, nil
+}
+
 const (
-	PLAIN            TSEncoding = 0
-	PLAIN_DICTIONARY TSEncoding = 1
-	RLE              TSEncoding = 2
-	DIFF             TSEncoding = 3
-	TS_2DIFF         TSEncoding = 4
-	BITMAP           TSEncoding = 5
-	GORILLA_V1       TSEncoding = 6
-	REGULAR          TSEncoding = 7
-	GORILLA          TSEncoding = 8
-    ZIGZAG           TSEncoding = 9
-    FREQ             TSEncoding = 10
-    CHIMP            TSEncoding = 11
-    SPRINTZ          TSEncoding = 12
-    RLBE             TSEncoding = 13
+	PLAIN      TSEncoding = 0
+	DICTIONARY TSEncoding = 1
+	RLE        TSEncoding = 2
+	DIFF       TSEncoding = 3
+	TS_2DIFF   TSEncoding = 4
+	BITMAP     TSEncoding = 5
+	GORILLA_V1 TSEncoding = 6
+	REGULAR    TSEncoding = 7
+	GORILLA    TSEncoding = 8
+	ZIGZAG     TSEncoding = 9
+	FREQ       TSEncoding = 10
+	CHIMP      TSEncoding = 11
+	SPRINTZ    TSEncoding = 12
+	RLBE       TSEncoding = 13
 )
 
 const (
 	UNCOMPRESSED TSCompressionType = 0
 	SNAPPY       TSCompressionType = 1
 	GZIP         TSCompressionType = 2
-	LZO          TSCompressionType = 3
-	SDT          TSCompressionType = 4
-	PAA          TSCompressionType = 5
-	PLA          TSCompressionType = 6
 	LZ4          TSCompressionType = 7
-	ZSTD		 TSCompressionType = 8
+	ZSTD         TSCompressionType = 8
 	LZMA2        TSCompressionType = 9
 )
 
@@ -201,4 +245,8 @@ const (
 	CqAlreadyActive           int32 = 1401
 	CqAlreadyExist            int32 = 1402
 	CqUpdateLastExecTimeError int32 = 1403
+)
+
+const (
+	TimestampColumnName = "Time"
 )

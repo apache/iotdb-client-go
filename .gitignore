@@ -8,6 +8,7 @@ output/
 *.dll
 *.so
 *.dylib
+thrift/
 
 # Test binary, built with `go test -c`
 *.test

@@ -22,6 +22,7 @@ package client
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func createTablet(size int) (*Tablet, error) {
@@ -29,46 +30,38 @@ func createTablet(size int) (*Tablet, error) {
 		{
 			Measurement: "restart_count",
 			DataType:    INT32,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		}, {
 			Measurement: "price",
 			DataType:    DOUBLE,
-			Encoding:    GORILLA,
-			Compressor:  SNAPPY,
 		}, {
 			Measurement: "tick_count",
 			DataType:    INT64,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
 		}, {
 			Measurement: "temperature",
 			DataType:    FLOAT,
-			Encoding:    GORILLA,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		}, {
 			Measurement: "description",
 			DataType:    TEXT,
-			Encoding:    PLAIN,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
 		},
 		{
 			Measurement: "status",
 			DataType:    BOOLEAN,
-			Encoding:    RLE,
-			Compressor:  SNAPPY,
-			Properties: map[string]string{
-				"owner": "Mark Liu",
-			},
+		},
+		{
+			Measurement: "description_string",
+			DataType:    STRING,
+		},
+		{
+			Measurement: "description_blob",
+			DataType:    BLOB,
+		},
+		{
+			Measurement: "date",
+			DataType:    DATE,
+		},
+		{
+			Measurement: "ts",
+			DataType:    TIMESTAMP,
 		},
 	}, size)
 	return tablet, err
@@ -95,63 +88,50 @@ func TestTablet_getDataTypes(t *testing.T) {
 					{
 						Measurement: "restart_count",
 						DataType:    INT32,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					}, {
 						Measurement: "price",
 						DataType:    DOUBLE,
-						Encoding:    GORILLA,
-						Compressor:  SNAPPY,
 					}, {
 						Measurement: "tick_count",
 						DataType:    INT64,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
 					}, {
 						Measurement: "temperature",
 						DataType:    FLOAT,
-						Encoding:    GORILLA,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
 					}, {
 						Measurement: "description",
 						DataType:    TEXT,
-						Encoding:    PLAIN,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
-					},
-					{
+					}, {
 						Measurement: "status",
 						DataType:    BOOLEAN,
-						Encoding:    RLE,
-						Compressor:  SNAPPY,
-						Properties: map[string]string{
-							"owner": "Mark Liu",
-						},
+					}, {
+						Measurement: "description_string",
+						DataType:    STRING,
+					}, {
+						Measurement: "description_blob",
+						DataType:    BLOB,
+					}, {
+						Measurement: "date",
+						DataType:    DATE,
+					}, {
+						Measurement: "ts",
+						DataType:    TIMESTAMP,
 					},
 				},
 				timestamps: []int64{},
 				values:     []interface{}{},
 				rowCount:   0,
 			},
-			want: []int32{int32(INT32), int32(DOUBLE), int32(INT64), int32(FLOAT), int32(TEXT), int32(BOOLEAN)},
+			want: []int32{int32(INT32), int32(DOUBLE), int32(INT64), int32(FLOAT), int32(TEXT), int32(BOOLEAN), int32(STRING), int32(BLOB), int32(DATE), int32(TIMESTAMP)},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tablet := &Tablet{
-				deviceId:           tt.fields.deviceId,
+				insertTargetName:   tt.fields.deviceId,
 				measurementSchemas: tt.fields.measurementSchemas,
 				timestamps:         tt.fields.timestamps,
 				values:             tt.fields.values,
-				rowCount:           tt.fields.rowCount,
+				maxRowNumber:       tt.fields.rowCount,
 			}
 			if got := tablet.getDataTypes(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Tablet.getDataTypes() = %v, want %v", got, tt.want)
@@ -211,7 +191,7 @@ func TestTablet_SetValueAt(t *testing.T) {
 				columnIndex: 0,
 				rowIndex:    0,
 			},
-			wantErr: true,
+			wantErr: false,
 		}, {
 			name: "columnIndex-1",
 			args: args{
@@ -292,6 +272,38 @@ func TestTablet_SetValueAt(t *testing.T) {
 				rowIndex:    0,
 			},
 			wantErr: false,
+		}, {
+			name: "description_string",
+			args: args{
+				value:       "Hello world!",
+				columnIndex: 6,
+				rowIndex:    0,
+			},
+			wantErr: false,
+		}, {
+			name: "description_blob",
+			args: args{
+				value:       []byte("Hello world!"),
+				columnIndex: 7,
+				rowIndex:    0,
+			},
+			wantErr: false,
+		}, {
+			name: "date",
+			args: args{
+				value:       time.Date(2024, time.April, 1, 0, 0, 0, 0, time.UTC),
+				columnIndex: 8,
+				rowIndex:    0,
+			},
+			wantErr: false,
+		}, {
+			name: "ts",
+			args: args{
+				value:       int64(1608268702780),
+				columnIndex: 9,
+				rowIndex:    0,
+			},
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -351,6 +363,125 @@ func TestTablet_GetValueAt(t *testing.T) {
 			want:    float32(36.5),
 			wantErr: false,
 		}, {
+			name: "TEXT",
+			args: args{
+				columnIndex: 4,
+				rowIndex:    0,
+			},
+			want:    "Hello World!",
+			wantErr: false,
+		}, {
+			name: "BOOLEAN",
+			args: args{
+				columnIndex: 5,
+				rowIndex:    0,
+			},
+			want:    true,
+			wantErr: false,
+		}, {
+			name: "TEXT",
+			args: args{
+				columnIndex: 6,
+				rowIndex:    0,
+			},
+			want:    "Hello World!",
+			wantErr: false,
+		}, {
+			name: "BLOB",
+			args: args{
+				columnIndex: 7,
+				rowIndex:    0,
+			},
+			want:    []byte("Hello World!"),
+			wantErr: false,
+		}, {
+			name: "DATE",
+			args: args{
+				columnIndex: 8,
+				rowIndex:    0,
+			},
+			want:    time.Date(2024, time.April, 1, 0, 0, 0, 0, time.UTC),
+			wantErr: false,
+		}, {
+			name: "TIMESTAMP",
+			args: args{
+				columnIndex: 9,
+				rowIndex:    0,
+			},
+			want:    int64(1608268702780),
+			wantErr: false,
+		},
+	}
+	if tablet, err := createTablet(1); err == nil {
+		tablet.SetValueAt(int32(256), 0, 0)
+		tablet.SetValueAt(32.768, 1, 0)
+		tablet.SetValueAt(int64(65535), 2, 0)
+		tablet.SetValueAt(float32(36.5), 3, 0)
+		tablet.SetValueAt("Hello World!", 4, 0)
+		tablet.SetValueAt(true, 5, 0)
+		tablet.SetValueAt("Hello World!", 6, 0)
+		tablet.SetValueAt([]byte("Hello World!"), 7, 0)
+		tablet.SetValueAt(time.Date(2024, time.April, 1, 0, 0, 0, 0, time.UTC), 8, 0)
+		tablet.SetValueAt(int64(1608268702780), 9, 0)
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				got, err := tablet.GetValueAt(tt.args.columnIndex, tt.args.rowIndex)
+				if (err != nil) != tt.wantErr {
+					t.Errorf("Tablet.GetValueAt() error = %v, wantErr %v", err, tt.wantErr)
+					return
+				}
+				if !reflect.DeepEqual(got, tt.want) {
+					t.Errorf("Tablet.GetValueAt() = %v, want %v", got, tt.want)
+				}
+			})
+		}
+	}
+}
+
+func TestTablet_GetNilValueAt(t *testing.T) {
+	type args struct {
+		columnIndex int
+		rowIndex    int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    interface{}
+		wantErr bool
+	}{
+		{
+			name: "INT32",
+			args: args{
+				columnIndex: 0,
+				rowIndex:    0,
+			},
+			want:    int32(256),
+			wantErr: false,
+		}, {
+			name: "FLOAT64",
+			args: args{
+				columnIndex: 1,
+				rowIndex:    0,
+			},
+			want:    nil,
+			wantErr: false,
+		}, {
+			name: "INT64",
+			args: args{
+				columnIndex: 2,
+				rowIndex:    0,
+			},
+			want:    int64(65535),
+			wantErr: false,
+		}, {
+			name: "FLOAT32",
+			args: args{
+				columnIndex: 3,
+				rowIndex:    0,
+			},
+			want:    float32(36.5),
+			wantErr: false,
+		}, {
 			name: "STRING",
 			args: args{
 				columnIndex: 4,
@@ -366,15 +497,51 @@ func TestTablet_GetValueAt(t *testing.T) {
 			},
 			want:    true,
 			wantErr: false,
+		}, {
+			name: "STRING",
+			args: args{
+				columnIndex: 6,
+				rowIndex:    0,
+			},
+			want:    nil,
+			wantErr: false,
+		}, {
+			name: "BLOB",
+			args: args{
+				columnIndex: 7,
+				rowIndex:    0,
+			},
+			want:    nil,
+			wantErr: false,
+		}, {
+			name: "DATE",
+			args: args{
+				columnIndex: 8,
+				rowIndex:    0,
+			},
+			want:    nil,
+			wantErr: false,
+		}, {
+			name: "TIMESTAMP",
+			args: args{
+				columnIndex: 9,
+				rowIndex:    0,
+			},
+			want:    nil,
+			wantErr: false,
 		},
 	}
 	if tablet, err := createTablet(1); err == nil {
 		tablet.SetValueAt(int32(256), 0, 0)
-		tablet.SetValueAt(float64(32.768), 1, 0)
+		tablet.SetValueAt(nil, 1, 0)
 		tablet.SetValueAt(int64(65535), 2, 0)
 		tablet.SetValueAt(float32(36.5), 3, 0)
 		tablet.SetValueAt("Hello World!", 4, 0)
 		tablet.SetValueAt(true, 5, 0)
+		tablet.SetValueAt(nil, 6, 0)
+		tablet.SetValueAt(nil, 7, 0)
+		tablet.SetValueAt(nil, 8, 0)
+		tablet.SetValueAt(nil, 9, 0)
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				got, err := tablet.GetValueAt(tt.args.columnIndex, tt.args.rowIndex)
@@ -418,6 +585,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("1", 4, 0)
 			tablet.SetValueAt(true, 5, 0)
 			tablet.SetTimestamp(3, 0)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(2), 0, 1)
 			tablet.SetValueAt(float64(2.0), 1, 1)
@@ -426,6 +594,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("2", 4, 1)
 			tablet.SetValueAt(true, 5, 1)
 			tablet.SetTimestamp(4, 1)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(3), 0, 2)
 			tablet.SetValueAt(float64(3.0), 1, 2)
@@ -434,6 +603,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("3", 4, 2)
 			tablet.SetValueAt(true, 5, 2)
 			tablet.SetTimestamp(1, 2)
+			tablet.RowSize++
 
 			tablet.SetValueAt(int32(4), 0, 3)
 			tablet.SetValueAt(float64(4.0), 1, 3)
@@ -442,6 +612,7 @@ func TestTablet_Sort(t *testing.T) {
 			tablet.SetValueAt("4", 4, 3)
 			tablet.SetValueAt(true, 5, 3)
 			tablet.SetTimestamp(2, 3)
+			tablet.RowSize++
 
 			if err := tablet.Sort(); (err != nil) != tt.wantErr {
 				t.Errorf("Tablet.Sort() error = %v, wantErr %v", err, tt.wantErr)

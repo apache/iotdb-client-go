@@ -27,8 +27,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apache/iotdb-client-go/client"
-	"github.com/apache/iotdb-client-go/rpc"
+	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 var (
@@ -56,6 +56,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer session.Close()
+
+	//connectCluster()
 
 	setStorageGroup("root.ln1")
 	deleteStorageGroup("root.ln1")
@@ -113,6 +115,11 @@ func main() {
 	executeRawDataQuery()
 	executeBatchStatement()
 
+	var startTime int64 = 1
+	var endTime int64 = 10
+	var interval int64 = 2
+	executeAggregationQueryStatementWithLegalNodes([]string{"root.ln.wf02.wt02.s5"}, []common.TAggregationType{common.TAggregationType_COUNT}, &startTime, &endTime, &interval)
+
 	deleteTimeseries("root.sg1.dev1.status")
 	deleteTimeseries("root.ln.wf02.wt02.s5")
 
@@ -138,42 +145,39 @@ func main() {
 	deleteTimeseries("root.ln.device1.*")
 }
 
-func printDevice1(sds *client.SessionDataSet) {
-	showTimestamp := !sds.IsIgnoreTimeStamp()
-	if showTimestamp {
-		fmt.Print("Time\t\t\t\t")
+// If your IotDB is a cluster version, you can use the following code for multi node connection
+func connectCluster() {
+	config := &client.ClusterConfig{
+		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669", ","),
+		UserName: "root",
+		Password: "IoTDB@2017",
 	}
+	session, err := client.NewClusterSession(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = session.OpenCluster(false); err != nil {
+		log.Fatal(err)
+	}
+}
 
+func printDevice1(sds *client.SessionDataSet) {
 	for _, columnName := range sds.GetColumnNames() {
 		fmt.Printf("%s\t", columnName)
 	}
 	fmt.Println()
 
 	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
-		if showTimestamp {
-			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
-		}
-
-		var restartCount int32
-		var price float64
-		var tickCount int64
-		var temperature float32
-		var description string
-		var status bool
-
-		// All of iotdb datatypes can be scan into string variables
-		// var restartCount string
-		// var price string
-		// var tickCount string
-		// var temperature string
-		// var description string
-		// var status string
-
-		if err := sds.Scan(&restartCount, &price, &tickCount, &temperature, &description, &status); err != nil {
-			log.Fatal(err)
-		}
+		timestamp, _ := sds.GetStringByIndex(1)
+		restartCount, _ := sds.GetIntByIndex(2)
+		tickCount, _ := sds.GetLongByIndex(3)
+		price, _ := sds.GetDoubleByIndex(4)
+		temperature, _ := sds.GetFloatByIndex(5)
+		description, _ := sds.GetStringByIndex(6)
+		status, _ := sds.GetBooleanByIndex(7)
 
 		whitespace := "\t\t"
+		fmt.Printf("%s\t", timestamp)
 		fmt.Printf("%v%s", restartCount, whitespace)
 		fmt.Printf("%v%s", price, whitespace)
 		fmt.Printf("%v%s", tickCount, whitespace)
@@ -186,35 +190,34 @@ func printDevice1(sds *client.SessionDataSet) {
 }
 
 func printDataSet0(sessionDataSet *client.SessionDataSet) {
-	showTimestamp := !sessionDataSet.IsIgnoreTimeStamp()
-	if showTimestamp {
-		fmt.Print("Time\t\t\t\t")
-	}
-
-	for i := 0; i < sessionDataSet.GetColumnCount(); i++ {
-		fmt.Printf("%s\t", sessionDataSet.GetColumnName(i))
+	columns := sessionDataSet.GetColumnNames()
+	for _, columnName := range columns {
+		fmt.Printf("%s\t", columnName)
 	}
 	fmt.Println()
 
 	for next, err := sessionDataSet.Next(); err == nil && next; next, err = sessionDataSet.Next() {
-		if showTimestamp {
-			fmt.Printf("%s\t", sessionDataSet.GetText(client.TimestampColumnName))
-		}
-		for i := 0; i < sessionDataSet.GetColumnCount(); i++ {
-			columnName := sessionDataSet.GetColumnName(i)
-			switch sessionDataSet.GetColumnDataType(i) {
+		for i, columnName := range columns {
+			dataType, _ := client.GetDataTypeByStr(sessionDataSet.GetColumnTypes()[i])
+			switch dataType {
 			case client.BOOLEAN:
-				fmt.Print(sessionDataSet.GetBool(columnName))
+				value, _ := sessionDataSet.GetBoolean(columnName)
+				fmt.Print(value)
 			case client.INT32:
-				fmt.Print(sessionDataSet.GetInt32(columnName))
-			case client.INT64:
-				fmt.Print(sessionDataSet.GetInt64(columnName))
+				value, _ := sessionDataSet.GetInt(columnName)
+				fmt.Print(value)
+			case client.INT64, client.TIMESTAMP:
+				value, _ := sessionDataSet.GetLong(columnName)
+				fmt.Print(value)
 			case client.FLOAT:
-				fmt.Print(sessionDataSet.GetFloat(columnName))
+				value, _ := sessionDataSet.GetFloat(columnName)
+				fmt.Print(value)
 			case client.DOUBLE:
-				fmt.Print(sessionDataSet.GetDouble(columnName))
-			case client.TEXT:
-				fmt.Print(sessionDataSet.GetText(columnName))
+				value, _ := sessionDataSet.GetDouble(columnName)
+				fmt.Print(value)
+			case client.TEXT, client.STRING, client.BLOB, client.DATE:
+				value, _ := sessionDataSet.GetString(columnName)
+				fmt.Print(value)
 			default:
 			}
 			fmt.Print("\t\t")
@@ -224,58 +227,46 @@ func printDataSet0(sessionDataSet *client.SessionDataSet) {
 }
 
 func printDataSet1(sds *client.SessionDataSet) {
-	showTimestamp := !sds.IsIgnoreTimeStamp()
-	if showTimestamp {
-		fmt.Print("Time\t\t\t\t")
-	}
-
-	for i := 0; i < sds.GetColumnCount(); i++ {
-		fmt.Printf("%s\t", sds.GetColumnName(i))
+	columnNames := sds.GetColumnNames()
+	for _, value := range columnNames {
+		fmt.Printf("%s\t", value)
 	}
 	fmt.Println()
 
 	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
-		if showTimestamp {
-			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
-		}
-		for i := 0; i < sds.GetColumnCount(); i++ {
-			columnName := sds.GetColumnName(i)
-			v := sds.GetValue(columnName)
-			if v == nil {
-				v = "null"
+		for _, columnName := range columnNames {
+			isNull, _ := sds.IsNull(columnName)
+
+			if isNull {
+				fmt.Printf("%v\t\t", "null")
+			} else {
+				v, _ := sds.GetString(columnName)
+				fmt.Printf("%v\t\t", v)
 			}
-			fmt.Printf("%v\t\t", v)
 		}
 		fmt.Println()
 	}
 }
 
 func printDataSet2(sds *client.SessionDataSet) {
-	showTimestamp := !sds.IsIgnoreTimeStamp()
-	if showTimestamp {
-		fmt.Print("Time\t\t\t\t")
-	}
-
-	for i := 0; i < sds.GetColumnCount(); i++ {
-		fmt.Printf("%s\t", sds.GetColumnName(i))
+	columnNames := sds.GetColumnNames()
+	for _, value := range columnNames {
+		fmt.Printf("%s\t", value)
 	}
 	fmt.Println()
 
 	for next, err := sds.Next(); err == nil && next; next, err = sds.Next() {
-		if showTimestamp {
-			fmt.Printf("%s\t", sds.GetText(client.TimestampColumnName))
-		}
+		for i := int32(0); i < int32(len(columnNames)); i++ {
+			isNull, _ := sds.IsNullByIndex(i)
 
-		if record, err := sds.GetRowRecord(); err == nil {
-			for _, field := range record.GetFields() {
-				v := field.GetValue()
-				if field.IsNull() {
-					v = "null"
-				}
+			if isNull {
+				fmt.Printf("%v\t\t", "null")
+			} else {
+				v, _ := sds.GetStringByIndex(i)
 				fmt.Printf("%v\t\t", v)
 			}
-			fmt.Println()
 		}
+		fmt.Println()
 	}
 }
 
@@ -475,6 +466,7 @@ func deleteData() {
 func insertTablet() {
 	if tablet, err := createTablet(12); err == nil {
 		status, err := session.InsertTablet(tablet, false)
+		tablet.Reset()
 		checkError(status, err)
 	} else {
 		log.Fatal(err)
@@ -484,6 +476,7 @@ func insertTablet() {
 func insertAlignedTablet() {
 	if tablet, err := createTablet(12); err == nil {
 		status, err := session.InsertAlignedTablet(tablet, false)
+		tablet.Reset()
 		checkError(status, err)
 	} else {
 		log.Fatal(err)
@@ -502,34 +495,22 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 		{
 			Measurement: "restart_count",
 			DataType:    client.INT32,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "price",
 			DataType:    client.DOUBLE,
-			Encoding:    client.GORILLA,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "tick_count",
 			DataType:    client.INT64,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "temperature",
 			DataType:    client.FLOAT,
-			Encoding:    client.GORILLA,
-			Compressor:  client.SNAPPY,
 		}, {
 			Measurement: "description",
 			DataType:    client.TEXT,
-			Encoding:    client.PLAIN,
-			Compressor:  client.SNAPPY,
 		},
 		{
 			Measurement: "status",
 			DataType:    client.BOOLEAN,
-			Encoding:    client.RLE,
-			Compressor:  client.SNAPPY,
 		},
 	}, rowCount)
 
@@ -541,11 +522,16 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 		ts++
 		tablet.SetTimestamp(ts, row)
 		tablet.SetValueAt(rand.Int31(), 0, row)
-		tablet.SetValueAt(rand.Float64(), 1, row)
+		if row%2 == 1 {
+			tablet.SetValueAt(rand.Float64(), 1, row)
+		} else {
+			tablet.SetValueAt(nil, 1, row)
+		}
 		tablet.SetValueAt(rand.Int63(), 2, row)
 		tablet.SetValueAt(rand.Float32(), 3, row)
 		tablet.SetValueAt(fmt.Sprintf("Test Device %d", row+1), 4, row)
 		tablet.SetValueAt(bool(ts%2 == 0), 5, row)
+		tablet.RowSize++
 	}
 	return tablet, nil
 }
@@ -609,12 +595,25 @@ func executeQueryStatement(sql string) {
 	}
 }
 
+func executeAggregationQueryStatementWithLegalNodes(paths []string, aggregations []common.TAggregationType,
+	startTime *int64, endTime *int64, interval *int64) {
+	var timeout int64 = 1000
+	var legal bool = true
+	sessionDataSet, err := session.ExecuteAggregationQueryWithLegalNodes(paths, aggregations, startTime, endTime, interval, &timeout, &legal)
+	if err == nil {
+		printDataSet1(sessionDataSet)
+		sessionDataSet.Close()
+	} else {
+		log.Println(err)
+	}
+}
+
 func executeRawDataQuery() {
-	session.ExecuteUpdateStatement("insert into root.ln.wf02.wt02(time,s5) values(1,true)")
+	session.ExecuteNonQueryStatement("insert into root.ln.wf02.wt02(time,s5) values(1,true)")
 	var (
-		paths     []string = []string{"root.ln.wf02.wt02.s5"}
-		startTime int64    = 1
-		endTime   int64    = 200
+		paths           = []string{"root.ln.wf02.wt02.s5"}
+		startTime int64 = 1
+		endTime   int64 = 200
 	)
 	sessionDataSet, err := session.ExecuteRawDataQuery(paths, startTime, endTime)
 	if err == nil {
@@ -643,7 +642,7 @@ func executeBatchStatement() {
 	}
 }
 
-func checkError(status *rpc.TSStatus, err error) {
+func checkError(status *common.TSStatus, err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -652,18 +651,5 @@ func checkError(status *rpc.TSStatus, err error) {
 		if err = client.VerifySuccess(status); err != nil {
 			log.Println(err)
 		}
-	}
-}
-
-// If your IotDB is a cluster version, you can use the following code for multi node connection
-func connectCluster() {
-	config := &client.ClusterConfig{
-		NodeUrls: strings.Split("127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669", ","),
-		UserName: "root",
-		Password: "IoTDB@2017",
-	}
-	session = client.NewClusterSession(config)
-	if err := session.OpenCluster(false); err != nil {
-		log.Fatal(err)
 	}
 }

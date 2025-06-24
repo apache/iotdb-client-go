@@ -22,7 +22,7 @@ package client
 import (
 	"testing"
 
-	"github.com/apache/iotdb-client-go/rpc"
+	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 func Test_bytesToInt32(t *testing.T) {
@@ -165,7 +165,7 @@ func Test_float64ToString(t *testing.T) {
 		want string
 	}{
 		{
-			name: "Test Flota64",
+			name: "Test Float64",
 			args: args{
 				val: 0.39751212862981283,
 			},
@@ -181,11 +181,37 @@ func Test_float64ToString(t *testing.T) {
 	}
 }
 
+func Test_bytesToHexString(t *testing.T) {
+	type args struct {
+		val []byte
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "Test bytes",
+			args: args{
+				val: []byte("bytes"),
+			},
+			want: "0x6279746573",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := bytesToHexString(tt.args.val); got != tt.want {
+				t.Errorf("bytesToHexString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_verifySuccess(t *testing.T) {
 	type args struct {
-		status *rpc.TSStatus
+		status *common.TSStatus
 	}
-	var errMsg string = "error occurred"
+	var errMsg = "error occurred"
 	tests := []struct {
 		name    string
 		args    args
@@ -194,30 +220,30 @@ func Test_verifySuccess(t *testing.T) {
 		{
 			name: "RedirectionRecommend",
 			args: args{
-				status: &rpc.TSStatus{
+				status: &common.TSStatus{
 					Code:      RedirectionRecommend,
 					Message:   &errMsg,
-					SubStatus: []*rpc.TSStatus{},
+					SubStatus: []*common.TSStatus{},
 				},
 			},
 			wantErr: false,
 		}, {
 			name: "SuccessStatus",
 			args: args{
-				status: &rpc.TSStatus{
+				status: &common.TSStatus{
 					Code:      SuccessStatus,
 					Message:   &errMsg,
-					SubStatus: []*rpc.TSStatus{},
+					SubStatus: []*common.TSStatus{},
 				},
 			},
 			wantErr: false,
 		}, {
 			name: "MultipleError",
 			args: args{
-				status: &rpc.TSStatus{
+				status: &common.TSStatus{
 					Code:    MultipleError,
 					Message: &errMsg,
-					SubStatus: []*rpc.TSStatus{
+					SubStatus: []*common.TSStatus{
 						{
 							Code:    ShutDownError,
 							Message: &errMsg,
@@ -229,10 +255,10 @@ func Test_verifySuccess(t *testing.T) {
 		}, {
 			name: "CloseOperationError",
 			args: args{
-				status: &rpc.TSStatus{
+				status: &common.TSStatus{
 					Code:      CloseOperationError,
 					Message:   &errMsg,
-					SubStatus: []*rpc.TSStatus{},
+					SubStatus: []*common.TSStatus{},
 				},
 			},
 			wantErr: true,
@@ -249,11 +275,11 @@ func Test_verifySuccess(t *testing.T) {
 
 func Test_verifySuccesses(t *testing.T) {
 	type args struct {
-		statuses []*rpc.TSStatus
+		statuses []*common.TSStatus
 	}
-	var internalServerError string = "InternalServerError"
-	var success string = "Success"
-	var redirectionRecommend string = "RedirectionRecommend"
+	var internalServerError = "InternalServerError"
+	var success = "Success"
+	var redirectionRecommend = "RedirectionRecommend"
 	tests := []struct {
 		name    string
 		args    args
@@ -262,11 +288,11 @@ func Test_verifySuccesses(t *testing.T) {
 		{
 			name: "InternalServerError",
 			args: args{
-				statuses: []*rpc.TSStatus{
+				statuses: []*common.TSStatus{
 					{
 						Code:      InternalServerError,
 						Message:   &internalServerError,
-						SubStatus: []*rpc.TSStatus{},
+						SubStatus: []*common.TSStatus{},
 					},
 				},
 			},
@@ -274,11 +300,11 @@ func Test_verifySuccesses(t *testing.T) {
 		}, {
 			name: "SuccessStatus",
 			args: args{
-				statuses: []*rpc.TSStatus{
+				statuses: []*common.TSStatus{
 					{
 						Code:      SuccessStatus,
 						Message:   &success,
-						SubStatus: []*rpc.TSStatus{},
+						SubStatus: []*common.TSStatus{},
 					},
 				},
 			},
@@ -287,11 +313,11 @@ func Test_verifySuccesses(t *testing.T) {
 		{
 			name: "RedirectionRecommend",
 			args: args{
-				statuses: []*rpc.TSStatus{
+				statuses: []*common.TSStatus{
 					{
 						Code:      RedirectionRecommend,
 						Message:   &redirectionRecommend,
-						SubStatus: []*rpc.TSStatus{},
+						SubStatus: []*common.TSStatus{},
 					},
 				},
 			},
