@@ -177,7 +177,7 @@ func (s *e2eTestSuite) Test_InsertRecordsWithWrongType() {
 	_, err := s.session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp)
 	assert := s.Require()
 	assert.NotNil(err)
-	//assert.Equal("measurement s1 values[0] 100(float64) must be bool", err.Error())
+	assert.Equal("measurement s1 values[0] 100(float64) must be bool", err.Error())
 }
 
 func (s *e2eTestSuite) Test_InsertAlignedRecord() {
