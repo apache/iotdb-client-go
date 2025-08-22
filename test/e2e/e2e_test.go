@@ -166,6 +166,20 @@ func (s *e2eTestSuite) Test_InsertRecords() {
 	assert.Equal(status, "Working")
 }
 
+func (s *e2eTestSuite) Test_InsertRecordsWithWrongType() {
+	var (
+		deviceId     = []string{"root.test.d1", "root.test.d2"}
+		measurements = [][]string{{"s1", "s2"}, {"s1"}}
+		dataTypes    = [][]client.TSDataType{{client.BOOLEAN, client.FLOAT}, {client.BOOLEAN}}
+		values       = [][]interface{}{{100.0, true}, {"aaa"}}
+		timestamp    = []int64{1, 2}
+	)
+	_, err := s.session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp)
+	assert := s.Require()
+	assert.NotNil(err)
+	//assert.Equal("measurement s1 values[0] 100(float64) must be bool", err.Error())
+}
+
 func (s *e2eTestSuite) Test_InsertAlignedRecord() {
 	var (
 		deviceId     = "root.tsg2.dev1"

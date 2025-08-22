@@ -579,7 +579,7 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	request.Timestamp = time
 	request.Measurements = measurements
 	request.IsAligned = &isAligned
-	if bys, err := valuesToBytes(types, values); err == nil {
+	if bys, err := valuesToBytes(types, values, measurements); err == nil {
 		request.Values = bys
 	} else {
 		return nil, err
@@ -665,7 +665,7 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
 
 	valuesList := make([][]byte, length)
 	for i := 0; i < length; i++ {
-		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i]); err != nil {
+		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i], measurementsSlice[i]); err != nil {
 			return nil, err
 		}
 	}
@@ -707,7 +707,7 @@ func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []
 
 	valuesList := make([][]byte, length)
 	for i := 0; i < length; i++ {
-		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i]); err != nil {
+		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i], measurementsSlice[i]); err != nil {
 			return nil, err
 		}
 	}
@@ -952,7 +952,7 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 	}
 	v := make([][]byte, length)
 	for i := 0; i < len(measurements); i++ {
-		if bys, err := valuesToBytes(dataTypes[i], values[i]); err == nil {
+		if bys, err := valuesToBytes(dataTypes[i], values[i], measurements[i]); err == nil {
 			v[i] = bys
 		} else {
 			return nil, err
@@ -962,7 +962,7 @@ func (s *Session) genInsertRecordsReq(deviceIds []string, measurements [][]strin
 	return &request, nil
 }
 
-func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error) {
+func valuesToBytes(dataTypes []TSDataType, values []interface{}, measurementNames []string) ([]byte, error) {
 	buff := &bytes.Buffer{}
 	for i, t := range dataTypes {
 		binary.Write(buff, binary.BigEndian, byte(t))
@@ -977,35 +977,35 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 			case bool:
 				binary.Write(buff, binary.BigEndian, v)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be bool", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be bool", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		case INT32:
 			switch v.(type) {
 			case int32:
 				binary.Write(buff, binary.BigEndian, v)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be int32", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be int32", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		case INT64, TIMESTAMP:
 			switch v.(type) {
 			case int64:
 				binary.Write(buff, binary.BigEndian, v)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be int64", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be int64", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		case FLOAT:
 			switch v.(type) {
 			case float32:
 				binary.Write(buff, binary.BigEndian, v)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be float32", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be float32", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		case DOUBLE:
 			switch v.(type) {
 			case float64:
 				binary.Write(buff, binary.BigEndian, v)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be float64", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be float64", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		case TEXT, STRING:
 			switch s := v.(type) {
@@ -1018,7 +1018,7 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 				binary.Write(buff, binary.BigEndian, int32(size))
 				binary.Write(buff, binary.BigEndian, s)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be string or []byte", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be string or []byte", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		case BLOB:
 			switch s := v.(type) {
@@ -1027,7 +1027,7 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 				binary.Write(buff, binary.BigEndian, int32(size))
 				binary.Write(buff, binary.BigEndian, s)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be []byte", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be []byte", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		case DATE:
 			switch s := v.(type) {
@@ -1038,10 +1038,10 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}) ([]byte, error)
 				}
 				binary.Write(buff, binary.BigEndian, date)
 			default:
-				return nil, fmt.Errorf("values[%d] %v(%v) must be time.Time", i, v, reflect.TypeOf(v))
+				return nil, fmt.Errorf("measurement %s values[%d] %v(%v) must be time.Time", measurementNames[i], i, v, reflect.TypeOf(v))
 			}
 		default:
-			return nil, fmt.Errorf("types[%d] is incorrect, it must in (BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, BLOB, DATE, STRING)", i)
+			return nil, fmt.Errorf("measurement %s types[%d] is incorrect, it must in (BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, BLOB, DATE, STRING)", measurementNames[i], i)
 		}
 	}
 	return buff.Bytes(), nil
