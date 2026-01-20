@@ -103,9 +103,8 @@ func (decoder *Int32ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 	case INT32, DATE:
 		intValues := make([]int32, positionCount)
 		for i := int32(0); i < positionCount; i++ {
-			if nullIndicators != nil && nullIndicators[i] {
-				continue
-			}
+			// Always read the value from the stream, even if it's null
+			// The server sends data for null positions too
 			err := binary.Read(reader, binary.BigEndian, &intValues[i])
 			if err != nil {
 				return nil, err
@@ -115,9 +114,8 @@ func (decoder *Int32ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 	case FLOAT:
 		floatValues := make([]float32, positionCount)
 		for i := int32(0); i < positionCount; i++ {
-			if nullIndicators != nil && nullIndicators[i] {
-				continue
-			}
+			// Always read the value from the stream, even if it's null
+			// The server sends data for null positions too
 			err := binary.Read(reader, binary.BigEndian, &floatValues[i])
 			if err != nil {
 				return nil, err
@@ -147,9 +145,8 @@ func (decoder *Int64ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 	case INT64, TIMESTAMP:
 		values := make([]int64, positionCount)
 		for i := int32(0); i < positionCount; i++ {
-			if nullIndicators != nil && nullIndicators[i] {
-				continue
-			}
+			// Always read the value from the stream, even if it's null
+			// The server sends data for null positions too
 			if err = binary.Read(reader, binary.BigEndian, &values[i]); err != nil {
 				return nil, err
 			}
@@ -158,9 +155,8 @@ func (decoder *Int64ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 	case DOUBLE:
 		values := make([]float64, positionCount)
 		for i := int32(0); i < positionCount; i++ {
-			if nullIndicators != nil && nullIndicators[i] {
-				continue
-			}
+			// Always read the value from the stream, even if it's null
+			// The server sends data for null positions too
 			if err = binary.Read(reader, binary.BigEndian, &values[i]); err != nil {
 				return nil, err
 			}
@@ -232,12 +228,19 @@ func (decoder *BinaryArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTy
 		if err != nil {
 			return nil, err
 		}
-		value := make([]byte, length)
-		_, err = reader.Read(value)
-		if err != nil {
-			return nil, err
+		
+		// If length is 0, create an empty Binary without reading from the stream
+		// Reading 0 bytes from a reader at EOF will return an EOF error
+		if length == 0 {
+			values[i] = NewBinary([]byte{})
+		} else {
+			value := make([]byte, length)
+			_, err = reader.Read(value)
+			if err != nil {
+				return nil, err
+			}
+			values[i] = NewBinary(value)
 		}
-		values[i] = NewBinary(value)
 	}
 	return NewBinaryColumn(0, positionCount, nullIndicators, values)
 }
