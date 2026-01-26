@@ -17,6 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+sed -i 's/dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' /usr/local/iotdb/conf/iotdb-system.properties
 nohup /usr/local/iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
 sleep 5
 ls /usr/local/iotdb/sbin
