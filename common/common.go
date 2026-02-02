@@ -5024,6 +5024,344 @@ func (p *TSetThrottleQuotaReq) String() string {
 }
 
 // Attributes:
+//  - PipeMetaList
+//  - PipeCompletedList
+//  - PipeRemainingEventCountList
+//  - PipeRemainingTimeList
+type TPipeHeartbeatResp struct {
+  PipeMetaList [][]byte `thrift:"pipeMetaList,1,required" db:"pipeMetaList" json:"pipeMetaList"`
+  PipeCompletedList []bool `thrift:"pipeCompletedList,2" db:"pipeCompletedList" json:"pipeCompletedList,omitempty"`
+  PipeRemainingEventCountList []int64 `thrift:"pipeRemainingEventCountList,3" db:"pipeRemainingEventCountList" json:"pipeRemainingEventCountList,omitempty"`
+  PipeRemainingTimeList []float64 `thrift:"pipeRemainingTimeList,4" db:"pipeRemainingTimeList" json:"pipeRemainingTimeList,omitempty"`
+}
+
+func NewTPipeHeartbeatResp() *TPipeHeartbeatResp {
+  return &TPipeHeartbeatResp{}
+}
+
+
+func (p *TPipeHeartbeatResp) GetPipeMetaList() [][]byte {
+  return p.PipeMetaList
+}
+var TPipeHeartbeatResp_PipeCompletedList_DEFAULT []bool
+
+func (p *TPipeHeartbeatResp) GetPipeCompletedList() []bool {
+  return p.PipeCompletedList
+}
+var TPipeHeartbeatResp_PipeRemainingEventCountList_DEFAULT []int64
+
+func (p *TPipeHeartbeatResp) GetPipeRemainingEventCountList() []int64 {
+  return p.PipeRemainingEventCountList
+}
+var TPipeHeartbeatResp_PipeRemainingTimeList_DEFAULT []float64
+
+func (p *TPipeHeartbeatResp) GetPipeRemainingTimeList() []float64 {
+  return p.PipeRemainingTimeList
+}
+func (p *TPipeHeartbeatResp) IsSetPipeCompletedList() bool {
+  return p.PipeCompletedList != nil
+}
+
+func (p *TPipeHeartbeatResp) IsSetPipeRemainingEventCountList() bool {
+  return p.PipeRemainingEventCountList != nil
+}
+
+func (p *TPipeHeartbeatResp) IsSetPipeRemainingTimeList() bool {
+  return p.PipeRemainingTimeList != nil
+}
+
+func (p *TPipeHeartbeatResp) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+  var issetPipeMetaList bool = false;
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+        issetPipeMetaList = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 2:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 3:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField3(ctx, iprot); err != nil {
+          return err
+        }
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 4:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField4(ctx, iprot); err != nil {
+          return err
+        }
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  if !issetPipeMetaList{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field PipeMetaList is not set"));
+  }
+  return nil
+}
+
+func (p *TPipeHeartbeatResp)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([][]byte, 0, size)
+  p.PipeMetaList =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem24 []byte
+    if v, err := iprot.ReadBinary(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem24 = v
+}
+    p.PipeMetaList = append(p.PipeMetaList, _elem24)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TPipeHeartbeatResp)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]bool, 0, size)
+  p.PipeCompletedList =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem25 bool
+    if v, err := iprot.ReadBool(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem25 = v
+}
+    p.PipeCompletedList = append(p.PipeCompletedList, _elem25)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TPipeHeartbeatResp)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]int64, 0, size)
+  p.PipeRemainingEventCountList =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem26 int64
+    if v, err := iprot.ReadI64(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem26 = v
+}
+    p.PipeRemainingEventCountList = append(p.PipeRemainingEventCountList, _elem26)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TPipeHeartbeatResp)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]float64, 0, size)
+  p.PipeRemainingTimeList =  tSlice
+  for i := 0; i < size; i ++ {
+var _elem27 float64
+    if v, err := iprot.ReadDouble(ctx); err != nil {
+    return thrift.PrependError("error reading field 0: ", err)
+} else {
+    _elem27 = v
+}
+    p.PipeRemainingTimeList = append(p.PipeRemainingTimeList, _elem27)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TPipeHeartbeatResp) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TPipeHeartbeatResp"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+    if err := p.writeField2(ctx, oprot); err != nil { return err }
+    if err := p.writeField3(ctx, oprot); err != nil { return err }
+    if err := p.writeField4(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *TPipeHeartbeatResp) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "pipeMetaList", thrift.LIST, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:pipeMetaList: ", p), err) }
+  if err := oprot.WriteListBegin(ctx, thrift.STRING, len(p.PipeMetaList)); err != nil {
+    return thrift.PrependError("error writing list begin: ", err)
+  }
+  for _, v := range p.PipeMetaList {
+    if err := oprot.WriteBinary(ctx, v); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+  }
+  if err := oprot.WriteListEnd(ctx); err != nil {
+    return thrift.PrependError("error writing list end: ", err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:pipeMetaList: ", p), err) }
+  return err
+}
+
+func (p *TPipeHeartbeatResp) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if p.IsSetPipeCompletedList() {
+    if err := oprot.WriteFieldBegin(ctx, "pipeCompletedList", thrift.LIST, 2); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:pipeCompletedList: ", p), err) }
+    if err := oprot.WriteListBegin(ctx, thrift.BOOL, len(p.PipeCompletedList)); err != nil {
+      return thrift.PrependError("error writing list begin: ", err)
+    }
+    for _, v := range p.PipeCompletedList {
+      if err := oprot.WriteBool(ctx, bool(v)); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+    }
+    if err := oprot.WriteListEnd(ctx); err != nil {
+      return thrift.PrependError("error writing list end: ", err)
+    }
+    if err := oprot.WriteFieldEnd(ctx); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field end error 2:pipeCompletedList: ", p), err) }
+  }
+  return err
+}
+
+func (p *TPipeHeartbeatResp) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if p.IsSetPipeRemainingEventCountList() {
+    if err := oprot.WriteFieldBegin(ctx, "pipeRemainingEventCountList", thrift.LIST, 3); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:pipeRemainingEventCountList: ", p), err) }
+    if err := oprot.WriteListBegin(ctx, thrift.I64, len(p.PipeRemainingEventCountList)); err != nil {
+      return thrift.PrependError("error writing list begin: ", err)
+    }
+    for _, v := range p.PipeRemainingEventCountList {
+      if err := oprot.WriteI64(ctx, int64(v)); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+    }
+    if err := oprot.WriteListEnd(ctx); err != nil {
+      return thrift.PrependError("error writing list end: ", err)
+    }
+    if err := oprot.WriteFieldEnd(ctx); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field end error 3:pipeRemainingEventCountList: ", p), err) }
+  }
+  return err
+}
+
+func (p *TPipeHeartbeatResp) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if p.IsSetPipeRemainingTimeList() {
+    if err := oprot.WriteFieldBegin(ctx, "pipeRemainingTimeList", thrift.LIST, 4); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:pipeRemainingTimeList: ", p), err) }
+    if err := oprot.WriteListBegin(ctx, thrift.DOUBLE, len(p.PipeRemainingTimeList)); err != nil {
+      return thrift.PrependError("error writing list begin: ", err)
+    }
+    for _, v := range p.PipeRemainingTimeList {
+      if err := oprot.WriteDouble(ctx, float64(v)); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T. (0) field write error: ", p), err) }
+    }
+    if err := oprot.WriteListEnd(ctx); err != nil {
+      return thrift.PrependError("error writing list end: ", err)
+    }
+    if err := oprot.WriteFieldEnd(ctx); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T write field end error 4:pipeRemainingTimeList: ", p), err) }
+  }
+  return err
+}
+
+func (p *TPipeHeartbeatResp) Equals(other *TPipeHeartbeatResp) bool {
+  if p == other {
+    return true
+  } else if p == nil || other == nil {
+    return false
+  }
+  if len(p.PipeMetaList) != len(other.PipeMetaList) { return false }
+  for i, _tgt := range p.PipeMetaList {
+    _src28 := other.PipeMetaList[i]
+    if bytes.Compare(_tgt, _src28) != 0 { return false }
+  }
+  if len(p.PipeCompletedList) != len(other.PipeCompletedList) { return false }
+  for i, _tgt := range p.PipeCompletedList {
+    _src29 := other.PipeCompletedList[i]
+    if _tgt != _src29 { return false }
+  }
+  if len(p.PipeRemainingEventCountList) != len(other.PipeRemainingEventCountList) { return false }
+  for i, _tgt := range p.PipeRemainingEventCountList {
+    _src30 := other.PipeRemainingEventCountList[i]
+    if _tgt != _src30 { return false }
+  }
+  if len(p.PipeRemainingTimeList) != len(other.PipeRemainingTimeList) { return false }
+  for i, _tgt := range p.PipeRemainingTimeList {
+    _src31 := other.PipeRemainingTimeList[i]
+    if _tgt != _src31 { return false }
+  }
+  return true
+}
+
+func (p *TPipeHeartbeatResp) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("TPipeHeartbeatResp(%+v)", *p)
+}
+
+// Attributes:
 //  - LicenseIssueTimestamp
 //  - ExpireTimestamp
 //  - DataNodeNumLimit
@@ -6324,11 +6662,11 @@ func (p *TTestConnectionResp)  ReadField2(ctx context.Context, iprot thrift.TPro
   tSlice := make([]*TTestConnectionResult_, 0, size)
   p.ResultList =  tSlice
   for i := 0; i < size; i ++ {
-    _elem24 := &TTestConnectionResult_{}
-    if err := _elem24.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem24), err)
+    _elem32 := &TTestConnectionResult_{}
+    if err := _elem32.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem32), err)
     }
-    p.ResultList = append(p.ResultList, _elem24)
+    p.ResultList = append(p.ResultList, _elem32)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -6389,8 +6727,8 @@ func (p *TTestConnectionResp) Equals(other *TTestConnectionResp) bool {
   if !p.Status.Equals(other.Status) { return false }
   if len(p.ResultList) != len(other.ResultList) { return false }
   for i, _tgt := range p.ResultList {
-    _src25 := other.ResultList[i]
-    if !_tgt.Equals(_src25) { return false }
+    _src33 := other.ResultList[i]
+    if !_tgt.Equals(_src33) { return false }
   }
   return true
 }
@@ -6488,11 +6826,11 @@ func (p *TNodeLocations)  ReadField1(ctx context.Context, iprot thrift.TProtocol
   tSlice := make([]*TConfigNodeLocation, 0, size)
   p.ConfigNodeLocations =  tSlice
   for i := 0; i < size; i ++ {
-    _elem26 := &TConfigNodeLocation{}
-    if err := _elem26.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem26), err)
+    _elem34 := &TConfigNodeLocation{}
+    if err := _elem34.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem34), err)
     }
-    p.ConfigNodeLocations = append(p.ConfigNodeLocations, _elem26)
+    p.ConfigNodeLocations = append(p.ConfigNodeLocations, _elem34)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -6508,11 +6846,11 @@ func (p *TNodeLocations)  ReadField2(ctx context.Context, iprot thrift.TProtocol
   tSlice := make([]*TDataNodeLocation, 0, size)
   p.DataNodeLocations =  tSlice
   for i := 0; i < size; i ++ {
-    _elem27 := &TDataNodeLocation{}
-    if err := _elem27.Read(ctx, iprot); err != nil {
-      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem27), err)
+    _elem35 := &TDataNodeLocation{}
+    if err := _elem35.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem35), err)
     }
-    p.DataNodeLocations = append(p.DataNodeLocations, _elem27)
+    p.DataNodeLocations = append(p.DataNodeLocations, _elem35)
   }
   if err := iprot.ReadListEnd(ctx); err != nil {
     return thrift.PrependError("error reading list end: ", err)
@@ -6584,13 +6922,13 @@ func (p *TNodeLocations) Equals(other *TNodeLocations) bool {
   }
   if len(p.ConfigNodeLocations) != len(other.ConfigNodeLocations) { return false }
   for i, _tgt := range p.ConfigNodeLocations {
-    _src28 := other.ConfigNodeLocations[i]
-    if !_tgt.Equals(_src28) { return false }
+    _src36 := other.ConfigNodeLocations[i]
+    if !_tgt.Equals(_src36) { return false }
   }
   if len(p.DataNodeLocations) != len(other.DataNodeLocations) { return false }
   for i, _tgt := range p.DataNodeLocations {
-    _src29 := other.DataNodeLocations[i]
-    if !_tgt.Equals(_src29) { return false }
+    _src37 := other.DataNodeLocations[i]
+    if !_tgt.Equals(_src37) { return false }
   }
   return true
 }
