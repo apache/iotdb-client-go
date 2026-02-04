@@ -491,6 +491,17 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 	return s.ExecuteStatementWithContext(context.Background(), sql)
 }
 
+func (s *Session) Ping(ctx context.Context) error {
+	status, err := s.client.TestConnectionEmptyRPC(ctx)
+	if err != nil {
+		return err
+	}
+	if status.GetCode() == SuccessStatus {
+		return nil
+	}
+	return errors.New("Ping failed: " + status.GetMessage())
+}
+
 func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {
 	request := rpc.TSExecuteStatementReq{
 		SessionId:   s.sessionId,
