@@ -725,14 +725,8 @@ func printDataSet2(sds *client.SessionDataSet) {
 	}
 }
 
-func checkError(status *common.TSStatus, err error) {
+func checkError(err error) {
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	if status != nil {
-		if err = client.VerifySuccess(status); err != nil {
-			log.Println(err)
-		}
 	}
 }

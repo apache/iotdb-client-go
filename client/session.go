@@ -228,14 +228,17 @@ func (s *Session) Close() error {
  *return
  *error: correctness of operation
  */
-func (s *Session) SetStorageGroup(storageGroupId string) (r *common.TSStatus, err error) {
-	r, err = s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
+func (s *Session) SetStorageGroup(storageGroupId string) error {
+	r, err := s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			r, err = s.client.SetStorageGroup(context.Background(), s.sessionId, storageGroupId)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 /*
@@ -245,14 +248,17 @@ func (s *Session) SetStorageGroup(storageGroupId string) (r *common.TSStatus, er
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteStorageGroup(storageGroupId string) (r *common.TSStatus, err error) {
-	r, err = s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
+func (s *Session) DeleteStorageGroup(storageGroupId string) error {
+	r, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
 	if err != nil && r == nil {
 		if s.reconnect() {
 			r, err = s.client.DeleteStorageGroups(context.Background(), s.sessionId, []string{storageGroupId})
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 /*
@@ -262,14 +268,17 @@ func (s *Session) DeleteStorageGroup(storageGroupId string) (r *common.TSStatus,
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteStorageGroups(storageGroupIds ...string) (r *common.TSStatus, err error) {
-	r, err = s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
+func (s *Session) DeleteStorageGroups(storageGroupIds ...string) error {
+	r, err := s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			r, err = s.client.DeleteStorageGroups(context.Background(), s.sessionId, storageGroupIds)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 /*
@@ -282,7 +291,7 @@ func (s *Session) DeleteStorageGroups(storageGroupIds ...string) (r *common.TSSt
  *return
  *error: correctness of operation
  */
-func (s *Session) CreateTimeseries(path string, dataType TSDataType, encoding TSEncoding, compressor TSCompressionType, attributes map[string]string, tags map[string]string) (r *common.TSStatus, err error) {
+func (s *Session) CreateTimeseries(path string, dataType TSDataType, encoding TSEncoding, compressor TSCompressionType, attributes map[string]string, tags map[string]string) error {
 	request := rpc.TSCreateTimeseriesReq{
 		SessionId: s.sessionId, Path: path, DataType: int32(dataType), Encoding: int32(encoding),
 		Compressor: int32(compressor), Attributes: attributes, Tags: tags,
@@ -294,7 +303,10 @@ func (s *Session) CreateTimeseries(path string, dataType TSDataType, encoding TS
 			status, err = s.client.CreateTimeseries(context.Background(), &request)
 		}
 	}
-	return status, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(status)
 }
 
 /*
@@ -309,7 +321,7 @@ func (s *Session) CreateTimeseries(path string, dataType TSDataType, encoding TS
  *return
  *error: correctness of operation
  */
-func (s *Session) CreateAlignedTimeseries(prefixPath string, measurements []string, dataTypes []TSDataType, encodings []TSEncoding, compressors []TSCompressionType, measurementAlias []string) (r *common.TSStatus, err error) {
+func (s *Session) CreateAlignedTimeseries(prefixPath string, measurements []string, dataTypes []TSDataType, encodings []TSEncoding, compressors []TSCompressionType, measurementAlias []string) error {
 	destTypes := make([]int32, len(dataTypes))
 	for i, t := range dataTypes {
 		destTypes[i] = int32(t)
@@ -341,7 +353,10 @@ func (s *Session) CreateAlignedTimeseries(prefixPath string, measurements []stri
 			status, err = s.client.CreateAlignedTimeseries(context.Background(), &request)
 		}
 	}
-	return status, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(status)
 }
 
 /*
@@ -354,7 +369,7 @@ func (s *Session) CreateAlignedTimeseries(prefixPath string, measurements []stri
  *return
  *error: correctness of operation
  */
-func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []TSDataType, encodings []TSEncoding, compressors []TSCompressionType) (r *common.TSStatus, err error) {
+func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []TSDataType, encodings []TSEncoding, compressors []TSCompressionType) error {
 	destTypes := make([]int32, len(dataTypes))
 	for i, t := range dataTypes {
 		destTypes[i] = int32(t)
@@ -374,7 +389,7 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []TSDataType, 
 		SessionId: s.sessionId, Paths: paths, DataTypes: destTypes,
 		Encodings: destEncodings, Compressors: destCompressions,
 	}
-	r, err = s.client.CreateMultiTimeseries(context.Background(), &request)
+	r, err := s.client.CreateMultiTimeseries(context.Background(), &request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -383,7 +398,10 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []TSDataType, 
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 /*
@@ -393,14 +411,17 @@ func (s *Session) CreateMultiTimeseries(paths []string, dataTypes []TSDataType, 
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteTimeseries(paths []string) (r *common.TSStatus, err error) {
-	r, err = s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
+func (s *Session) DeleteTimeseries(paths []string) error {
+	r, err := s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			r, err = s.client.DeleteTimeseries(context.Background(), s.sessionId, paths)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 /*
@@ -412,16 +433,19 @@ func (s *Session) DeleteTimeseries(paths []string) (r *common.TSStatus, err erro
  *return
  *error: correctness of operation
  */
-func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) (r *common.TSStatus, err error) {
+func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) error {
 	request := rpc.TSDeleteDataReq{SessionId: s.sessionId, Paths: paths, StartTime: startTime, EndTime: endTime}
-	r, err = s.client.DeleteData(context.Background(), &request)
+	r, err := s.client.DeleteData(context.Background(), &request)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			r, err = s.client.DeleteData(context.Background(), &request)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 /*
@@ -434,19 +458,22 @@ func (s *Session) DeleteData(paths []string, startTime int64, endTime int64) (r 
  *return
  *error: correctness of operation
  */
-func (s *Session) InsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) (r *common.TSStatus, err error) {
+func (s *Session) InsertStringRecord(deviceId string, measurements []string, values []string, timestamp int64) error {
 	request := rpc.TSInsertStringRecordReq{
 		SessionId: s.sessionId, PrefixPath: deviceId, Measurements: measurements,
 		Values: values, Timestamp: timestamp,
 	}
-	r, err = s.client.InsertStringRecord(context.Background(), &request)
+	r, err := s.client.InsertStringRecord(context.Background(), &request)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			r, err = s.client.InsertStringRecord(context.Background(), &request)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 func (s *Session) GetTimeZone() (string, error) {
@@ -457,11 +484,14 @@ func (s *Session) GetTimeZone() (string, error) {
 	return resp.TimeZone, nil
 }
 
-func (s *Session) SetTimeZone(timeZone string) (r *common.TSStatus, err error) {
+func (s *Session) SetTimeZone(timeZone string) error {
 	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
-	r, err = s.client.SetTimeZone(context.Background(), &request)
+	r, err := s.client.SetTimeZone(context.Background(), &request)
 	s.config.TimeZone = timeZone
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (*SessionDataSet, error) {
@@ -491,7 +521,7 @@ func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
 	return s.ExecuteStatementWithContext(context.Background(), sql)
 }
 
-func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {
+func (s *Session) ExecuteNonQueryStatement(sql string) error {
 	request := rpc.TSExecuteStatementReq{
 		SessionId:   s.sessionId,
 		Statement:   sql,
@@ -507,11 +537,13 @@ func (s *Session) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err 
 			resp, err = s.client.ExecuteStatementV2(context.Background(), &request)
 		}
 	}
+	if err != nil {
+		return err
+	}
 	if resp.IsSetDatabase() {
 		s.changeDatabase(*resp.Database)
 	}
-
-	return resp.Status, err
+	return VerifySuccess(resp.Status)
 }
 
 func (s *Session) changeDatabase(database string) {
@@ -648,12 +680,12 @@ func (s *Session) genTSInsertRecordReq(deviceId string, time int64,
 	return request, nil
 }
 
-func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []TSDataType, values []interface{}, timestamp int64) (r *common.TSStatus, err error) {
+func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes []TSDataType, values []interface{}, timestamp int64) error {
 	request, err := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	r, err = s.client.InsertRecord(context.Background(), request)
+	r, err := s.client.InsertRecord(context.Background(), request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -662,15 +694,18 @@ func (s *Session) InsertRecord(deviceId string, measurements []string, dataTypes
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
-func (s *Session) InsertAlignedRecord(deviceId string, measurements []string, dataTypes []TSDataType, values []interface{}, timestamp int64) (r *common.TSStatus, err error) {
+func (s *Session) InsertAlignedRecord(deviceId string, measurements []string, dataTypes []TSDataType, values []interface{}, timestamp int64) error {
 	request, err := s.genTSInsertRecordReq(deviceId, timestamp, measurements, dataTypes, values, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	r, err = s.client.InsertRecord(context.Background(), request)
+	r, err := s.client.InsertRecord(context.Background(), request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -679,7 +714,10 @@ func (s *Session) InsertAlignedRecord(deviceId string, measurements []string, da
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 type deviceData struct {
@@ -709,10 +747,10 @@ func (d *deviceData) Swap(i, j int) {
 // executeBatch, we pack some insert request in batch and send them to server. If you want improve
 // your performance, please see insertTablet method
 // Each row is independent, which could have different insertTargetName, time, number of measurements
-func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, measurementsSlice [][]string, dataTypesSlice [][]TSDataType, valuesSlice [][]interface{}, sorted bool) (r *common.TSStatus, err error) {
+func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, measurementsSlice [][]string, dataTypesSlice [][]TSDataType, valuesSlice [][]interface{}, sorted bool) error {
 	length := len(timestamps)
 	if len(measurementsSlice) != length || len(dataTypesSlice) != length || len(valuesSlice) != length {
-		return nil, errors.New("timestamps, measurementsSlice and valuesSlice's size should be equal")
+		return errors.New("timestamps, measurementsSlice and valuesSlice's size should be equal")
 	}
 
 	if !sorted {
@@ -724,10 +762,11 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
 		})
 	}
 
+	var err error
 	valuesList := make([][]byte, length)
 	for i := 0; i < length; i++ {
 		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i], measurementsSlice[i]); err != nil {
-			return nil, err
+			return err
 		}
 	}
 
@@ -739,7 +778,7 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
 		ValuesList:       valuesList,
 	}
 
-	r, err = s.client.InsertRecordsOfOneDevice(context.Background(), request)
+	r, err := s.client.InsertRecordsOfOneDevice(context.Background(), request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -748,13 +787,16 @@ func (s *Session) InsertRecordsOfOneDevice(deviceId string, timestamps []int64, 
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
-func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []int64, measurementsSlice [][]string, dataTypesSlice [][]TSDataType, valuesSlice [][]interface{}, sorted bool) (r *common.TSStatus, err error) {
+func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []int64, measurementsSlice [][]string, dataTypesSlice [][]TSDataType, valuesSlice [][]interface{}, sorted bool) error {
 	length := len(timestamps)
 	if len(measurementsSlice) != length || len(dataTypesSlice) != length || len(valuesSlice) != length {
-		return nil, errors.New("timestamps, measurementsSlice and valuesSlice's size should be equal")
+		return errors.New("timestamps, measurementsSlice and valuesSlice's size should be equal")
 	}
 
 	if !sorted {
@@ -766,10 +808,11 @@ func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []
 		})
 	}
 
+	var err error
 	valuesList := make([][]byte, length)
 	for i := 0; i < length; i++ {
 		if valuesList[i], err = valuesToBytes(dataTypesSlice[i], valuesSlice[i], measurementsSlice[i]); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	isAligned := true
@@ -782,7 +825,7 @@ func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []
 		IsAligned:        &isAligned,
 	}
 
-	r, err = s.client.InsertRecordsOfOneDevice(context.Background(), request)
+	r, err := s.client.InsertRecordsOfOneDevice(context.Background(), request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -791,7 +834,10 @@ func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 /*
@@ -808,37 +854,43 @@ func (s *Session) InsertAlignedRecordsOfOneDevice(deviceId string, timestamps []
  */
 func (s *Session) InsertRecords(deviceIds []string, measurements [][]string, dataTypes [][]TSDataType, values [][]interface{},
 	timestamps []int64,
-) (r *common.TSStatus, err error) {
+) error {
 	request, err := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps, false)
 	if err != nil {
-		return nil, err
+		return err
 	} else {
-		r, err = s.client.InsertRecords(context.Background(), request)
+		r, err := s.client.InsertRecords(context.Background(), request)
 		if err != nil && r == nil {
 			if s.reconnect() {
 				request.SessionId = s.sessionId
 				r, err = s.client.InsertRecords(context.Background(), request)
 			}
 		}
-		return r, err
+		if err != nil {
+			return err
+		}
+		return VerifySuccess(r)
 	}
 }
 
 func (s *Session) InsertAlignedRecords(deviceIds []string, measurements [][]string, dataTypes [][]TSDataType, values [][]interface{},
 	timestamps []int64,
-) (r *common.TSStatus, err error) {
+) error {
 	request, err := s.genInsertRecordsReq(deviceIds, measurements, dataTypes, values, timestamps, true)
 	if err != nil {
-		return nil, err
+		return err
 	} else {
-		r, err = s.client.InsertRecords(context.Background(), request)
+		r, err := s.client.InsertRecords(context.Background(), request)
 		if err != nil && r == nil {
 			if s.reconnect() {
 				request.SessionId = s.sessionId
 				r, err = s.client.InsertRecords(context.Background(), request)
 			}
 		}
-		return r, err
+		if err != nil {
+			return err
+		}
+		return VerifySuccess(r)
 	}
 }
 
@@ -847,63 +899,72 @@ func (s *Session) InsertAlignedRecords(deviceIds []string, measurements [][]stri
  *params
  *tablets: []*client.Tablet, list of tablets
  */
-func (s *Session) InsertTablets(tablets []*Tablet, sorted bool) (r *common.TSStatus, err error) {
+func (s *Session) InsertTablets(tablets []*Tablet, sorted bool) error {
 	if !sorted {
 		for _, t := range tablets {
 			if err := t.Sort(); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 	request, err := s.genInsertTabletsReq(tablets, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	r, err = s.client.InsertTablets(context.Background(), request)
+	r, err := s.client.InsertTablets(context.Background(), request)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			r, err = s.client.InsertTablets(context.Background(), request)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
-func (s *Session) InsertAlignedTablets(tablets []*Tablet, sorted bool) (r *common.TSStatus, err error) {
+func (s *Session) InsertAlignedTablets(tablets []*Tablet, sorted bool) error {
 	if !sorted {
 		for _, t := range tablets {
 			if err := t.Sort(); err != nil {
-				return nil, err
+				return err
 			}
 		}
 	}
 	request, err := s.genInsertTabletsReq(tablets, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	r, err = s.client.InsertTablets(context.Background(), request)
+	r, err := s.client.InsertTablets(context.Background(), request)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			r, err = s.client.InsertTablets(context.Background(), request)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
-func (s *Session) ExecuteBatchStatement(inserts []string) (r *common.TSStatus, err error) {
+func (s *Session) ExecuteBatchStatement(inserts []string) error {
 	request := rpc.TSExecuteBatchStatementReq{
 		SessionId:  s.sessionId,
 		Statements: inserts,
 	}
-	r, err = s.client.ExecuteBatchStatement(context.Background(), &request)
+	r, err := s.client.ExecuteBatchStatement(context.Background(), &request)
 	if err != nil && r == nil {
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			r, err = s.client.ExecuteBatchStatement(context.Background(), &request)
 		}
 	}
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 func (s *Session) ExecuteRawDataQuery(paths []string, startTime int64, endTime int64) (*SessionDataSet, error) {
@@ -1111,17 +1172,17 @@ func valuesToBytes(dataTypes []TSDataType, values []interface{}, measurementName
 	return buff.Bytes(), nil
 }
 
-func (s *Session) insertRelationalTablet(tablet *Tablet) (r *common.TSStatus, err error) {
+func (s *Session) insertRelationalTablet(tablet *Tablet) error {
 	if tablet.Len() == 0 {
-		return &common.TSStatus{Code: SuccessStatus}, nil
+		return nil
 	}
 	request, err := s.genTSInsertTabletReq(tablet, true, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	request.ColumnCategories = tablet.getColumnCategories()
 
-	r, err = s.client.InsertTablet(context.Background(), request)
+	r, err := s.client.InsertTablet(context.Background(), request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -1130,21 +1191,24 @@ func (s *Session) insertRelationalTablet(tablet *Tablet) (r *common.TSStatus, er
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
-func (s *Session) InsertTablet(tablet *Tablet, sorted bool) (r *common.TSStatus, err error) {
+func (s *Session) InsertTablet(tablet *Tablet, sorted bool) error {
 	if !sorted {
 		if err := tablet.Sort(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	request, err := s.genTSInsertTabletReq(tablet, false, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	r, err = s.client.InsertTablet(context.Background(), request)
+	r, err := s.client.InsertTablet(context.Background(), request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -1153,21 +1217,24 @@ func (s *Session) InsertTablet(tablet *Tablet, sorted bool) (r *common.TSStatus,
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
-func (s *Session) InsertAlignedTablet(tablet *Tablet, sorted bool) (r *common.TSStatus, err error) {
+func (s *Session) InsertAlignedTablet(tablet *Tablet, sorted bool) error {
 	if !sorted {
 		if err := tablet.Sort(); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	request, err := s.genTSInsertTabletReq(tablet, true, false)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	r, err = s.client.InsertTablet(context.Background(), request)
+	r, err := s.client.InsertTablet(context.Background(), request)
 
 	if err != nil && r == nil {
 		if s.reconnect() {
@@ -1176,7 +1243,10 @@ func (s *Session) InsertAlignedTablet(tablet *Tablet, sorted bool) (r *common.TS
 		}
 	}
 
-	return r, err
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
 }
 
 func (s *Session) genTSInsertTabletReq(tablet *Tablet, isAligned bool, writeToTable bool) (*rpc.TSInsertTabletReq, error) {
