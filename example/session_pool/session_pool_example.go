@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/apache/iotdb-client-go/v2/client"
-	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 var (
@@ -410,9 +409,9 @@ func insertTablet() {
 	defer sessionPool.PutBack(session)
 	if err == nil {
 		if tablet, err := createTablet(12); err == nil {
-			status, err := session.InsertTablet(tablet, false)
+			err := session.InsertTablet(tablet, false)
 			tablet.Reset()
-			checkError(status, err)
+			checkError(err)
 		} else {
 			log.Fatal(err)
 		}
@@ -425,9 +424,9 @@ func insertAlignedTablet() {
 	defer sessionPool.PutBack(session)
 	if err == nil {
 		if tablet, err := createTablet(12); err == nil {
-			status, err := session.InsertAlignedTablet(tablet, false)
+			err := session.InsertAlignedTablet(tablet, false)
 			tablet.Reset()
-			checkError(status, err)
+			checkError(err)
 		} else {
 			log.Fatal(err)
 		}
