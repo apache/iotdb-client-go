@@ -31,7 +31,6 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/apache/iotdb-client-go/v2/client"
-	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 var (
@@ -394,9 +393,6 @@ func getValueFromDataSetByIndex(dataSet *client.SessionDataSet, columnIndex int3
 	return v
 }
 
-func (s *e2eTableTestSuite) checkError(status *common.TSStatus, err error) {
+func (s *e2eTableTestSuite) checkError(err error) {
 	s.Require().NoError(err)
-	if status != nil {
-		s.Require().NoError(client.VerifySuccess(status))
-	}
 }
