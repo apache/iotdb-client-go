@@ -20,6 +20,7 @@
 package client
 
 import (
+	"errors"
 	"log"
 	"sync/atomic"
 )
@@ -73,6 +74,23 @@ type PooledTableSession struct {
 	closed      int32
 }
 
+// isConnectionError returns true if the error is a connection-level error
+// (i.e., not a server-side execution error indicated by TSStatus).
+func isConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var exeErr *ExecutionError
+	if errors.As(err, &exeErr) {
+		return false
+	}
+	var batchErr *BatchError
+	if errors.As(err, &batchErr) {
+		return false
+	}
+	return true
+}
+
 // Insert inserts a Tablet into the database.
 //
 // Parameters:
@@ -85,9 +103,11 @@ func (s *PooledTableSession) Insert(tablet *Tablet) error {
 	if err == nil {
 		return nil
 	}
-	s.sessionPool.dropSession(s.session)
-	atomic.StoreInt32(&s.closed, 1)
-	s.session = Session{}
+	if isConnectionError(err) {
+		s.sessionPool.dropSession(s.session)
+		atomic.StoreInt32(&s.closed, 1)
+		s.session = Session{}
+	}
 	return err
 }
 
@@ -103,9 +123,11 @@ func (s *PooledTableSession) ExecuteNonQueryStatement(sql string) error {
 	if err == nil {
 		return nil
 	}
-	s.sessionPool.dropSession(s.session)
-	atomic.StoreInt32(&s.closed, 1)
-	s.session = Session{}
+	if isConnectionError(err) {
+		s.sessionPool.dropSession(s.session)
+		atomic.StoreInt32(&s.closed, 1)
+		s.session = Session{}
+	}
 	return err
 }
 
@@ -123,9 +145,11 @@ func (s *PooledTableSession) ExecuteQueryStatement(sql string, timeoutInMs *int6
 	if err == nil {
 		return sessionDataSet, nil
 	}
-	s.sessionPool.dropSession(s.session)
-	atomic.StoreInt32(&s.closed, 1)
-	s.session = Session{}
+	if isConnectionError(err) {
+		s.sessionPool.dropSession(s.session)
+		atomic.StoreInt32(&s.closed, 1)
+		s.session = Session{}
+	}
 	return nil, err
 }
 

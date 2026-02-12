@@ -487,11 +487,14 @@ func (s *Session) GetTimeZone() (string, error) {
 func (s *Session) SetTimeZone(timeZone string) error {
 	request := rpc.TSSetTimeZoneReq{SessionId: s.sessionId, TimeZone: timeZone}
 	r, err := s.client.SetTimeZone(context.Background(), &request)
-	s.config.TimeZone = timeZone
 	if err != nil {
 		return err
 	}
-	return VerifySuccess(r)
+	if err := VerifySuccess(r); err != nil {
+		return err
+	}
+	s.config.TimeZone = timeZone
+	return nil
 }
 
 func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (*SessionDataSet, error) {
