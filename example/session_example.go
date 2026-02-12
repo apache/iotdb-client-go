@@ -22,11 +22,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/apache/iotdb-client-go/common"
 
 	"github.com/apache/iotdb-client-go/client"
 )
@@ -465,9 +466,9 @@ func deleteData() {
 
 func insertTablet() {
 	if tablet, err := createTablet(12); err == nil {
-		status, err := session.InsertTablet(tablet, false)
+		err = session.InsertTablet(tablet, false)
 		tablet.Reset()
-		checkError(status, err)
+		checkError(err)
 	} else {
 		log.Fatal(err)
 	}
@@ -475,9 +476,9 @@ func insertTablet() {
 
 func insertAlignedTablet() {
 	if tablet, err := createTablet(12); err == nil {
-		status, err := session.InsertAlignedTablet(tablet, false)
+		err = session.InsertAlignedTablet(tablet, false)
 		tablet.Reset()
-		checkError(status, err)
+		checkError(err)
 	} else {
 		log.Fatal(err)
 	}
@@ -642,14 +643,8 @@ func executeBatchStatement() {
 	}
 }
 
-func checkError(status *common.TSStatus, err error) {
+func checkError(err error) {
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	if status != nil {
-		if err = client.VerifySuccess(status); err != nil {
-			log.Println(err)
-		}
 	}
 }
