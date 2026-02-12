@@ -28,8 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apache/iotdb-client-go/common"
-
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/stretchr/testify/suite"
 )
@@ -61,20 +59,17 @@ func (s *e2eTestSuite) TearDownSuite() {
 }
 
 func (s *e2eTestSuite) SetupTest() {
-	r, err := s.session.SetStorageGroup("root.tsg1")
-	s.checkError(r, err)
+	err := s.session.SetStorageGroup("root.tsg1")
+	s.checkError(err)
 }
 
 func (s *e2eTestSuite) TearDownTest() {
-	r, err := s.session.DeleteStorageGroup("root.tsg1")
-	s.checkError(r, err)
+	err := s.session.DeleteStorageGroup("root.tsg1")
+	s.checkError(err)
 }
 
-func (s *e2eTestSuite) checkError(status *common.TSStatus, err error) {
+func (s *e2eTestSuite) checkError(err error) {
 	s.Require().NoError(err)
-	if status != nil {
-		s.Require().NoError(client.VerifySuccess(status))
-	}
 }
 
 func (s *e2eTestSuite) Test_NonQuery() {
@@ -174,7 +169,7 @@ func (s *e2eTestSuite) Test_InsertRecordsWithWrongType() {
 		values       = [][]interface{}{{100.0, true}, {"aaa"}}
 		timestamp    = []int64{1, 2}
 	)
-	_, err := s.session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp)
+	err := s.session.InsertRecords(deviceId, measurements, dataTypes, values, timestamp)
 	assert := s.Require()
 	assert.NotNil(err)
 	assert.Equal("measurement s1 values[0] 100(float64) must be bool", err.Error())
@@ -255,8 +250,8 @@ func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	var timeseries = []string{"root.ln.device1.**"}
 	s.session.DeleteTimeseries(timeseries)
 	if tablet, err := createTablet(12); err == nil {
-		status, err := s.session.InsertAlignedTablet(tablet, false)
-		s.checkError(status, err)
+		err := s.session.InsertAlignedTablet(tablet, false)
+		s.checkError(err)
 		tablet.Reset()
 	} else {
 		log.Fatal(err)
@@ -277,8 +272,8 @@ func (s *e2eTestSuite) Test_InsertAlignedTabletWithNilValue() {
 	var timeseries = []string{"root.ln.device1.**"}
 	s.session.DeleteTimeseries(timeseries)
 	if tablet, err := createTabletWithNil(12); err == nil {
-		status, err := s.session.InsertAlignedTablet(tablet, false)
-		s.checkError(status, err)
+		err := s.session.InsertAlignedTablet(tablet, false)
+		s.checkError(err)
 		tablet.Reset()
 	} else {
 		log.Fatal(err)
@@ -499,8 +494,8 @@ func (s *e2eTestSuite) Test_QueryAllDataType() {
 	tablet.SetValueAt("string", 9, 0)
 	tablet.RowSize = 1
 
-	r, err := s.session.InsertAlignedTablet(tablet, true)
-	s.checkError(r, err)
+	err = s.session.InsertAlignedTablet(tablet, true)
+	s.checkError(err)
 
 	sessionDataSet, err := s.session.ExecuteQueryStatement("select s0, s1, s2, s3, s4, s5, s6, s7, s8, s9 from root.tsg1.d1 limit 1", nil)
 	for {
