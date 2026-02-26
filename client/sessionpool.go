@@ -83,7 +83,10 @@ func (spool *SessionPool) GetSession() (session Session, err error) {
 				}
 			default:
 				config := spool.config
-				session, err := spool.ConstructSession(config)
+				session, err = spool.ConstructSession(config)
+				if err != nil {
+					<-spool.sem
+				}
 				return session, err
 			}
 		case <-time.After(time.Millisecond * time.Duration(spool.waitToGetSessionTimeoutInMs)):
@@ -137,12 +140,33 @@ func getClusterSessionConfig(config *PoolConfig) *ClusterConfig {
 }
 
 func (spool *SessionPool) PutBack(session Session) {
-	if session.trans.IsOpen() {
+	defer func() {
+		if r := recover(); r != nil {
+			session.Close()
+		}
+	}()
+	if session.trans != nil && session.trans.IsOpen() {
 		spool.ch <- session
 	}
 	<-spool.sem
 }
 
+func (spool *SessionPool) dropSession(session Session) {
+	defer func() {
+		if e := recover(); e != nil {
+			if session.trans != nil && session.trans.IsOpen() {
+				session.Close()
+			}
+		}
+	}()
+	err := session.Close()
+	if err != nil {
+		log.Println("Failed to close session ", session)
+	}
+	<-spool.sem
+}
+
+>>>>>>> f00cf99 (Fix multiple issues in SessionPool and PooledTableSession (#153))
 func (spool *SessionPool) Close() {
 	close(spool.ch)
 	for s := range spool.ch {
