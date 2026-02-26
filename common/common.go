@@ -7126,6 +7126,461 @@ func (p *TNodeLocations) String() string {
 
 // Attributes:
 //  - Status
+//  - ExternalServiceInfos
+type TExternalServiceListResp struct {
+  Status *TSStatus `thrift:"status,1,required" db:"status" json:"status"`
+  ExternalServiceInfos []*TExternalServiceEntry `thrift:"externalServiceInfos,2,required" db:"externalServiceInfos" json:"externalServiceInfos"`
+}
+
+func NewTExternalServiceListResp() *TExternalServiceListResp {
+  return &TExternalServiceListResp{}
+}
+
+var TExternalServiceListResp_Status_DEFAULT *TSStatus
+func (p *TExternalServiceListResp) GetStatus() *TSStatus {
+  if !p.IsSetStatus() {
+    return TExternalServiceListResp_Status_DEFAULT
+  }
+return p.Status
+}
+
+func (p *TExternalServiceListResp) GetExternalServiceInfos() []*TExternalServiceEntry {
+  return p.ExternalServiceInfos
+}
+func (p *TExternalServiceListResp) IsSetStatus() bool {
+  return p.Status != nil
+}
+
+func (p *TExternalServiceListResp) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+  var issetStatus bool = false;
+  var issetExternalServiceInfos bool = false;
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.STRUCT {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+        issetStatus = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 2:
+      if fieldTypeId == thrift.LIST {
+        if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+        issetExternalServiceInfos = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  if !issetStatus{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field Status is not set"));
+  }
+  if !issetExternalServiceInfos{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field ExternalServiceInfos is not set"));
+  }
+  return nil
+}
+
+func (p *TExternalServiceListResp)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  p.Status = &TSStatus{}
+  if err := p.Status.Read(ctx, iprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", p.Status), err)
+  }
+  return nil
+}
+
+func (p *TExternalServiceListResp)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+  _, size, err := iprot.ReadListBegin(ctx)
+  if err != nil {
+    return thrift.PrependError("error reading list begin: ", err)
+  }
+  tSlice := make([]*TExternalServiceEntry, 0, size)
+  p.ExternalServiceInfos =  tSlice
+  for i := 0; i < size; i ++ {
+    _elem38 := &TExternalServiceEntry{}
+    if err := _elem38.Read(ctx, iprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error reading struct: ", _elem38), err)
+    }
+    p.ExternalServiceInfos = append(p.ExternalServiceInfos, _elem38)
+  }
+  if err := iprot.ReadListEnd(ctx); err != nil {
+    return thrift.PrependError("error reading list end: ", err)
+  }
+  return nil
+}
+
+func (p *TExternalServiceListResp) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TExternalServiceListResp"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+    if err := p.writeField2(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *TExternalServiceListResp) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "status", thrift.STRUCT, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:status: ", p), err) }
+  if err := p.Status.Write(ctx, oprot); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", p.Status), err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:status: ", p), err) }
+  return err
+}
+
+func (p *TExternalServiceListResp) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "externalServiceInfos", thrift.LIST, 2); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:externalServiceInfos: ", p), err) }
+  if err := oprot.WriteListBegin(ctx, thrift.STRUCT, len(p.ExternalServiceInfos)); err != nil {
+    return thrift.PrependError("error writing list begin: ", err)
+  }
+  for _, v := range p.ExternalServiceInfos {
+    if err := v.Write(ctx, oprot); err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T error writing struct: ", v), err)
+    }
+  }
+  if err := oprot.WriteListEnd(ctx); err != nil {
+    return thrift.PrependError("error writing list end: ", err)
+  }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 2:externalServiceInfos: ", p), err) }
+  return err
+}
+
+func (p *TExternalServiceListResp) Equals(other *TExternalServiceListResp) bool {
+  if p == other {
+    return true
+  } else if p == nil || other == nil {
+    return false
+  }
+  if !p.Status.Equals(other.Status) { return false }
+  if len(p.ExternalServiceInfos) != len(other.ExternalServiceInfos) { return false }
+  for i, _tgt := range p.ExternalServiceInfos {
+    _src39 := other.ExternalServiceInfos[i]
+    if !_tgt.Equals(_src39) { return false }
+  }
+  return true
+}
+
+func (p *TExternalServiceListResp) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("TExternalServiceListResp(%+v)", *p)
+}
+
+// Attributes:
+//  - ServiceName
+//  - ClassName
+//  - State
+//  - DataNodeId
+//  - ServiceType
+type TExternalServiceEntry struct {
+  ServiceName string `thrift:"serviceName,1,required" db:"serviceName" json:"serviceName"`
+  ClassName string `thrift:"className,2,required" db:"className" json:"className"`
+  State int8 `thrift:"state,3,required" db:"state" json:"state"`
+  DataNodeId int32 `thrift:"dataNodeId,4,required" db:"dataNodeId" json:"dataNodeId"`
+  ServiceType int8 `thrift:"serviceType,5,required" db:"serviceType" json:"serviceType"`
+}
+
+func NewTExternalServiceEntry() *TExternalServiceEntry {
+  return &TExternalServiceEntry{}
+}
+
+
+func (p *TExternalServiceEntry) GetServiceName() string {
+  return p.ServiceName
+}
+
+func (p *TExternalServiceEntry) GetClassName() string {
+  return p.ClassName
+}
+
+func (p *TExternalServiceEntry) GetState() int8 {
+  return p.State
+}
+
+func (p *TExternalServiceEntry) GetDataNodeId() int32 {
+  return p.DataNodeId
+}
+
+func (p *TExternalServiceEntry) GetServiceType() int8 {
+  return p.ServiceType
+}
+func (p *TExternalServiceEntry) Read(ctx context.Context, iprot thrift.TProtocol) error {
+  if _, err := iprot.ReadStructBegin(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
+  }
+
+  var issetServiceName bool = false;
+  var issetClassName bool = false;
+  var issetState bool = false;
+  var issetDataNodeId bool = false;
+  var issetServiceType bool = false;
+
+  for {
+    _, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
+    if err != nil {
+      return thrift.PrependError(fmt.Sprintf("%T field %d read error: ", p, fieldId), err)
+    }
+    if fieldTypeId == thrift.STOP { break; }
+    switch fieldId {
+    case 1:
+      if fieldTypeId == thrift.STRING {
+        if err := p.ReadField1(ctx, iprot); err != nil {
+          return err
+        }
+        issetServiceName = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 2:
+      if fieldTypeId == thrift.STRING {
+        if err := p.ReadField2(ctx, iprot); err != nil {
+          return err
+        }
+        issetClassName = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 3:
+      if fieldTypeId == thrift.BYTE {
+        if err := p.ReadField3(ctx, iprot); err != nil {
+          return err
+        }
+        issetState = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 4:
+      if fieldTypeId == thrift.I32 {
+        if err := p.ReadField4(ctx, iprot); err != nil {
+          return err
+        }
+        issetDataNodeId = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    case 5:
+      if fieldTypeId == thrift.BYTE {
+        if err := p.ReadField5(ctx, iprot); err != nil {
+          return err
+        }
+        issetServiceType = true
+      } else {
+        if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+          return err
+        }
+      }
+    default:
+      if err := iprot.Skip(ctx, fieldTypeId); err != nil {
+        return err
+      }
+    }
+    if err := iprot.ReadFieldEnd(ctx); err != nil {
+      return err
+    }
+  }
+  if err := iprot.ReadStructEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T read struct end error: ", p), err)
+  }
+  if !issetServiceName{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field ServiceName is not set"));
+  }
+  if !issetClassName{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field ClassName is not set"));
+  }
+  if !issetState{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field State is not set"));
+  }
+  if !issetDataNodeId{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field DataNodeId is not set"));
+  }
+  if !issetServiceType{
+    return thrift.NewTProtocolExceptionWithType(thrift.INVALID_DATA, fmt.Errorf("Required field ServiceType is not set"));
+  }
+  return nil
+}
+
+func (p *TExternalServiceEntry)  ReadField1(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadString(ctx); err != nil {
+  return thrift.PrependError("error reading field 1: ", err)
+} else {
+  p.ServiceName = v
+}
+  return nil
+}
+
+func (p *TExternalServiceEntry)  ReadField2(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadString(ctx); err != nil {
+  return thrift.PrependError("error reading field 2: ", err)
+} else {
+  p.ClassName = v
+}
+  return nil
+}
+
+func (p *TExternalServiceEntry)  ReadField3(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadByte(ctx); err != nil {
+  return thrift.PrependError("error reading field 3: ", err)
+} else {
+  temp := int8(v)
+  p.State = temp
+}
+  return nil
+}
+
+func (p *TExternalServiceEntry)  ReadField4(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadI32(ctx); err != nil {
+  return thrift.PrependError("error reading field 4: ", err)
+} else {
+  p.DataNodeId = v
+}
+  return nil
+}
+
+func (p *TExternalServiceEntry)  ReadField5(ctx context.Context, iprot thrift.TProtocol) error {
+  if v, err := iprot.ReadByte(ctx); err != nil {
+  return thrift.PrependError("error reading field 5: ", err)
+} else {
+  temp := int8(v)
+  p.ServiceType = temp
+}
+  return nil
+}
+
+func (p *TExternalServiceEntry) Write(ctx context.Context, oprot thrift.TProtocol) error {
+  if err := oprot.WriteStructBegin(ctx, "TExternalServiceEntry"); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err) }
+  if p != nil {
+    if err := p.writeField1(ctx, oprot); err != nil { return err }
+    if err := p.writeField2(ctx, oprot); err != nil { return err }
+    if err := p.writeField3(ctx, oprot); err != nil { return err }
+    if err := p.writeField4(ctx, oprot); err != nil { return err }
+    if err := p.writeField5(ctx, oprot); err != nil { return err }
+  }
+  if err := oprot.WriteFieldStop(ctx); err != nil {
+    return thrift.PrependError("write field stop error: ", err) }
+  if err := oprot.WriteStructEnd(ctx); err != nil {
+    return thrift.PrependError("write struct stop error: ", err) }
+  return nil
+}
+
+func (p *TExternalServiceEntry) writeField1(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "serviceName", thrift.STRING, 1); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 1:serviceName: ", p), err) }
+  if err := oprot.WriteString(ctx, string(p.ServiceName)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.serviceName (1) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 1:serviceName: ", p), err) }
+  return err
+}
+
+func (p *TExternalServiceEntry) writeField2(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "className", thrift.STRING, 2); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 2:className: ", p), err) }
+  if err := oprot.WriteString(ctx, string(p.ClassName)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.className (2) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 2:className: ", p), err) }
+  return err
+}
+
+func (p *TExternalServiceEntry) writeField3(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "state", thrift.BYTE, 3); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 3:state: ", p), err) }
+  if err := oprot.WriteByte(ctx, int8(p.State)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.state (3) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 3:state: ", p), err) }
+  return err
+}
+
+func (p *TExternalServiceEntry) writeField4(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "dataNodeId", thrift.I32, 4); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 4:dataNodeId: ", p), err) }
+  if err := oprot.WriteI32(ctx, int32(p.DataNodeId)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.dataNodeId (4) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 4:dataNodeId: ", p), err) }
+  return err
+}
+
+func (p *TExternalServiceEntry) writeField5(ctx context.Context, oprot thrift.TProtocol) (err error) {
+  if err := oprot.WriteFieldBegin(ctx, "serviceType", thrift.BYTE, 5); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field begin error 5:serviceType: ", p), err) }
+  if err := oprot.WriteByte(ctx, int8(p.ServiceType)); err != nil {
+  return thrift.PrependError(fmt.Sprintf("%T.serviceType (5) field write error: ", p), err) }
+  if err := oprot.WriteFieldEnd(ctx); err != nil {
+    return thrift.PrependError(fmt.Sprintf("%T write field end error 5:serviceType: ", p), err) }
+  return err
+}
+
+func (p *TExternalServiceEntry) Equals(other *TExternalServiceEntry) bool {
+  if p == other {
+    return true
+  } else if p == nil || other == nil {
+    return false
+  }
+  if p.ServiceName != other.ServiceName { return false }
+  if p.ClassName != other.ClassName { return false }
+  if p.State != other.State { return false }
+  if p.DataNodeId != other.DataNodeId { return false }
+  if p.ServiceType != other.ServiceType { return false }
+  return true
+}
+
+func (p *TExternalServiceEntry) String() string {
+  if p == nil {
+    return "<nil>"
+  }
+  return fmt.Sprintf("TExternalServiceEntry(%+v)", *p)
+}
+
+// Attributes:
+//  - Status
 //  - Content
 type TShowConfigurationTemplateResp struct {
   Status *TSStatus `thrift:"status,1,required" db:"status" json:"status"`
@@ -7535,19 +7990,19 @@ func (p *TShowAppliedConfigurationsResp)  ReadField2(ctx context.Context, iprot 
   tMap := make(map[string]string, size)
   p.Data =  tMap
   for i := 0; i < size; i ++ {
-var _key38 string
+var _key40 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _key38 = v
+    _key40 = v
 }
-var _val39 string
+var _val41 string
     if v, err := iprot.ReadString(ctx); err != nil {
     return thrift.PrependError("error reading field 0: ", err)
 } else {
-    _val39 = v
+    _val41 = v
 }
-    p.Data[_key38] = _val39
+    p.Data[_key40] = _val41
   }
   if err := iprot.ReadMapEnd(ctx); err != nil {
     return thrift.PrependError("error reading map end: ", err)
@@ -7611,8 +8066,8 @@ func (p *TShowAppliedConfigurationsResp) Equals(other *TShowAppliedConfiguration
   if !p.Status.Equals(other.Status) { return false }
   if len(p.Data) != len(other.Data) { return false }
   for k, _tgt := range p.Data {
-    _src40 := other.Data[k]
-    if _tgt != _src40 { return false }
+    _src42 := other.Data[k]
+    if _tgt != _src42 { return false }
   }
   return true
 }

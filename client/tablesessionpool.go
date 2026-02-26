@@ -25,6 +25,8 @@ import (
 	"sync/atomic"
 )
 
+var ErrTableSessionClosed = errors.New("table session has been closed")
+
 // TableSessionPool manages a pool of ITableSession instances, enabling efficient
 // reuse and management of resources. It provides methods to acquire a session
 // from the pool and to close the pool, releasing all held resources.
@@ -99,14 +101,18 @@ func isConnectionError(err error) bool {
 // Returns:
 //   - err: An error if an issue occurs during the operation.
 func (s *PooledTableSession) Insert(tablet *Tablet) error {
+	if atomic.LoadInt32(&s.closed) == 1 {
+		return ErrTableSessionClosed
+	}
 	err := s.session.insertRelationalTablet(tablet)
 	if err == nil {
 		return nil
 	}
 	if isConnectionError(err) {
-		s.sessionPool.dropSession(s.session)
-		atomic.StoreInt32(&s.closed, 1)
-		s.session = Session{}
+		if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
+			s.sessionPool.dropSession(s.session)
+			s.session = Session{}
+		}
 	}
 	return err
 }
@@ -119,14 +125,18 @@ func (s *PooledTableSession) Insert(tablet *Tablet) error {
 // Returns:
 //   - err: An error if an issue occurs during the operation.
 func (s *PooledTableSession) ExecuteNonQueryStatement(sql string) error {
+	if atomic.LoadInt32(&s.closed) == 1 {
+		return ErrTableSessionClosed
+	}
 	err := s.session.ExecuteNonQueryStatement(sql)
 	if err == nil {
 		return nil
 	}
 	if isConnectionError(err) {
-		s.sessionPool.dropSession(s.session)
-		atomic.StoreInt32(&s.closed, 1)
-		s.session = Session{}
+		if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
+			s.sessionPool.dropSession(s.session)
+			s.session = Session{}
+		}
 	}
 	return err
 }
@@ -141,14 +151,18 @@ func (s *PooledTableSession) ExecuteNonQueryStatement(sql string) error {
 //   - result: A pointer to SessionDataSet containing the query results.
 //   - err: An error if an issue occurs during the operation.
 func (s *PooledTableSession) ExecuteQueryStatement(sql string, timeoutInMs *int64) (*SessionDataSet, error) {
+	if atomic.LoadInt32(&s.closed) == 1 {
+		return nil, ErrTableSessionClosed
+	}
 	sessionDataSet, err := s.session.ExecuteQueryStatement(sql, timeoutInMs)
 	if err == nil {
 		return sessionDataSet, nil
 	}
 	if isConnectionError(err) {
-		s.sessionPool.dropSession(s.session)
-		atomic.StoreInt32(&s.closed, 1)
-		s.session = Session{}
+		if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
+			s.sessionPool.dropSession(s.session)
+			s.session = Session{}
+		}
 	}
 	return nil, err
 }
@@ -163,12 +177,13 @@ func (s *PooledTableSession) Close() error {
 			err := s.session.ExecuteNonQueryStatement("use " + s.sessionPool.config.Database)
 			if err != nil {
 				log.Println("Failed to change back database by executing: use ", s.sessionPool.config.Database)
-				s.session.Close()
+				s.sessionPool.dropSession(s.session)
+				s.session = Session{}
 				return nil
 			}
 		}
+		s.sessionPool.PutBack(s.session)
+		s.session = Session{}
 	}
-	s.sessionPool.PutBack(s.session)
-	s.session = Session{}
 	return nil
 }
