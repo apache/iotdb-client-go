@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/apache/iotdb-client-go/v2/client"
-	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 func main() {
@@ -168,14 +167,8 @@ func sessionPoolWithoutSpecificDatabaseExample() {
 	wg.Wait()
 }
 
-func checkError(status *common.TSStatus, err error) {
+func checkError(err error) {
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	if status != nil {
-		if err = client.VerifySuccess(status); err != nil {
-			log.Println(err)
-		}
 	}
 }

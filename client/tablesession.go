@@ -19,8 +19,6 @@
 
 package client
 
-import "github.com/apache/iotdb-client-go/v2/common"
-
 // ITableSession defines an interface for interacting with IoTDB tables.
 // It supports operations such as data insertion, executing queries, and closing the session.
 // Implementations of this interface are expected to manage connections and ensure
@@ -39,9 +37,8 @@ type ITableSession interface {
 	//   - tablet: A pointer to a Tablet containing time-series data to be inserted.
 	//
 	// Returns:
-	//   - r: A pointer to TSStatus indicating the execution result.
 	//   - err: An error if an issue occurs during the operation, such as a connection error or execution failure.
-	Insert(tablet *Tablet) (r *common.TSStatus, err error)
+	Insert(tablet *Tablet) error
 
 	// ExecuteNonQueryStatement executes a non-query SQL statement, such as a DDL or DML command.
 	//
@@ -49,9 +46,8 @@ type ITableSession interface {
 	//   - sql: The SQL statement to execute.
 	//
 	// Returns:
-	//   - r: A pointer to TSStatus indicating the execution result.
 	//   - err: An error if an issue occurs during the operation, such as a connection error or execution failure.
-	ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error)
+	ExecuteNonQueryStatement(sql string) error
 
 	// ExecuteQueryStatement executes a query SQL statement and returns the result set.
 	//
@@ -125,9 +121,8 @@ func NewClusterTableSession(clusterConfig *ClusterConfig, enableRPCCompression b
 //   - tablet: A pointer to a Tablet containing the data to be inserted.
 //
 // Returns:
-//   - r: A pointer to TSStatus indicating the execution result.
 //   - err: An error if the operation fails.
-func (s *TableSession) Insert(tablet *Tablet) (r *common.TSStatus, err error) {
+func (s *TableSession) Insert(tablet *Tablet) error {
 	return s.session.insertRelationalTablet(tablet)
 }
 
@@ -137,9 +132,8 @@ func (s *TableSession) Insert(tablet *Tablet) (r *common.TSStatus, err error) {
 //   - sql: The SQL statement to be executed.
 //
 // Returns:
-//   - r: A pointer to TSStatus indicating the execution result.
 //   - err: An error if the operation fails.
-func (s *TableSession) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {
+func (s *TableSession) ExecuteNonQueryStatement(sql string) error {
 	return s.session.ExecuteNonQueryStatement(sql)
 }
 

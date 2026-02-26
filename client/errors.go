@@ -20,29 +20,34 @@
 package client
 
 import (
-	"bytes"
+	"fmt"
 
 	"github.com/apache/iotdb-client-go/v2/common"
 )
 
+// ExecutionError represents an error returned by the server via TSStatus.
+// It is NOT a connection error and should not cause session drops.
+type ExecutionError struct {
+	Code    int32
+	Message string
+}
+
+func (e *ExecutionError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("error code: %d, message: %v", e.Code, e.Message)
+	}
+	return fmt.Sprintf("error code: %d", e.Code)
+}
+
 type BatchError struct {
 	statuses []*common.TSStatus
+	Message  string
 }
 
 func (e *BatchError) Error() string {
-	buff := bytes.Buffer{}
-	for _, status := range e.statuses {
-		buff.WriteString(*status.Message + ";")
-	}
-	return buff.String()
+	return e.Message
 }
 
 func (e *BatchError) GetStatuses() []*common.TSStatus {
 	return e.statuses
-}
-
-func NewBatchError(statuses []*common.TSStatus) *BatchError {
-	return &BatchError{
-		statuses: statuses,
-	}
 }

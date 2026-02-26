@@ -249,7 +249,7 @@ func verifySuccesses(statuses []*common.TSStatus) error {
 	}
 	errMsg := buff.String()
 	if len(errMsg) > 0 {
-		return NewBatchError(statuses)
+		return &BatchError{statuses, errMsg}
 	}
 	return nil
 }
@@ -266,11 +266,11 @@ func VerifySuccess(status *common.TSStatus) error {
 		return nil
 	}
 	if status.Code != SuccessStatus {
+		msg := ""
 		if status.Message != nil {
-			return fmt.Errorf("error code: %d, message: %v", status.Code, *status.Message)
-		} else {
-			return fmt.Errorf("error code: %d", status.Code)
+			msg = *status.Message
 		}
+		return &ExecutionError{Code: status.Code, Message: msg}
 	}
 	return nil
 }

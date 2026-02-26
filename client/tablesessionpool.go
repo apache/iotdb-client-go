@@ -23,8 +23,6 @@ import (
 	"errors"
 	"log"
 	"sync/atomic"
-
-	"github.com/apache/iotdb-client-go/v2/common"
 )
 
 var ErrTableSessionClosed = errors.New("table session has been closed")
@@ -78,27 +76,45 @@ type PooledTableSession struct {
 	closed      int32
 }
 
+// isConnectionError returns true if the error is a connection-level error
+// (i.e., not a server-side execution error indicated by TSStatus).
+func isConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var exeErr *ExecutionError
+	if errors.As(err, &exeErr) {
+		return false
+	}
+	var batchErr *BatchError
+	if errors.As(err, &batchErr) {
+		return false
+	}
+	return true
+}
+
 // Insert inserts a Tablet into the database.
 //
 // Parameters:
 //   - tablet: A pointer to a Tablet containing time-series data to be inserted.
 //
 // Returns:
-//   - r: A pointer to TSStatus indicating the execution result.
 //   - err: An error if an issue occurs during the operation.
-func (s *PooledTableSession) Insert(tablet *Tablet) (r *common.TSStatus, err error) {
+func (s *PooledTableSession) Insert(tablet *Tablet) error {
 	if atomic.LoadInt32(&s.closed) == 1 {
-		return nil, ErrTableSessionClosed
+		return ErrTableSessionClosed
 	}
-	r, err = s.session.insertRelationalTablet(tablet)
+	err := s.session.insertRelationalTablet(tablet)
 	if err == nil {
-		return
+		return nil
 	}
-	if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
-		s.sessionPool.dropSession(s.session)
-		s.session = Session{}
+	if isConnectionError(err) {
+		if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
+			s.sessionPool.dropSession(s.session)
+			s.session = Session{}
+		}
 	}
-	return
+	return err
 }
 
 // ExecuteNonQueryStatement executes a non-query SQL statement, such as a DDL or DML command.
@@ -107,21 +123,22 @@ func (s *PooledTableSession) Insert(tablet *Tablet) (r *common.TSStatus, err err
 //   - sql: The SQL statement to execute.
 //
 // Returns:
-//   - r: A pointer to TSStatus indicating the execution result.
 //   - err: An error if an issue occurs during the operation.
-func (s *PooledTableSession) ExecuteNonQueryStatement(sql string) (r *common.TSStatus, err error) {
+func (s *PooledTableSession) ExecuteNonQueryStatement(sql string) error {
 	if atomic.LoadInt32(&s.closed) == 1 {
-		return nil, ErrTableSessionClosed
+		return ErrTableSessionClosed
 	}
-	r, err = s.session.ExecuteNonQueryStatement(sql)
+	err := s.session.ExecuteNonQueryStatement(sql)
 	if err == nil {
-		return
+		return nil
 	}
-	if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
-		s.sessionPool.dropSession(s.session)
-		s.session = Session{}
+	if isConnectionError(err) {
+		if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
+			s.sessionPool.dropSession(s.session)
+			s.session = Session{}
+		}
 	}
-	return
+	return err
 }
 
 // ExecuteQueryStatement executes a query SQL statement and returns the result set.
@@ -141,9 +158,11 @@ func (s *PooledTableSession) ExecuteQueryStatement(sql string, timeoutInMs *int6
 	if err == nil {
 		return sessionDataSet, nil
 	}
-	if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
-		s.sessionPool.dropSession(s.session)
-		s.session = Session{}
+	if isConnectionError(err) {
+		if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
+			s.sessionPool.dropSession(s.session)
+			s.session = Session{}
+		}
 	}
 	return nil, err
 }
@@ -155,8 +174,8 @@ func (s *PooledTableSession) ExecuteQueryStatement(sql string, timeoutInMs *int6
 func (s *PooledTableSession) Close() error {
 	if atomic.CompareAndSwapInt32(&s.closed, 0, 1) {
 		if s.session.config.Database != s.sessionPool.config.Database && s.sessionPool.config.Database != "" {
-			r, err := s.session.ExecuteNonQueryStatement("use " + s.sessionPool.config.Database)
-			if err != nil || r.Code == ExecuteStatementError {
+			err := s.session.ExecuteNonQueryStatement("use " + s.sessionPool.config.Database)
+			if err != nil {
 				log.Println("Failed to change back database by executing: use ", s.sessionPool.config.Database)
 				s.sessionPool.dropSession(s.session)
 				s.session = Session{}
