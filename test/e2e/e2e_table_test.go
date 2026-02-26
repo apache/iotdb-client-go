@@ -245,6 +245,63 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 	wg.Wait()
 }
 
+func (s *e2eTableTestSuite) Test_ErrInTableSessionPool() {
+	assert := s.Require()
+	poolConfig := &client.PoolConfig{
+		Host:     host,
+		Port:     port,
+		UserName: username,
+		Password: password,
+		Database: database,
+	}
+	sessionPool := client.NewTableSessionPool(poolConfig, 3, 10000, 3000, false)
+	defer sessionPool.Close()
+
+	session1, err := sessionPool.GetSession()
+	assert.NoError(err)
+	s.checkError(session1.ExecuteNonQueryStatement("create table test_timeout(tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
+
+	timeoutInMs := int64(1)
+	dataSet, err := session1.ExecuteQueryStatement("select * from test_timeout", &timeoutInMs)
+	if err == nil {
+		dataSet.Close()
+		err = session1.Close()
+		assert.NoError(err)
+		return
+	}
+	err = session1.Close()
+	assert.NoError(err)
+	// test repeated close
+	err = session1.Close()
+	assert.NoError(err)
+
+	timeoutInMs = int64(60000)
+
+	session1, err = sessionPool.GetSession()
+	assert.NoError(err)
+	defer session1.Close()
+	dataSet, err = session1.ExecuteQueryStatement("show tables", &timeoutInMs)
+	assert.NoError(err)
+	dataSet.Close()
+
+	session2, err := sessionPool.GetSession()
+	assert.NoError(err)
+	defer session2.Close()
+	dataSet, err = session2.ExecuteQueryStatement("show tables", &timeoutInMs)
+	assert.NoError(err)
+	dataSet.Close()
+
+	session3, err := sessionPool.GetSession()
+	assert.NoError(err)
+	defer session3.Close()
+	dataSet, err = session3.ExecuteQueryStatement("show tables", &timeoutInMs)
+	assert.NoError(err)
+	dataSet.Close()
+
+	_, err = sessionPool.GetSession()
+	assert.NotNil(err)
+}
+
 func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 	assert := s.Require()
 	s.checkError(s.session.ExecuteNonQueryStatement("create table t1 (tag1 string tag, tag2 string tag, s1 text field, s2 text field)"))
