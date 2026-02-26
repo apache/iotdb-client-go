@@ -168,7 +168,7 @@ func (spool *SessionPool) PutBack(session Session) {
 			session.Close()
 		}
 	}()
-	if session.trans.IsOpen() {
+	if session.trans != nil && session.trans.IsOpen() {
 		spool.ch <- session
 	}
 	<-spool.sem
@@ -177,7 +177,9 @@ func (spool *SessionPool) PutBack(session Session) {
 func (spool *SessionPool) dropSession(session Session) {
 	defer func() {
 		if e := recover(); e != nil {
-			session.Close()
+			if session.trans != nil && session.trans.IsOpen() {
+				session.Close()
+			}
 		}
 	}()
 	err := session.Close()
