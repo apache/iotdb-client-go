@@ -265,6 +265,8 @@ func (s *e2eTableTestSuite) Test_ErrInTableSessionPool() {
 	dataSet, err := session1.ExecuteQueryStatement("select * from test_timeout", &timeoutInMs)
 	if err == nil {
 		dataSet.Close()
+		err = session1.Close()
+		assert.NoError(err)
 		return
 	}
 	err = session1.Close()
@@ -273,23 +275,28 @@ func (s *e2eTableTestSuite) Test_ErrInTableSessionPool() {
 	err = session1.Close()
 	assert.NoError(err)
 
+	timeoutInMs = int64(60000)
+
 	session1, err = sessionPool.GetSession()
 	assert.NoError(err)
 	defer session1.Close()
 	dataSet, err = session1.ExecuteQueryStatement("show tables", &timeoutInMs)
 	assert.NoError(err)
+	dataSet.Close()
 
 	session2, err := sessionPool.GetSession()
 	assert.NoError(err)
 	defer session2.Close()
 	dataSet, err = session2.ExecuteQueryStatement("show tables", &timeoutInMs)
 	assert.NoError(err)
+	dataSet.Close()
 
 	session3, err := sessionPool.GetSession()
 	assert.NoError(err)
 	defer session3.Close()
-	dataSet, err = session2.ExecuteQueryStatement("show tables", &timeoutInMs)
+	dataSet, err = session3.ExecuteQueryStatement("show tables", &timeoutInMs)
 	assert.NoError(err)
+	dataSet.Close()
 
 	_, err = sessionPool.GetSession()
 	assert.NotNil(err)
