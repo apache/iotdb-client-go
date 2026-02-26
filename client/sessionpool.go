@@ -91,7 +91,10 @@ func (spool *SessionPool) GetSession() (session Session, err error) {
 				}
 			default:
 				config := spool.config
-				session, err := spool.ConstructSession(config)
+				session, err = spool.ConstructSession(config)
+				if err != nil {
+					<-spool.sem
+				}
 				return session, err
 			}
 		case <-time.After(time.Millisecond * time.Duration(spool.waitToGetSessionTimeoutInMs)):
