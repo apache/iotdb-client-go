@@ -125,3 +125,7 @@ func (s *SessionDataSet) GetColumnNames() []string {
 func (s *SessionDataSet) GetColumnTypes() []string {
 	return s.ioTDBRpcDataSet.columnTypeList
 }
+
+func (s *SessionDataSet) GetCurrentRowTime() int64 {
+	return s.ioTDBRpcDataSet.GetCurrentRowTime()
+}
