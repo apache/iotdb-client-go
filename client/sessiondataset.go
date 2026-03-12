@@ -126,6 +126,6 @@ func (s *SessionDataSet) GetColumnTypes() []string {
 	return s.ioTDBRpcDataSet.columnTypeList
 }
 
-func (s *SessionDataSet) GetCurrentRowTime() int64 {
-	return s.ioTDBRpcDataSet.GetCurrentRowTime()
+func (s *SessionDataSet) GetCurrentRowTime() time.Time {
+	return convertToTimestamp(s.ioTDBRpcDataSet.GetCurrentRowTime(), s.ioTDBRpcDataSet.timeFactor)
 }
