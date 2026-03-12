@@ -580,10 +580,15 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
 			resp, err = s.client.ExecuteQueryStatementV2(context.Background(), &request)
-			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
-			} else {
-				return nil, statusErr
+			if err == nil {
+				if resp == nil {
+					return nil, fmt.Errorf("received nil response after reconnect")
+				}
+				if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+					return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
+				} else {
+					return nil, statusErr
+				}
 			}
 		}
 		return nil, err
@@ -608,10 +613,15 @@ func (s *Session) ExecuteAggregationQuery(paths []string, aggregations []common.
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			resp, err = s.client.ExecuteAggregationQueryV2(context.Background(), &request)
-			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
-			} else {
-				return nil, statusErr
+			if err == nil {
+				if resp == nil {
+					return nil, fmt.Errorf("received nil response after reconnect")
+				}
+				if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+					return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
+				} else {
+					return nil, statusErr
+				}
 			}
 		}
 		return nil, err
@@ -637,10 +647,15 @@ func (s *Session) ExecuteAggregationQueryWithLegalNodes(paths []string, aggregat
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			resp, err = s.client.ExecuteAggregationQueryV2(context.Background(), &request)
-			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
-			} else {
-				return nil, statusErr
+			if err == nil {
+				if resp == nil {
+					return nil, fmt.Errorf("received nil response after reconnect")
+				}
+				if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+					return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
+				} else {
+					return nil, statusErr
+				}
 			}
 		}
 		return nil, err
@@ -664,10 +679,15 @@ func (s *Session) ExecuteFastLastDataQueryForOnePrefixPath(prefixes []string, ti
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			resp, err = s.client.ExecuteFastLastDataQueryForOnePrefixPath(context.Background(), &request)
-			if statusErr := VerifySuccess(resp.Status); statusErr == nil {
-				return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
-			} else {
-				return nil, statusErr
+			if err == nil {
+				if resp == nil {
+					return nil, fmt.Errorf("received nil response after reconnect")
+				}
+				if statusErr := VerifySuccess(resp.Status); statusErr == nil {
+					return NewSessionDataSet("", resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.GetColumnIndex2TsBlockColumnIndexList())
+				} else {
+					return nil, statusErr
+				}
 			}
 		}
 		return nil, err
