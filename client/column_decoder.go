@@ -95,6 +95,18 @@ func (decoder *Int32ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 	//    +---------------+-----------------+-------------+
 	//    | byte          | list[byte]      | list[int32] |
 	//    +---------------+-----------------+-------------+
+
+	if positionCount == 0 {
+		switch dataType {
+		case INT32, DATE:
+			return NewIntColumn(0, 0, nil, []int32{})
+		case FLOAT:
+			return NewFloatColumn(0, 0, nil, []float32{})
+		default:
+			return nil, fmt.Errorf("invalid data type: %v", dataType)
+		}
+	}
+
 	nullIndicators, err := deserializeNullIndicators(reader, positionCount)
 	if err != nil {
 		return nil, err
@@ -139,6 +151,18 @@ func (decoder *Int64ArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTyp
 	//    +---------------+-----------------+-------------+
 	//    | byte          | list[byte]      | list[int64] |
 	//    +---------------+-----------------+-------------+
+
+	if positionCount == 0 {
+		switch dataType {
+		case INT64, TIMESTAMP:
+			return NewLongColumn(0, 0, nil, []int64{})
+		case DOUBLE:
+			return NewDoubleColumn(0, 0, nil, []float64{})
+		default:
+			return nil, fmt.Errorf("invalid data type: %v", dataType)
+		}
+	}
+
 	nullIndicators, err := deserializeNullIndicators(reader, positionCount)
 	if err != nil {
 		return nil, err
@@ -185,6 +209,11 @@ func (decoder *ByteArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataType
 	if dataType != BOOLEAN {
 		return nil, fmt.Errorf("invalid data type: %v", dataType)
 	}
+
+	if positionCount == 0 {
+		return NewBooleanColumn(0, 0, nil, []bool{})
+	}
+
 	nullIndicators, err := deserializeNullIndicators(reader, positionCount)
 	if err != nil {
 		return nil, err
@@ -218,6 +247,11 @@ func (decoder *BinaryArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTy
 	if TEXT != dataType {
 		return nil, fmt.Errorf("invalid data type: %v", dataType)
 	}
+
+	if positionCount == 0 {
+		return NewBinaryColumn(0, 0, nil, []*Binary{})
+	}
+
 	nullIndicators, err := deserializeNullIndicators(reader, positionCount)
 	if err != nil {
 		return nil, err
@@ -232,12 +266,17 @@ func (decoder *BinaryArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTy
 		if err != nil {
 			return nil, err
 		}
-		value := make([]byte, length)
-		_, err = reader.Read(value)
-		if err != nil {
-			return nil, err
+
+		if length == 0 {
+			values[i] = NewBinary([]byte{})
+		} else {
+			value := make([]byte, length)
+			_, err = reader.Read(value)
+			if err != nil {
+				return nil, err
+			}
+			values[i] = NewBinary(value)
 		}
-		values[i] = NewBinary(value)
 	}
 	return NewBinaryColumn(0, positionCount, nullIndicators, values)
 }
