@@ -2,8 +2,6 @@ package iotdb_go
 
 import (
 	"context"
-	"maps"
-	"slices"
 	"time"
 )
 
@@ -58,15 +56,22 @@ func (q *QueryOptions) clone() QueryOptions {
 	}
 
 	if q.settings != nil {
-		c.settings = maps.Clone(q.settings)
+		c.settings = make(Settings, len(q.settings))
+		for k, v := range q.settings {
+			c.settings[k] = v
+		}
 	}
 
 	if q.parameters != nil {
-		c.parameters = maps.Clone(q.parameters)
+		c.parameters = make(Parameters, len(q.parameters))
+		for k, v := range q.parameters {
+			c.parameters[k] = v
+		}
 	}
 
 	if q.columnNamesAndTypes != nil {
-		c.columnNamesAndTypes = slices.Clone(q.columnNamesAndTypes)
+		c.columnNamesAndTypes = make([]ColumnNameAndType, len(q.columnNamesAndTypes))
+		copy(c.columnNamesAndTypes, q.columnNamesAndTypes)
 	}
 
 	if q.clientInfo.Products != nil || q.clientInfo.Comment != nil {
