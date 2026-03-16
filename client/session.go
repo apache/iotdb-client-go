@@ -947,6 +947,37 @@ func (s *Session) InsertTablets(tablets []*Tablet, sorted bool) error {
 	return VerifySuccess(r)
 }
 
+/*
+ * InsertTabletsWithCtx insert multiple tablets with context, tablets are independent to each other
+ *params
+ *ctx: context
+ *tablets: []*client.Tablet, list of tablets
+ */
+func (s *Session) InsertTabletsWithCtx(ctx context.Context, tablets []*Tablet, sorted bool) error {
+	if !sorted {
+		for _, t := range tablets {
+			if err := t.Sort(); err != nil {
+				return err
+			}
+		}
+	}
+	request, err := s.genInsertTabletsReq(tablets, false)
+	if err != nil {
+		return err
+	}
+	r, err := s.client.InsertTablets(ctx, request)
+	if err != nil && r == nil {
+		if s.reconnect() {
+			request.SessionId = s.sessionId
+			r, err = s.client.InsertTablets(ctx, request)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	return VerifySuccess(r)
+}
+
 func (s *Session) InsertAlignedTablets(tablets []*Tablet, sorted bool) error {
 	if !sorted {
 		for _, t := range tablets {
