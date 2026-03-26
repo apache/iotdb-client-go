@@ -21,7 +21,6 @@ package client
 
 import (
 	"fmt"
-
 	"github.com/apache/iotdb-client-go/common"
 )
 
