@@ -25,10 +25,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        go: ['1.13', 'stable']
-        exclude:
-          - os: macos-latest
-            go: '1.13'
+        go: ['1.25', 'stable']
     steps:
 
     - name: Check out code into the Go module directory
@@ -40,7 +37,7 @@ jobs:
 
     - name: Get dependencies
       run: |
-        go get -v -t -d ./...
+        go mod download
 
     - name: Install curl on Ubuntu
       if: matrix.os == 'ubuntu-latest'
