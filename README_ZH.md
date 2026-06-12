@@ -44,7 +44,7 @@ Apache IoTDB GitHub: https://github.com/apache/iotdb
 
 ## 环境准备
 
-    golang >= 1.13
+    golang >= 1.25
 
 ## 如何使用 (快速上手)
 
@@ -65,10 +65,10 @@ go run session_example.go
 不使用go mod，采用GOPATH
 
 ```sh
-# get thrift 0.15.0
+# get thrift 0.23.0
 go get github.com/apache/thrift
 cd $GOPATH/src/github.com/apache/thrift
-git checkout 0.15.0
+git checkout 0.23.0
 
 mkdir -p $GOPATH/src/iotdb-client-go-example/session_example
 cd $GOPATH/src/iotdb-client-go-example/session_example
@@ -154,25 +154,25 @@ if err == nil {
 
 ### 命令行工具
 
-* golang >= 1.13
+* golang >= 1.25
 * make   >= 3.0
 * curl   >= 7.1.1
-* thrift 0.15.0
+* thrift 0.23.0
 
 ## 疑难解答
 
 ### thrift 版本兼容性问题
 
 分支`rel/0.13`以及更早前的版本中，apache/thrift的版本为`v0.14.1`。
-在更新的版本中，apache/thrift已经升级为`v0.15.0`。
+在更新的版本中，apache/thrift已经升级为`v0.23.0`。
 这两个版本在一些接口上并不兼容，使用不对应的版本，会导致编译报错。
 
 两个版本中有改动的接口如下：
 
-1. `NewTSocketConf`。该接口在`v0.14.1`版本中返回2个值，在`v0.15.0`版本中返回1个值。
+1. `NewTSocketConf`。该接口在`v0.14.1`版本中返回2个值，在更新版本中返回1个值。
 2. `NewTFramedTransport`已弃用，改用为`NewTFramedTransportConf`。
 
-更多相关的内容可以参考这个PR：[update thrift to 0.15.0 to fit IoTDB 0.13.0](https://github.com/apache/iotdb-client-go/pull/41)
+更多相关的内容可以参考这个PR：[IoTDB 0.13.0 的 thrift 兼容性更新](https://github.com/apache/iotdb-client-go/pull/41)
 
 ### Open函数参数名称与实际功能不匹配的问题
 

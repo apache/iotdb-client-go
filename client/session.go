@@ -100,7 +100,7 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 
 	var err error
 
-	// in thrift 0.14.1, this func returns two values; in thrift 0.15.0, it returns one.
+	// In thrift 0.14.1, this func returns two values; in newer versions, it returns one.
 	s.trans = thrift.NewTSocketConf(net.JoinHostPort(s.config.Host, s.config.Port), &thrift.TConfiguration{
 		ConnectTimeout: time.Duration(connectionTimeoutInMs) * time.Millisecond, // Use 0 for no timeout
 	})
