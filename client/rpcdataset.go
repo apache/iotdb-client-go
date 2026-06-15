@@ -319,10 +319,6 @@ func (s *IoTDBRpcDataSet) getBooleanByTsBlockColumnIndex(tsBlockColumnIndex int3
 	if err := s.checkRecord(); err != nil {
 		return false, err
 	}
-	if tsBlockColumnIndex < 0 {
-		s.lastReadWasNull = false
-		return false, nil
-	}
 	if !s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {
 		s.lastReadWasNull = false
 		return s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBoolean(s.tsBlockIndex)
@@ -351,10 +347,6 @@ func (s *IoTDBRpcDataSet) getDouble(columnName string) (float64, error) {
 func (s *IoTDBRpcDataSet) getDoubleByTsBlockColumnIndex(tsBlockColumnIndex int32) (float64, error) {
 	if err := s.checkRecord(); err != nil {
 		return 0, err
-	}
-	if tsBlockColumnIndex < 0 {
-		s.lastReadWasNull = false
-		return 0, nil
 	}
 	if !s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {
 		s.lastReadWasNull = false
@@ -385,10 +377,6 @@ func (s *IoTDBRpcDataSet) getFloatByTsBlockColumnIndex(tsBlockColumnIndex int32)
 	if err := s.checkRecord(); err != nil {
 		return 0, err
 	}
-	if tsBlockColumnIndex < 0 {
-		s.lastReadWasNull = false
-		return 0, nil
-	}
 	if !s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {
 		s.lastReadWasNull = false
 		return s.curTsBlock.GetColumn(tsBlockColumnIndex).GetFloat(s.tsBlockIndex)
@@ -417,10 +405,6 @@ func (s *IoTDBRpcDataSet) getInt(columnName string) (int32, error) {
 func (s *IoTDBRpcDataSet) getIntByTsBlockColumnIndex(tsBlockColumnIndex int32) (int32, error) {
 	if err := s.checkRecord(); err != nil {
 		return 0, err
-	}
-	if tsBlockColumnIndex < 0 {
-		s.lastReadWasNull = false
-		return 0, nil
 	}
 	if !s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {
 		s.lastReadWasNull = false
@@ -500,10 +484,6 @@ func (s *IoTDBRpcDataSet) getBinaryByTsBlockColumnIndex(tsBlockColumnIndex int32
 	if err := s.checkRecord(); err != nil {
 		return nil, err
 	}
-	if tsBlockColumnIndex < 0 {
-		s.lastReadWasNull = false
-		return nil, nil
-	}
 	if !s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {
 		s.lastReadWasNull = false
 		return s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBinary(s.tsBlockIndex)
@@ -532,10 +512,6 @@ func (s *IoTDBRpcDataSet) getObject(columnName string) (interface{}, error) {
 func (s *IoTDBRpcDataSet) getObjectByTsBlockIndex(tsBlockColumnIndex int32) (interface{}, error) {
 	if err := s.checkRecord(); err != nil {
 		return nil, err
-	}
-	if tsBlockColumnIndex < 0 {
-		s.lastReadWasNull = false
-		return nil, nil
 	}
 	if s.isNull(tsBlockColumnIndex, s.tsBlockIndex) {
 		s.lastReadWasNull = true

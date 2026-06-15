@@ -30,9 +30,11 @@ import (
 
 var queryConn *sql.DB
 
+const defaultAddress = "iotdb://root:root@127.0.0.1:6667"
+
 func init() {
 	var err error
-	queryConn, err = sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	queryConn, err = sql.Open("iotdb", defaultAddress)
 	if err != nil {
 		panic(err)
 	}

@@ -37,7 +37,7 @@ func TestConnect_Ping(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	db, err := sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	db, err := sql.Open("iotdb", defaultAddress)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -51,7 +51,7 @@ func TestConnect_PingTimeout(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	db, err := sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	db, err := sql.Open("iotdb", defaultAddress)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -84,7 +84,7 @@ func TestConnect_ConnectionPool(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	db, err := sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	db, err := sql.Open("iotdb", defaultAddress)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -110,7 +110,7 @@ func TestConnect_Close(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	db, err := sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	db, err := sql.Open("iotdb", defaultAddress)
 	require.NoError(t, err)
 
 	// Ping first to establish a real connection
@@ -129,7 +129,7 @@ func TestConnect_QueryBasic(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	db, err := sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	db, err := sql.Open("iotdb", defaultAddress)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -165,7 +165,7 @@ func TestConnect_ShowDatabases(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	db, err := sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	db, err := sql.Open("iotdb", defaultAddress)
 	require.NoError(t, err)
 	defer db.Close()
 

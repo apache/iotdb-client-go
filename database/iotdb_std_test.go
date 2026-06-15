@@ -32,7 +32,7 @@ var stdConn *sql.DB
 
 func init() {
 	var err error
-	stdConn, err = sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	stdConn, err = sql.Open("iotdb", defaultAddress)
 	if err != nil {
 		panic(err)
 	}

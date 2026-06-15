@@ -32,7 +32,7 @@ var scanConn *sql.DB
 
 func init() {
 	var err error
-	scanConn, err = sql.Open("iotdb", "iotdb://root:root@127.0.0.1:6667")
+	scanConn, err = sql.Open("iotdb", defaultAddress)
 	if err != nil {
 		panic(err)
 	}
