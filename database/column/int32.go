@@ -36,14 +36,14 @@ func (i *Int32) Row(stat *client.SessionDataSet, ptr bool) any {
 		if ptr {
 			return nil
 		}
-		return 0
+		return int32(0)
 	}
 	value, err := stat.GetInt(i.name)
 	if err != nil {
 		if ptr {
 			return nil
 		}
-		return 0
+		return int32(0)
 	}
 	if ptr {
 		return &value

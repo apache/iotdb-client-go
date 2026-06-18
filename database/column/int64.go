@@ -43,14 +43,14 @@ func (i *Int64) Row(stat *client.SessionDataSet, ptr bool) any {
 		if ptr {
 			return nil
 		}
-		return 0
+		return int64(0)
 	}
 	value, err := stat.GetLong(i.name)
 	if err != nil {
 		if ptr {
 			return nil
 		}
-		return 0
+		return int64(0)
 	}
 	if ptr {
 		return &value

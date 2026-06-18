@@ -37,17 +37,20 @@ func (b *Blob) Row(stat *client.SessionDataSet, ptr bool) any {
 		if ptr {
 			return nil
 		}
-		return 0
+		return []byte(nil)
 	}
 	value, err := stat.GetBlob(b.name)
 	if err != nil {
 		if ptr {
 			return nil
 		}
-		return 0
+		return []byte(nil)
 	}
 	if ptr {
-		return &value
+		return value
 	}
-	return value
+	if value == nil {
+		return []byte(nil)
+	}
+	return value.GetValues()
 }

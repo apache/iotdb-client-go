@@ -19,7 +19,11 @@
 
 package column
 
-import "github.com/apache/iotdb-client-go/v2/client"
+import (
+	"time"
+
+	"github.com/apache/iotdb-client-go/v2/client"
+)
 
 type Date struct {
 	name string
@@ -37,14 +41,14 @@ func (b *Date) Row(stat *client.SessionDataSet, ptr bool) any {
 		if ptr {
 			return nil
 		}
-		return 0
+		return time.Time{}
 	}
 	value, err := stat.GetDate(b.name)
 	if err != nil {
 		if ptr {
 			return nil
 		}
-		return 0
+		return time.Time{}
 	}
 	if ptr {
 		return &value

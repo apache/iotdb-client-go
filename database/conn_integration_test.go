@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -179,4 +180,45 @@ func TestConnect_ShowDatabases(t *testing.T) {
 	}
 	assert.GreaterOrEqual(t, count, 1)
 	require.NoError(t, rows.Err())
+}
+
+// TestConnect_DialWithFullConfig verifies that a connection built with a full
+// PoolConfig (FetchSize/ConnectRetryMax/TimeZone) reaches a real server and
+// serves queries, and that the configured time zone is wired into connect.
+//
+// Note: FetchSize/ConnectRetryMax do not change query results and the bind path
+// does not yet dereference the time zone, so this is a config-path smoke test
+// plus timeZone wiring verification, not a per-parameter behavior assertion.
+func TestConnect_DialWithFullConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	opt := &Options{
+		PoolConfig: client.PoolConfig{
+			UserName:        "root",
+			Password:        "root",
+			FetchSize:       1024,
+			ConnectRetryMax: 3,
+			TimeZone:        "America/New_York",
+		},
+	}
+
+	conn, err := dial(context.Background(), "127.0.0.1:6667", 0, opt)
+	require.NoError(t, err)
+	defer conn.close()
+
+	want, err := time.LoadLocation("America/New_York")
+	require.NoError(t, err)
+	assert.Equal(t, want, conn.timeZone)
+
+	require.NoError(t, conn.ping(context.Background()))
+
+	rows, err := conn.query(context.Background(), func(nativeTransport, error) {}, "SHOW DATABASES")
+	require.NoError(t, err)
+	defer rows.Close()
+
+	ok, err := rows.Next()
+	require.NoError(t, err)
+	assert.True(t, ok)
 }

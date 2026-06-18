@@ -29,6 +29,12 @@ import (
 type rows struct {
 	set     *client.SessionDataSet
 	columns []column.Interface
+	// release returns the underlying session to the pool. It must run exactly
+	// once, when the result set is closed — not when query() returns — because
+	// set keeps using the session's RPC client/session id for FetchResultsV2
+	// and CloseOperation. Returning it early would let another goroutine borrow
+	// the same session and use the transport concurrently while rows are live.
+	release func()
 }
 
 func (r *rows) Next() (bool, error) {
@@ -37,4 +43,15 @@ func (r *rows) Next() (bool, error) {
 	}
 
 	return r.set.Next()
+}
+
+func (r *rows) Close() error {
+	if r.set != nil {
+		r.set.Close()
+	}
+	if r.release != nil {
+		r.release()
+		r.release = nil
+	}
+	return nil
 }

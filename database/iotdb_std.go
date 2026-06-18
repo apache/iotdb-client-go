@@ -53,7 +53,6 @@ func isConnBrokenError(err error) bool {
 type stdDriver struct {
 	opt    *Options
 	conn   stdConnect
-	commit func() error
 	debugf func(format string, v ...any)
 }
 
@@ -71,7 +70,11 @@ func (std *stdDriver) Open(dsn string) (_ driver.Conn, err error) {
 	}
 	var debugf = func(format string, v ...any) {}
 	if opt.Debug {
-		debugf = log.New(os.Stdout, "[iotdb-std][opener] ", 0).Printf
+		if opt.Debugf != nil {
+			debugf = opt.Debugf
+		} else {
+			debugf = log.New(os.Stdout, "[iotdb-std][opener] ", 0).Printf
+		}
 	}
 	opt.ClientInfo.Comment = []string{"database/sql"}
 	return (&stdConnOpener{opt: &opt, debugf: debugf}).Connect(context.Background())
@@ -104,48 +107,12 @@ var _ driver.Pinger = (*stdDriver)(nil)
 //
 // Deprecated: Drivers should implement ConnBeginTx instead (or additionally).
 func (std *stdDriver) Begin() (driver.Tx, error) {
-	if std.conn.isBad() {
-		std.debugf("Begin: connection is bad")
-		return nil, driver.ErrBadConn
-	}
-	return std, nil
+	return nil, ErrTransactionsUnsupported
 }
 
 func (std *stdDriver) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
-	if std.conn.isBad() {
-		std.debugf("BeginTx: connection is bad")
-		return nil, driver.ErrBadConn
-	}
-
-	return std, nil
+	return nil, ErrTransactionsUnsupported
 }
-
-func (std *stdDriver) Commit() error {
-	if std.commit == nil {
-		return nil
-	}
-	defer func() {
-		std.commit = nil
-	}()
-
-	if err := std.commit(); err != nil {
-		if isConnBrokenError(err) {
-			std.debugf("Commit got EOF error: resetting connection")
-			return driver.ErrBadConn
-		}
-		std.debugf("Commit error: %v\n", err)
-		return err
-	}
-	return nil
-}
-
-func (std *stdDriver) Rollback() error {
-	std.commit = nil
-	//std.conn.close()
-	return nil
-}
-
-var _ driver.Tx = (*stdDriver)(nil)
 
 func (std *stdDriver) CheckNamedValue(nv *driver.NamedValue) error { return nil }
 
@@ -183,8 +150,9 @@ func (std *stdDriver) PrepareContext(ctx context.Context, query string) (driver.
 		return nil, driver.ErrBadConn
 	}
 
-	std.commit = std.conn.commit
-	return &stdBatch{
+	return &stdStmt{
+		std:    std,
+		query:  query,
 		debugf: std.debugf,
 	}, nil
 }

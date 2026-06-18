@@ -27,5 +27,4 @@ type stdConnect interface {
 	query(ctx context.Context, release nativeTransportRelease, query string, args ...any) (*rows, error)
 	exec(ctx context.Context, query string, args ...any) error
 	ping(ctx context.Context) (err error)
-	commit() error
 }

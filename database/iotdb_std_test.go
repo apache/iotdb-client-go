@@ -22,6 +22,8 @@ package iotdb_go
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -252,4 +254,27 @@ func TestStd_ShowDatabases(t *testing.T) {
 	}
 	assert.GreaterOrEqual(t, count, 1)
 	require.NoError(t, rows.Err())
+}
+
+// ==================== Transactions ====================
+
+// TestStd_BeginUnsupported verifies that Begin reports transactions as
+// unsupported rather than returning a fake no-op transaction.
+func TestStd_BeginUnsupported(t *testing.T) {
+	tx, err := (&stdDriver{}).Begin()
+	assert.Nil(t, tx)
+	assert.ErrorIs(t, err, ErrTransactionsUnsupported)
+}
+
+// TestStd_BeginTxUnsupported verifies the same for the context-aware BeginTx.
+func TestStd_BeginTxUnsupported(t *testing.T) {
+	tx, err := (&stdDriver{}).BeginTx(context.Background(), driver.TxOptions{})
+	assert.Nil(t, tx)
+	assert.ErrorIs(t, err, ErrTransactionsUnsupported)
+}
+
+// TestStd_DBBeginUnsupported verifies the error surfaces through database/sql.
+func TestStd_DBBeginUnsupported(t *testing.T) {
+	_, err := stdConn.Begin()
+	assert.True(t, errors.Is(err, ErrTransactionsUnsupported))
 }

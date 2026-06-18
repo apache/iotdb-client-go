@@ -45,4 +45,5 @@ var (
 	ErrAcquireConnNoAddress      = errors.New("iotdb: no valid address supplied")
 	ErrServerUnexpectedData      = errors.New("code: 101, message: Unexpected packet Data received from client")
 	ErrConnectionClosed          = errors.New("iotdb: connection is closed")
+	ErrTransactionsUnsupported   = errors.New("iotdb: transactions are not supported")
 )

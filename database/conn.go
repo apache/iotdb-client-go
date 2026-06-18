@@ -51,20 +51,16 @@ func dial(ctx context.Context, addr string, num int, opt *Options) (*connect, er
 			debugf = func(format string, v ...any) {
 				opt.Debugf(
 					"[iotdb][%s][id=%d] "+format,
-					append([]interface{}{opt.Addr, num}, v...)...,
+					append([]interface{}{addr, num}, v...)...,
 				)
 			}
 		} else {
-			debugf = log.New(os.Stdout, fmt.Sprintf("[iotdb][%s][id=%d]", opt.Addr, num), 0).Printf
+			debugf = log.New(os.Stdout, fmt.Sprintf("[iotdb][%s][id=%d]", addr, num), 0).Printf
 		}
 	}
+	poolConfig := buildPoolConfig(host, port, opt)
 	var (
-		config = &client.PoolConfig{
-			Host:     host,
-			Port:     port,
-			UserName: opt.UserName,
-			Password: opt.Password,
-		}
+		config                          = &poolConfig
 		poolMaxSize                     = 3
 		poolWaitToGetSessionTimeoutInMs = 60000
 		poolConnectionTimeoutInMs       = 60000
@@ -84,6 +80,14 @@ func dial(ctx context.Context, addr string, num int, opt *Options) (*connect, er
 	}
 	conn = client.NewSessionPool(config, poolMaxSize, poolConnectionTimeoutInMs, poolWaitToGetSessionTimeoutInMs, poolEnableCompression)
 
+	var timeZone *time.Location
+	if poolConfig.TimeZone != "" {
+		timeZone, err = time.LoadLocation(poolConfig.TimeZone)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	var (
 		netConn = &connect{
 			id:          num,
@@ -91,10 +95,18 @@ func dial(ctx context.Context, addr string, num int, opt *Options) (*connect, er
 			conn:        conn,
 			debugfFunc:  debugf,
 			connectedAt: time.Now(),
+			timeZone:    timeZone,
 		}
 	)
 
 	return netConn, nil
+}
+
+func buildPoolConfig(host, port string, opt *Options) client.PoolConfig {
+	cfg := opt.PoolConfig // 值拷贝，保留 FetchSize/TimeZone/ConnectRetryMax/Database/UserName/Password
+	cfg.Host = host
+	cfg.Port = port
+	return cfg
 }
 
 type connect struct {
@@ -134,16 +146,25 @@ func (c *connect) query(ctx context.Context, release nativeTransportRelease, que
 		return nil, err
 	}
 	session, err := c.conn.GetSession()
+	// The session must stay checked out until the result set is closed, because
+	// the returned rows keep using its RPC client/session id. Hand ownership to
+	// rows.release on success; release here only on the error paths below.
+	sessionReturned := false
+	defer func() {
+		if !sessionReturned {
+			c.conn.PutBack(session)
+		}
+	}()
 	if err != nil {
 		release(c, err)
 		return nil, err
 	}
-	defer c.conn.PutBack(session)
 	var timeout int64 = int64(c.opt.DialTimeout.Seconds() * 1000)
 	if timeout == 0 {
 		timeout = 5000
 	}
-	statement, err := session.ExecuteQueryStatement(body, &timeout)
+	option := client.WithCtx(ctx)
+	statement, err := session.ExecuteQueryStatement(body, &timeout, option)
 	if err != nil {
 		release(c, err)
 		return nil, err
@@ -160,12 +181,10 @@ func (c *connect) query(ctx context.Context, release nativeTransportRelease, que
 		}
 		columnsList[k] = col
 	}
+	sessionReturned = true
 	return &rows{
 		set:     statement,
 		columns: columnsList,
+		release: func() { c.conn.PutBack(session) },
 	}, nil
-}
-
-func (c *connect) commit() error {
-	return nil
 }

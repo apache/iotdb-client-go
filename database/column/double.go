@@ -38,14 +38,14 @@ func (d *Double) Row(stat *client.SessionDataSet, ptr bool) any {
 		if ptr {
 			return nil
 		}
-		return 0
+		return float64(0)
 	}
 	value, err := stat.GetDouble(d.name)
 	if err != nil {
 		if ptr {
 			return nil
 		}
-		return 0
+		return float64(0)
 	}
 	if ptr {
 		return &value

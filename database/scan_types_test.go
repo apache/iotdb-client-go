@@ -310,3 +310,55 @@ func TestScan_AllTypesInOneRow(t *testing.T) {
 	assert.Equal(t, "hello world", textVal)
 	require.NoError(t, rows.Err())
 }
+
+// TestScan_Null verifies that SQL NULLs surface as nil to database/sql, so
+// sql.Null* and pointer scans report absence instead of typed zero values.
+func TestScan_Null(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	sg := "root.scan_null"
+	_, err := scanConn.ExecContext(context.Background(), "CREATE DATABASE "+sg)
+	require.NoError(t, err)
+	defer func() { _, _ = scanConn.ExecContext(context.Background(), "DELETE DATABASE "+sg) }()
+
+	for _, ts := range []struct{ name, dataType string }{
+		{"present", "INT64"},
+		{"missing_text", "TEXT"},
+		{"missing_double", "DOUBLE"},
+		{"missing_int", "INT64"},
+	} {
+		_, err = scanConn.ExecContext(context.Background(),
+			"CREATE TIMESERIES "+sg+".d1."+ts.name+" WITH DATATYPE="+ts.dataType+", ENCODING=PLAIN")
+		require.NoError(t, err)
+	}
+
+	// Insert only the "present" column, leaving the other three NULL for this row.
+	_, err = scanConn.ExecContext(context.Background(),
+		"INSERT INTO "+sg+".d1(timestamp, present) VALUES (?, ?)", 1704067200000, 7)
+	require.NoError(t, err)
+
+	rows, err := scanConn.QueryContext(context.Background(),
+		"SELECT present, missing_text, missing_double, missing_int FROM "+sg+".d1")
+	require.NoError(t, err)
+	defer rows.Close()
+
+	require.True(t, rows.Next())
+	var (
+		ts      int64
+		present sql.NullInt64
+		text    sql.NullString
+		double  sql.NullFloat64
+		intPtr  *int64
+	)
+	err = rows.Scan(&ts, &present, &text, &double, &intPtr)
+	require.NoError(t, err)
+
+	assert.True(t, present.Valid)
+	assert.Equal(t, int64(7), present.Int64)
+	assert.False(t, text.Valid, "NULL TEXT should scan as invalid, not empty string")
+	assert.False(t, double.Valid, "NULL DOUBLE should scan as invalid, not 0")
+	assert.Nil(t, intPtr, "NULL INT64 should scan as nil pointer, not 0")
+	require.NoError(t, rows.Err())
+}

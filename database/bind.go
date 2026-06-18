@@ -67,7 +67,7 @@ func DateNamed(name string, value time.Time, scale TimeUnit) driver.NamedDateVal
 
 var (
 	bindNumericRe    = regexp.MustCompile(`\$[0-9]+`)
-	bindPositionalRe = regexp.MustCompile(`[^\\][?]`)
+	bindPositionalRe = regexp.MustCompile(`(^|[^\\])\?`)
 )
 
 func bind(tz *time.Location, query string, args ...any) (string, error) {

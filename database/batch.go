@@ -22,29 +22,50 @@ package iotdb_go
 import (
 	"context"
 	"database/sql/driver"
-
-	"github.com/pkg/errors"
 )
 
-type stdBatch struct {
+// stdStmt is a prepared statement bound to a connection. It stores the query
+// captured at prepare time and delegates execution to the connection's
+// ExecContext/QueryContext, so db.Prepare(q).Exec/Query work as expected.
+type stdStmt struct {
+	std    *stdDriver
+	query  string
 	debugf func(format string, v ...any)
 }
 
-func (s *stdBatch) NumInput() int { return -1 }
+func (s *stdStmt) NumInput() int { return -1 }
 
-func (s *stdBatch) Exec(args []driver.Value) (driver.Result, error) {
-	return nil, errors.New("not implemented")
+func (s *stdStmt) Close() error { return nil }
+
+func (s *stdStmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+	return s.std.ExecContext(ctx, s.query, args)
 }
 
-func (s *stdBatch) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
-	return nil, driver.ErrSkip
+func (s *stdStmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
+	return s.std.QueryContext(ctx, s.query, args)
 }
 
-func (s *stdBatch) Query(args []driver.Value) (driver.Rows, error) {
-	// Note: not implementing driver.StmtQueryContext accordingly
-	return nil, errors.New("only Exec method supported in batch mode")
+func (s *stdStmt) Exec(args []driver.Value) (driver.Result, error) {
+	return s.ExecContext(context.Background(), valuesToNamedValues(args))
 }
 
-func (s *stdBatch) Close() error {
-	return nil
+func (s *stdStmt) Query(args []driver.Value) (driver.Rows, error) {
+	return s.QueryContext(context.Background(), valuesToNamedValues(args))
+}
+
+var (
+	_ driver.Stmt             = (*stdStmt)(nil)
+	_ driver.StmtExecContext  = (*stdStmt)(nil)
+	_ driver.StmtQueryContext = (*stdStmt)(nil)
+)
+
+// valuesToNamedValues adapts the legacy positional []driver.Value to
+// []driver.NamedValue (1-based Ordinal), so the deprecated Exec/Query paths can
+// reuse the context-aware implementations.
+func valuesToNamedValues(args []driver.Value) []driver.NamedValue {
+	named := make([]driver.NamedValue, len(args))
+	for i, v := range args {
+		named[i] = driver.NamedValue{Ordinal: i + 1, Value: v}
+	}
+	return named
 }

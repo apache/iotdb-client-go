@@ -564,12 +564,18 @@ func (s *Session) changeDatabase(database string) {
 	s.config.Database = database
 }
 
-func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionDataSet, error) {
+func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64, opts ...Option) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{
 		SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.config.FetchSize, Timeout: timeoutMs,
 	}
-	if resp, err := s.client.ExecuteQueryStatementV2(context.Background(), &request); err == nil {
+	options := ApplyOptions(opts...)
+	ctx := context.Background()
+	if options.ctx != nil {
+		ctx = options.ctx
+	}
+
+	if resp, err := s.client.ExecuteQueryStatementV2(ctx, &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.ColumnIndex2TsBlockColumnIndexList)
 		} else {
@@ -579,7 +585,7 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionD
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteQueryStatementV2(context.Background(), &request)
+			resp, err = s.client.ExecuteQueryStatementV2(ctx, &request)
 			if err == nil {
 				if resp == nil {
 					return nil, fmt.Errorf("received nil response after reconnect")

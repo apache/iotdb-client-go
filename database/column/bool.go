@@ -38,14 +38,14 @@ func (b *Bool) Row(stat *client.SessionDataSet, ptr bool) any {
 		if ptr {
 			return nil
 		}
-		return 0
+		return false
 	}
 	value, err := stat.GetBoolean(b.name)
 	if err != nil {
 		if ptr {
 			return nil
 		}
-		return 0
+		return false
 	}
 	if ptr {
 		return &value

@@ -41,8 +41,7 @@ func (s *stdRows) Columns() []string {
 
 // Close closes the rows iterator.
 func (s *stdRows) Close() error {
-	s.rows.set.Close()
-	return nil
+	return s.rows.Close()
 }
 
 // Next is called to populate the next row of data into
@@ -66,6 +65,16 @@ func (s *stdRows) Next(dest []driver.Value) error {
 	if next {
 		for i := range dest {
 			if s.rows.columns[i] == nil {
+				dest[i] = nil
+				continue
+			}
+			// database/sql expects dest[i] = nil for SQL NULL so sql.Null*,
+			// pointer scans and *any behave correctly. The column getters return
+			// typed zero values for NULL, so check nullness before reading.
+			if isNull, err := s.rows.set.IsNull(s.rows.columns[i].Name()); err != nil {
+				s.debugf("IsNull check failed: %v", err)
+				return err
+			} else if isNull {
 				dest[i] = nil
 				continue
 			}
