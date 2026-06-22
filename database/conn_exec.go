@@ -21,6 +21,8 @@ package iotdb_go
 
 import (
 	"context"
+
+	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 func (c *connect) exec(ctx context.Context, query string, args ...any) error {
@@ -37,8 +39,8 @@ func (c *connect) exec(ctx context.Context, query string, args ...any) error {
 		return err
 	}
 	defer c.conn.PutBack(session)
-
-	_, err = session.ExecuteStatement(body)
+	option := client.WithCtx(ctx)
+	_, err = session.ExecuteStatement(body, option)
 	if err != nil {
 		return err
 	}

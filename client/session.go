@@ -498,6 +498,9 @@ func (s *Session) SetTimeZone(timeZone string) error {
 }
 
 func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (*SessionDataSet, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	request := rpc.TSExecuteStatementReq{
 		SessionId:   s.sessionId,
 		Statement:   sql,
@@ -520,8 +523,14 @@ func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (
 	return s.genDataSet(sql, resp)
 }
 
-func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
-	return s.ExecuteStatementWithContext(context.Background(), sql)
+func (s *Session) ExecuteStatement(sql string, opts ...Option) (*SessionDataSet, error) {
+
+	options := ApplyOptions(opts...)
+	ctx := context.Background()
+	if options.ctx != nil {
+		ctx = options.ctx
+	}
+	return s.ExecuteStatementWithContext(ctx, sql)
 }
 
 func (s *Session) Ping(ctx context.Context) error {
@@ -564,18 +573,12 @@ func (s *Session) changeDatabase(database string) {
 	s.config.Database = database
 }
 
-func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64, opts ...Option) (*SessionDataSet, error) {
+func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64) (*SessionDataSet, error) {
 	request := rpc.TSExecuteStatementReq{
 		SessionId: s.sessionId, Statement: sql, StatementId: s.requestStatementId,
 		FetchSize: &s.config.FetchSize, Timeout: timeoutMs,
 	}
-	options := ApplyOptions(opts...)
-	ctx := context.Background()
-	if options.ctx != nil {
-		ctx = options.ctx
-	}
-
-	if resp, err := s.client.ExecuteQueryStatementV2(ctx, &request); err == nil {
+	if resp, err := s.client.ExecuteQueryStatementV2(context.Background(), &request); err == nil {
 		if statusErr := VerifySuccess(resp.Status); statusErr == nil {
 			return NewSessionDataSet(sql, resp.Columns, resp.DataTypeList, resp.ColumnNameIndexMap, *resp.QueryId, s.requestStatementId, s.client, s.sessionId, resp.QueryResult_, resp.IgnoreTimeStamp != nil && *resp.IgnoreTimeStamp, timeoutMs, *resp.MoreData, s.config.FetchSize, s.config.TimeZone, s.timeFactor, resp.ColumnIndex2TsBlockColumnIndexList)
 		} else {
@@ -585,7 +588,7 @@ func (s *Session) ExecuteQueryStatement(sql string, timeoutMs *int64, opts ...Op
 		if s.reconnect() {
 			request.SessionId = s.sessionId
 			request.StatementId = s.requestStatementId
-			resp, err = s.client.ExecuteQueryStatementV2(ctx, &request)
+			resp, err = s.client.ExecuteQueryStatementV2(context.Background(), &request)
 			if err == nil {
 				if resp == nil {
 					return nil, fmt.Errorf("received nil response after reconnect")

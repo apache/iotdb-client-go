@@ -222,3 +222,55 @@ func TestConnect_DialWithFullConfig(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, ok)
 }
+
+// ==================== Context Propagation ====================
+
+// TestConnect_ExecCancellation verifies that a cancelled context propagates
+// through conn.exec to the RPC layer and returns context.Canceled.
+func TestConnect_ExecCancellation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	opt := &Options{
+		PoolConfig: client.PoolConfig{
+			UserName: "root",
+			Password: "root",
+		},
+	}
+	conn, err := dial(context.Background(), "127.0.0.1:6667", 0, opt)
+	require.NoError(t, err)
+	defer conn.close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err = conn.exec(ctx, "SHOW DATABASES")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+// TestConnect_ExecDeadlineExceeded verifies that an expired deadline context
+// propagates through conn.exec and returns context.DeadlineExceeded.
+func TestConnect_ExecDeadlineExceeded(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	opt := &Options{
+		PoolConfig: client.PoolConfig{
+			UserName: "root",
+			Password: "root",
+		},
+	}
+	conn, err := dial(context.Background(), "127.0.0.1:6667", 0, opt)
+	require.NoError(t, err)
+	defer conn.close()
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-time.Hour))
+	defer cancel()
+
+	err = conn.exec(ctx, "SHOW DATABASES")
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}

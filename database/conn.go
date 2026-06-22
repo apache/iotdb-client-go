@@ -159,12 +159,7 @@ func (c *connect) query(ctx context.Context, release nativeTransportRelease, que
 		release(c, err)
 		return nil, err
 	}
-	var timeout int64 = int64(c.opt.DialTimeout.Seconds() * 1000)
-	if timeout == 0 {
-		timeout = 5000
-	}
-	option := client.WithCtx(ctx)
-	statement, err := session.ExecuteQueryStatement(body, &timeout, option)
+	statement, err := session.ExecuteStatementWithContext(ctx, body)
 	if err != nil {
 		release(c, err)
 		return nil, err

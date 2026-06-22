@@ -21,14 +21,18 @@ package iotdb_go
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/database/column"
 )
 
 type rows struct {
-	set     *client.SessionDataSet
-	columns []column.Interface
+	set       *client.SessionDataSet
+	columns   []column.Interface
+	closeFn   func() error
+	closeOnce sync.Once
+	closeErr  error
 	// release returns the underlying session to the pool. It must run exactly
 	// once, when the result set is closed — not when query() returns — because
 	// set keeps using the session's RPC client/session id for FetchResultsV2
@@ -46,12 +50,18 @@ func (r *rows) Next() (bool, error) {
 }
 
 func (r *rows) Close() error {
-	if r.set != nil {
-		r.set.Close()
-	}
-	if r.release != nil {
-		r.release()
-		r.release = nil
-	}
-	return nil
+	r.closeOnce.Do(func() {
+		if r.closeFn != nil {
+			r.closeErr = r.closeFn()
+		} else if r.set != nil {
+			r.closeErr = r.set.Close()
+		}
+		if r.release != nil {
+			r.release()
+			r.release = nil
+		}
+		r.set = nil
+		r.closeFn = nil
+	})
+	return r.closeErr
 }
