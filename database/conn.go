@@ -146,6 +146,10 @@ func (c *connect) query(ctx context.Context, release nativeTransportRelease, que
 		return nil, err
 	}
 	session, err := c.conn.GetSession()
+	if err != nil {
+		release(c, err)
+		return nil, err
+	}
 	// The session must stay checked out until the result set is closed, because
 	// the returned rows keep using its RPC client/session id. Hand ownership to
 	// rows.release on success; release here only on the error paths below.
@@ -155,10 +159,7 @@ func (c *connect) query(ctx context.Context, release nativeTransportRelease, que
 			c.conn.PutBack(session)
 		}
 	}()
-	if err != nil {
-		release(c, err)
-		return nil, err
-	}
+
 	statement, err := session.ExecuteStatementWithContext(ctx, body)
 	if err != nil {
 		release(c, err)
