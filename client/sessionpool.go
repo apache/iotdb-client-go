@@ -50,6 +50,7 @@ type PoolConfig struct {
 	TimeZone        string
 	ConnectRetryMax int
 	Database        string
+	TLSConfig       *TLSConfig
 	sqlDialect      string
 }
 
@@ -146,6 +147,7 @@ func getSessionConfig(config *PoolConfig) *Config {
 		ConnectRetryMax: config.ConnectRetryMax,
 		sqlDialect:      config.sqlDialect,
 		Database:        config.Database,
+		TLSConfig:       config.TLSConfig,
 	}
 }
 
@@ -159,6 +161,7 @@ func getClusterSessionConfig(config *PoolConfig) *ClusterConfig {
 		ConnectRetryMax: config.ConnectRetryMax,
 		sqlDialect:      config.sqlDialect,
 		Database:        config.Database,
+		TLSConfig:       config.TLSConfig,
 	}
 }
 

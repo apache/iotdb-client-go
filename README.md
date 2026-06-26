@@ -79,6 +79,29 @@ curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main
 go run session_example.go
 ```
 
+## TLS/mTLS
+
+Set `TLSConfig` on `client.Config`, `client.ClusterConfig`, or `client.PoolConfig` to enable TLS. Add `CertFile` and `KeyFile` when the server requires mTLS client authentication.
+
+```golang
+config := &client.Config{
+    Host:     host,
+    Port:     port,
+    UserName: user,
+    Password: password,
+    TLSConfig: &client.TLSConfig{
+        CAFile:     "/path/to/ca.pem",
+        CertFile:   "/path/to/client.pem",
+        KeyFile:    "/path/to/client-key.pem",
+    },
+}
+session := client.NewSession(config)
+if err := session.Open(false, 0); err != nil {
+    log.Fatal(err)
+}
+defer session.Close()
+```
+
 ## How to Use the SessionPool
 
 SessionPool is a wrapper of a Session Set. Using SessionPool, the user do not need to consider how to reuse a session connection.
