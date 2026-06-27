@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"reflect"
 	"sort"
 	"strings"
@@ -68,6 +67,7 @@ type Config struct {
 	sqlDialect      string
 	Version         Version
 	Database        string
+	TLSConfig       *TLSConfig
 }
 
 type Session struct {
@@ -100,13 +100,10 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 
 	var err error
 
-	// In thrift 0.14.1, this func returns two values; in newer versions, it returns one.
-	s.trans = thrift.NewTSocketConf(net.JoinHostPort(s.config.Host, s.config.Port), &thrift.TConfiguration{
-		ConnectTimeout: time.Duration(connectionTimeoutInMs) * time.Millisecond, // Use 0 for no timeout
-	})
-	// s.trans = thrift.NewTFramedTransport(s.trans)	// deprecated
-	tmp_conf := thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
-	s.trans = thrift.NewTFramedTransportConf(s.trans, &tmp_conf)
+	s.trans, err = newTransport(s.config.Host, s.config.Port, connectionTimeoutInMs, s.config.TLSConfig)
+	if err != nil {
+		return err
+	}
 	if !s.trans.IsOpen() {
 		err = s.trans.Open()
 		if err != nil {
@@ -154,6 +151,7 @@ type ClusterConfig struct {
 	ConnectRetryMax int
 	sqlDialect      string
 	Database        string
+	TLSConfig       *TLSConfig
 }
 
 func (s *Session) OpenCluster(enableRPCCompression bool) error {
@@ -1326,26 +1324,31 @@ func newClusterSessionWithSqlDialect(clusterConfig *ClusterConfig) (Session, err
 		session.endPointList[i] = node
 	}
 	var err error
+	var lastErr error
 	for i := range session.endPointList {
 		ep := session.endPointList[i]
-		session.trans = thrift.NewTSocketConf(net.JoinHostPort(ep.Host, ep.Port), &thrift.TConfiguration{
-			ConnectTimeout: time.Duration(0), // Use 0 for no timeout
-		})
-		// session.trans = thrift.NewTFramedTransport(session.trans)	// deprecated
-		tmp_conf := thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
-		session.trans = thrift.NewTFramedTransportConf(session.trans, &tmp_conf)
+		session.trans, err = newTransport(ep.Host, ep.Port, 0, clusterConfig.TLSConfig)
+		if err != nil {
+			lastErr = err
+			log.Println(err)
+			continue
+		}
 		if !session.trans.IsOpen() {
 			err = session.trans.Open()
 			if err != nil {
+				lastErr = err
 				log.Println(err)
 			} else {
 				session.config = getConfig(ep.Host, ep.Port,
-					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax, clusterConfig.Database, clusterConfig.sqlDialect)
+					clusterConfig.UserName, clusterConfig.Password, clusterConfig.FetchSize, clusterConfig.TimeZone, clusterConfig.ConnectRetryMax, clusterConfig.Database, clusterConfig.sqlDialect, clusterConfig.TLSConfig)
 				break
 			}
 		}
 	}
-	if !session.trans.IsOpen() {
+	if session.trans == nil || !session.trans.IsOpen() {
+		if lastErr != nil {
+			return session, fmt.Errorf("no server can connect: %w", lastErr)
+		}
 		return session, fmt.Errorf("no server can connect")
 	}
 	return session, nil
@@ -1354,18 +1357,14 @@ func newClusterSessionWithSqlDialect(clusterConfig *ClusterConfig) (Session, err
 func (s *Session) initClusterConn(node endPoint) error {
 	var err error
 
-	s.trans = thrift.NewTSocketConf(net.JoinHostPort(node.Host, node.Port), &thrift.TConfiguration{
-		ConnectTimeout: time.Duration(0), // Use 0 for no timeout
-	})
-	if err == nil {
-		// s.trans = thrift.NewTFramedTransport(s.trans)	// deprecated
-		tmp_conf := thrift.TConfiguration{MaxFrameSize: thrift.DEFAULT_MAX_FRAME_SIZE}
-		s.trans = thrift.NewTFramedTransportConf(s.trans, &tmp_conf)
-		if !s.trans.IsOpen() {
-			err = s.trans.Open()
-			if err != nil {
-				return err
-			}
+	s.trans, err = newTransport(node.Host, node.Port, 0, s.config.TLSConfig)
+	if err != nil {
+		return err
+	}
+	if !s.trans.IsOpen() {
+		err = s.trans.Open()
+		if err != nil {
+			return err
 		}
 	}
 
@@ -1398,7 +1397,7 @@ func (s *Session) initClusterConn(node endPoint) error {
 	return err
 }
 
-func getConfig(host string, port string, userName string, passWord string, fetchSize int32, timeZone string, connectRetryMax int, database string, sqlDialect string) *Config {
+func getConfig(host string, port string, userName string, passWord string, fetchSize int32, timeZone string, connectRetryMax int, database string, sqlDialect string, tlsConfig *TLSConfig) *Config {
 	return &Config{
 		Host:            host,
 		Port:            port,
@@ -1409,6 +1408,7 @@ func getConfig(host string, port string, userName string, passWord string, fetch
 		ConnectRetryMax: connectRetryMax,
 		sqlDialect:      sqlDialect,
 		Database:        database,
+		TLSConfig:       tlsConfig,
 	}
 }
 

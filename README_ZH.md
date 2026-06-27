@@ -76,6 +76,29 @@ curl -o session_example.go -L https://github.com/apache/iotdb-client-go/raw/main
 go run session_example.go
 ```
 
+## TLS/mTLS
+
+在 `client.Config`、`client.ClusterConfig` 或 `client.PoolConfig` 上设置 `TLSConfig` 即可启用 TLS。如果服务端要求 mTLS 客户端认证，同时设置 `CertFile` 和 `KeyFile`。
+
+```golang
+config := &client.Config{
+    Host:     host,
+    Port:     port,
+    UserName: user,
+    Password: password,
+    TLSConfig: &client.TLSConfig{
+        CAFile:     "/path/to/ca.pem",
+        CertFile:   "/path/to/client.pem",
+        KeyFile:    "/path/to/client-key.pem",
+    },
+}
+session := client.NewSession(config)
+if err := session.Open(false, 0); err != nil {
+    log.Fatal(err)
+}
+defer session.Close()
+```
+
 ## SessionPool
 通过SessionPool管理session，用户不需要考虑如何重用session，当到达pool的最大值时，获取session的请求会阻塞
 注意：session使用完成后需要调用PutBack方法
