@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/apache/thrift v0.23.0
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.2
 )
 

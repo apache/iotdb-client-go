@@ -496,6 +496,9 @@ func (s *Session) SetTimeZone(timeZone string) error {
 }
 
 func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (*SessionDataSet, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	request := rpc.TSExecuteStatementReq{
 		SessionId:   s.sessionId,
 		Statement:   sql,
@@ -518,8 +521,25 @@ func (s *Session) ExecuteStatementWithContext(ctx context.Context, sql string) (
 	return s.genDataSet(sql, resp)
 }
 
-func (s *Session) ExecuteStatement(sql string) (*SessionDataSet, error) {
-	return s.ExecuteStatementWithContext(context.Background(), sql)
+func (s *Session) ExecuteStatement(sql string, opts ...Option) (*SessionDataSet, error) {
+
+	options := ApplyOptions(opts...)
+	ctx := context.Background()
+	if options.ctx != nil {
+		ctx = options.ctx
+	}
+	return s.ExecuteStatementWithContext(ctx, sql)
+}
+
+func (s *Session) Ping(ctx context.Context) error {
+	status, err := s.client.TestConnectionEmptyRPC(ctx)
+	if err != nil {
+		return err
+	}
+	if status.GetCode() == SuccessStatus {
+		return nil
+	}
+	return errors.New("Ping failed: " + status.GetMessage())
 }
 
 func (s *Session) ExecuteNonQueryStatement(sql string) error {
