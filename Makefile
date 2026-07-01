@@ -18,6 +18,7 @@
 
 UNAME_S := $(shell uname -s)
 UNAME_P := $(shell uname -p)
+THRIFT_TOOL_VERSION := 0.23.0.0
 
 ifeq ($(UNAME_S),Linux)
 	ifeq ($(UNAME_P),x86_64)
@@ -57,10 +58,10 @@ generate:
 		cp -r ../../iotdb-protocol/thrift-commons/target/generated-sources-go/common common; \
 		cp -r ../../iotdb-protocol/thrift-datanode/target/generated-sources-go/rpc rpc; \
 	else \
-		echo "Downloading and unpacking iotdb-tools-thrift-0.14.1.0-$(OS_CLASSIFIER).zip"; \
+		echo "Downloading and unpacking iotdb-tools-thrift-$(THRIFT_TOOL_VERSION)-$(OS_CLASSIFIER).zip"; \
 		rm -rf thrift; \
 		mkdir -p thrift; \
-		curl -L -o thrift/iotdb-tools-thrift.zip https://repo1.maven.org/maven2/org/apache/iotdb/tools/iotdb-tools-thrift/0.14.1.0/iotdb-tools-thrift-0.14.1.0-$(OS_CLASSIFIER).zip; \
+		curl -L -o thrift/iotdb-tools-thrift.zip https://repo1.maven.org/maven2/org/apache/iotdb/tools/iotdb-tools-thrift/$(THRIFT_TOOL_VERSION)/iotdb-tools-thrift-$(THRIFT_TOOL_VERSION)-$(OS_CLASSIFIER).zip; \
 		unzip -o thrift/iotdb-tools-thrift.zip -d thrift; \
 		curl -o common.thrift https://raw.githubusercontent.com/apache/iotdb/master/iotdb-protocol/thrift-commons/src/main/thrift/common.thrift; \
 		$(THRIFT_EXEC) -out . -gen go:package_prefix=github.com/apache/iotdb-client-go/v2/ common.thrift; \
