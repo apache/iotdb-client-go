@@ -108,6 +108,19 @@ func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
 	t.timestamps[rowIndex] = timestamp
 }
 
+// SetTimestampAt is a bounds-checked alternative to SetTimestamp. It validates
+// rowIndex and returns an "illegal argument rowIndex" error instead of
+// panicking with an index-out-of-range when rowIndex is negative or beyond the
+// tablet's capacity, consistent with SetValueAt and GetValueAt. The existing
+// SetTimestamp is preserved unchanged for source compatibility.
+func (t *Tablet) SetTimestampAt(timestamp int64, rowIndex int) error {
+	if rowIndex < 0 || rowIndex >= t.maxRowNumber {
+		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
+	}
+	t.timestamps[rowIndex] = timestamp
+	return nil
+}
+
 func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error {
 
 	if columnIndex < 0 || columnIndex >= len(t.measurementSchemas) {

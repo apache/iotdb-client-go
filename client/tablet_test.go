@@ -173,6 +173,24 @@ func TestTablet_SetTimestamp(t *testing.T) {
 	}
 }
 
+func TestTablet_SetTimestampAtRowIndexBounds(t *testing.T) {
+	tablet, err := createTablet(1) // maxRowNumber == 1, so only row index 0 is valid
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A valid row index returns no error.
+	if err := tablet.SetTimestampAt(1608268702769, 0); err != nil {
+		t.Errorf("SetTimestampAt(_, 0) on a 1-row tablet returned error: %v", err)
+	}
+	// Out-of-range row indices return an error instead of panicking with an
+	// index-out-of-range, matching SetValueAt/GetValueAt.
+	for _, rowIndex := range []int{1, -1} {
+		if err := tablet.SetTimestampAt(1, rowIndex); err == nil {
+			t.Errorf("SetTimestampAt(_, %d) on a 1-row tablet should return an error, got nil", rowIndex)
+		}
+	}
+}
+
 func TestTablet_SetValueAt(t *testing.T) {
 	type args struct {
 		value       interface{}
