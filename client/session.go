@@ -26,9 +26,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"reflect"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
@@ -1334,14 +1334,32 @@ func NewClusterSession(clusterConfig *ClusterConfig) (Session, error) {
 	return newClusterSessionWithSqlDialect(clusterConfig)
 }
 
+// parseNodeURL splits a "host:port" node URL into a host and port, accepting
+// bracketed IPv6 forms such as "[::1]:6667" and "[2001:db8::1]:6667" in
+// addition to IPv4 and hostname URLs, consistent with the [ipv6]:port endpoint
+// format standardized in apache/iotdb#18162. Malformed URLs (missing port,
+// empty host, unbalanced brackets, or a bare IPv6 address without brackets) are
+// rejected with an error rather than silently mis-parsed.
+func parseNodeURL(nodeURL string) (endPoint, error) {
+	host, port, err := net.SplitHostPort(nodeURL)
+	if err != nil {
+		return endPoint{}, fmt.Errorf("invalid node url %q: %w", nodeURL, err)
+	}
+	if host == "" || port == "" {
+		return endPoint{}, fmt.Errorf("invalid node url %q: host and port must be non-empty", nodeURL)
+	}
+	return endPoint{Host: host, Port: port}, nil
+}
+
 func newClusterSessionWithSqlDialect(clusterConfig *ClusterConfig) (Session, error) {
 	session := Session{}
 	session.endPointList = make([]endPoint, len(clusterConfig.NodeUrls))
 	for i := 0; i < len(clusterConfig.NodeUrls); i++ {
-		node := endPoint{}
-		node.Host = strings.Split(clusterConfig.NodeUrls[i], ":")[0]
-		node.Port = strings.Split(clusterConfig.NodeUrls[i], ":")[1]
-		session.endPointList[i] = node
+		ep, err := parseNodeURL(clusterConfig.NodeUrls[i])
+		if err != nil {
+			return session, err
+		}
+		session.endPointList[i] = ep
 	}
 	var err error
 	var lastErr error
