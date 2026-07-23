@@ -225,6 +225,22 @@ func TestTablet_SetValueAt(t *testing.T) {
 			},
 			wantErr: true,
 		}, {
+			name: "columnIndex-out-of-range-boundary",
+			args: args{
+				value:       0,
+				columnIndex: 10,
+				rowIndex:    0,
+			},
+			wantErr: true,
+		}, {
+			name: "rowIndex-out-of-range-boundary",
+			args: args{
+				value:       0,
+				columnIndex: 0,
+				rowIndex:    1,
+			},
+			wantErr: true,
+		}, {
 			name: "restart_count",
 			args: args{
 				value:       int32(0),
@@ -410,6 +426,20 @@ func TestTablet_GetValueAt(t *testing.T) {
 			},
 			want:    int64(1608268702780),
 			wantErr: false,
+		}, {
+			name: "columnIndex-out-of-range-boundary",
+			args: args{
+				columnIndex: 10,
+				rowIndex:    0,
+			},
+			wantErr: true,
+		}, {
+			name: "rowIndex-out-of-range-boundary",
+			args: args{
+				columnIndex: 0,
+				rowIndex:    1,
+			},
+			wantErr: true,
 		},
 	}
 	if tablet, err := createTablet(1); err == nil {

@@ -110,11 +110,11 @@ func (t *Tablet) SetTimestamp(timestamp int64, rowIndex int) {
 
 func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error {
 
-	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
+	if columnIndex < 0 || columnIndex >= len(t.measurementSchemas) {
 		return fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
-	if rowIndex < 0 || rowIndex > t.maxRowNumber {
+	if rowIndex < 0 || rowIndex >= t.maxRowNumber {
 		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
@@ -221,11 +221,11 @@ func (t *Tablet) GetMaxRowNumber() int {
 }
 
 func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
-	if columnIndex < 0 || columnIndex > len(t.measurementSchemas) {
+	if columnIndex < 0 || columnIndex >= len(t.measurementSchemas) {
 		return nil, fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
 
-	if rowIndex < 0 || rowIndex > t.maxRowNumber {
+	if rowIndex < 0 || rowIndex >= t.maxRowNumber {
 		return nil, fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
