@@ -234,6 +234,8 @@ func (s *IoTDBRpcDataSet) fetchResults() (bool, error) {
 		return false, err
 	}
 
+	s.moreData = resp.GetMoreData()
+
 	if !resp.HasResultSet {
 		err = s.Close()
 	} else {
