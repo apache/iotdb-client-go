@@ -436,6 +436,73 @@ func (s *e2eTestSuite) Test_FetchMoreData() {
 	s.session.DeleteStorageGroup("root.ln.**")
 }
 
+// createSimpleTablet creates a tablet whose single INT64 measurement value
+// equals the row index, so that the values read back can be verified.
+func createSimpleTablet(deviceId string, rowCount int) (*client.Tablet, error) {
+	tablet, err := client.NewTablet(deviceId, []*client.MeasurementSchema{
+		{
+			Measurement: "value",
+			DataType:    client.INT64,
+		},
+	}, rowCount)
+	if err != nil {
+		return nil, err
+	}
+	var ts int64 = 0
+	for row := 0; row < rowCount; row++ {
+		ts++
+		tablet.SetTimestamp(ts, row)
+		tablet.SetValueAt(int64(row), 0, row)
+		tablet.RowSize++
+	}
+	return tablet, nil
+}
+
+// Test_QueryDataAcrossMultipleFetches writes more rows than the fetch size so
+// that reading the result requires several fetchResults rounds; the data set
+// must keep fetching while the server reports more data and stop once the
+// server reports no more data, otherwise the read-back count and values would
+// not match.
+func (s *e2eTestSuite) Test_QueryDataAcrossMultipleFetches() {
+	var timeseries = []string{"root.ln.device1.**"}
+	tests := []struct {
+		name      string
+		fetchSize int32
+		rowCount  int
+	}{
+		{name: "30000 rows with fetchSize 100", fetchSize: 100, rowCount: 30000},
+		{name: "50000 rows with fetchSize 1000", fetchSize: 1000, rowCount: 50000},
+	}
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			s.session.SetFetchSize(tt.fetchSize)
+			s.session.DeleteTimeseries(timeseries)
+			tablet, err := createSimpleTablet("root.ln.device1", tt.rowCount)
+			s.Require().NoError(err)
+			s.checkError(s.session.InsertAlignedTablets([]*client.Tablet{tablet}, false))
+
+			ds, err := s.session.ExecuteQueryStatement("select * from root.ln.device1", nil)
+			s.Require().NoError(err)
+			defer ds.Close()
+
+			count := 0
+			for {
+				hasNext, err := ds.Next()
+				s.Require().NoError(err)
+				if !hasNext {
+					break
+				}
+				value, err := ds.GetLong("root.ln.device1.value")
+				s.Require().NoError(err)
+				s.Assert().Equal(int64(count), value)
+				count++
+			}
+			s.Assert().Equal(tt.rowCount, count)
+			s.session.DeleteStorageGroup("root.ln.**")
+		})
+	}
+}
+
 func (s *e2eTestSuite) Test_QueryAllDataType() {
 	measurementSchemas := []*client.MeasurementSchema{
 		{
