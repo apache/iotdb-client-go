@@ -244,7 +244,12 @@ func verifySuccesses(statuses []*common.TSStatus) error {
 	buff := bytes.Buffer{}
 	for _, status := range statuses {
 		if status.Code != SuccessStatus && status.Code != RedirectionRecommend {
-			buff.WriteString(*status.Message + ";")
+			if status.Message != nil {
+				buff.WriteString(*status.Message)
+				buff.WriteString(";")
+			} else {
+				fmt.Fprintf(&buff, "error code: %d;", status.Code)
+			}
 		}
 	}
 	errMsg := buff.String()
