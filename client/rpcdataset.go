@@ -542,11 +542,17 @@ func (s *IoTDBRpcDataSet) getObjectByTsBlockIndex(tsBlockColumnIndex int32) (int
 		} else {
 			return binary.GetStringValue(), nil
 		}
-	case BLOB, OBJECT:
+	case BLOB:
 		if binary, err := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBinary(s.tsBlockIndex); err != nil {
 			return nil, err
 		} else {
 			return binary.GetValues(), nil
+		}
+	case OBJECT:
+		if binary, err := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBinary(s.tsBlockIndex); err != nil {
+			return nil, err
+		} else {
+			return objectBytesToString(binary.GetValues())
 		}
 	case DATE:
 		if value, err := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetInt(s.tsBlockIndex); err != nil {
@@ -639,11 +645,17 @@ func (s *IoTDBRpcDataSet) getStringByTsBlockColumnIndexAndDataType(index int32, 
 		} else {
 			return v.GetStringValue(), nil
 		}
-	case BLOB, OBJECT:
+	case BLOB:
 		if v, err := s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
 			return bytesToHexString(v.values), nil
+		}
+	case OBJECT:
+		if v, err := s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex); err != nil {
+			return "", err
+		} else {
+			return objectBytesToString(v.values)
 		}
 	case DATE:
 		v, err := s.curTsBlock.GetColumn(index).GetInt(s.tsBlockIndex)

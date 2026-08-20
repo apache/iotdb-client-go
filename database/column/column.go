@@ -77,6 +77,10 @@ func GenColumn(dataType string, name string) Interface {
 		return &String{
 			name: name,
 		}
+	case "OBJECT":
+		return &Object{
+			name: name,
+		}
 	}
 	return nil
 }

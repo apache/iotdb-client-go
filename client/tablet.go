@@ -195,7 +195,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
-	case TEXT, STRING, OBJECT:
+	case TEXT, STRING:
 		values := t.values[columnIndex].([][]byte)
 		switch v := value.(type) {
 		case string:
@@ -213,6 +213,8 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
+	case OBJECT:
+		return fmt.Errorf("OBJECT values must be set with SetObjectValueAt")
 	case DATE:
 		values := t.values[columnIndex].([]int32)
 		switch v := value.(type) {
@@ -226,7 +228,14 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	}
+	t.unmarkNullValueAt(columnIndex, rowIndex)
 	return nil
+}
+
+func (t *Tablet) unmarkNullValueAt(columnIndex, rowIndex int) {
+	if t.bitMaps != nil && t.bitMaps[columnIndex] != nil {
+		t.bitMaps[columnIndex].UnMark(rowIndex)
+	}
 }
 
 // SetObjectValueAt writes a segment of an OBJECT column value. An OBJECT value can be
@@ -262,7 +271,9 @@ func (t *Tablet) SetObjectValueAt(isEOF bool, offset int64, content []byte, colu
 	}
 	binary.BigEndian.PutUint64(value[1:9], uint64(offset))
 	copy(value[9:], content)
-	return t.SetValueAt(value, columnIndex, rowIndex)
+	t.values[columnIndex].([][]byte)[rowIndex] = value
+	t.unmarkNullValueAt(columnIndex, rowIndex)
+	return nil
 }
 
 func (t *Tablet) GetMaxRowNumber() int {

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"time"
 
 	"github.com/apache/iotdb-client-go/v2/rpc"
@@ -107,10 +108,24 @@ func (s *SessionDataSet) GetDate(columnName string) (time.Time, error) {
 }
 
 func (s *SessionDataSet) GetBlobByIndex(columnIndex int32) (*Binary, error) {
+	dataType, err := s.ioTDBRpcDataSet.getDataTypeByIndex(columnIndex)
+	if err != nil {
+		return nil, err
+	}
+	if dataType == OBJECT {
+		return nil, errors.New("OBJECT type does not support GetBlob")
+	}
 	return s.ioTDBRpcDataSet.getBinaryByIndex(columnIndex)
 }
 
 func (s *SessionDataSet) GetBlob(columnName string) (*Binary, error) {
+	dataType, err := s.ioTDBRpcDataSet.getDataType(columnName)
+	if err != nil {
+		return nil, err
+	}
+	if dataType == OBJECT {
+		return nil, errors.New("OBJECT type does not support GetBlob")
+	}
 	return s.ioTDBRpcDataSet.getBinary(columnName)
 }
 

@@ -695,23 +695,31 @@ func TestTablet_OBJECT(t *testing.T) {
 	}
 
 	objVal := []byte{0x01, 0x02, 0x03}
-	if err := tablet.SetValueAt(objVal, 1, 0); err != nil {
-		t.Fatalf("SetValueAt([]byte) error = %v", err)
+	if err := tablet.SetValueAt(objVal, 1, 0); err == nil {
+		t.Fatal("SetValueAt([]byte) for OBJECT: want error, got nil")
+	}
+	if err := tablet.SetObjectValueAt(true, 0, objVal, 1, 0); err != nil {
+		t.Fatalf("SetObjectValueAt([]byte) error = %v", err)
 	}
 	tablet.SetTimestamp(1608268702780, 0)
 	tablet.RowSize++
 
-	if err := tablet.SetValueAt("hello", 1, 1); err != nil {
-		t.Fatalf("SetValueAt(string) error = %v", err)
+	if err := tablet.SetValueAt("hello", 1, 1); err == nil {
+		t.Fatal("SetValueAt(string) for OBJECT: want error, got nil")
+	}
+	if err := tablet.SetObjectValueAt(true, 0, []byte("hello"), 1, 1); err != nil {
+		t.Fatalf("SetObjectValueAt(string bytes) error = %v", err)
 	}
 	tablet.SetTimestamp(1608268702781, 1)
 	tablet.RowSize++
 
-	if got, err := tablet.GetValueAt(1, 0); err != nil || !reflect.DeepEqual(got, objVal) {
-		t.Errorf("GetValueAt(1,0) = %v, %v; want %v, nil", got, err, objVal)
+	wantObject1 := append([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0}, objVal...)
+	wantObject2 := append([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0}, []byte("hello")...)
+	if got, err := tablet.GetValueAt(1, 0); err != nil || !reflect.DeepEqual(got, wantObject1) {
+		t.Errorf("GetValueAt(1,0) = %v, %v; want %v, nil", got, err, wantObject1)
 	}
-	if got, err := tablet.GetValueAt(1, 1); err != nil || !reflect.DeepEqual(got, []byte("hello")) {
-		t.Errorf("GetValueAt(1,1) = %v, %v; want %v, nil", got, err, []byte("hello"))
+	if got, err := tablet.GetValueAt(1, 1); err != nil || !reflect.DeepEqual(got, wantObject2) {
+		t.Errorf("GetValueAt(1,1) = %v, %v; want %v, nil", got, err, wantObject2)
 	}
 
 	valuesBytes, err := tablet.getValuesBytes()
@@ -721,9 +729,11 @@ func TestTablet_OBJECT(t *testing.T) {
 	wantValues := []byte{
 		0, 0, 0, 0,
 		0, 0, 0, 0,
-		0, 0, 0, 3, 0x01, 0x02, 0x03,
-		0, 0, 0, 5, 'h', 'e', 'l', 'l', 'o',
+		0, 0, 0, byte(len(wantObject1)),
 	}
+	wantValues = append(wantValues, wantObject1...)
+	wantValues = append(wantValues, 0, 0, 0, byte(len(wantObject2)))
+	wantValues = append(wantValues, wantObject2...)
 	if !reflect.DeepEqual(valuesBytes, wantValues) {
 		t.Errorf("getValuesBytes() = %v, want %v", valuesBytes, wantValues)
 	}
@@ -757,6 +767,19 @@ func TestTablet_SetObjectValueAt(t *testing.T) {
 	}
 	if got, err := tablet.GetValueAt(1, 1); err != nil || !reflect.DeepEqual(got, wantSegment2) {
 		t.Errorf("GetValueAt(1,1) = %v, %v; want %v, nil", got, err, wantSegment2)
+	}
+
+	if err := tablet.SetValueAt(nil, 1, 2); err != nil {
+		t.Fatalf("SetValueAt(nil) error = %v", err)
+	}
+	if tablet.bitMaps == nil || tablet.bitMaps[1] == nil || !tablet.bitMaps[1].IsMarked(2) {
+		t.Fatal("SetValueAt(nil) did not mark the OBJECT cell as null")
+	}
+	if err := tablet.SetObjectValueAt(true, 0, []byte{0x44}, 1, 2); err != nil {
+		t.Fatalf("SetObjectValueAt() after null error = %v", err)
+	}
+	if tablet.bitMaps[1].IsMarked(2) {
+		t.Error("SetObjectValueAt() did not clear the previously marked null bit")
 	}
 
 	if err := tablet.SetObjectValueAt(false, 0, []byte{0x01}, 0, 0); err == nil {
