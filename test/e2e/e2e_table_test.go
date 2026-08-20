@@ -20,6 +20,7 @@
 package e2e
 
 import (
+	"bytes"
 	"log"
 	"strconv"
 	"strings"
@@ -422,6 +423,130 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 		count++
 	}
 	assert.Equal(int64(8), count)
+}
+
+func (s *e2eTableTestSuite) Test_InsertObjectTablet() {
+	assert := s.Require()
+	s.checkError(s.session.ExecuteNonQueryStatement(
+		"create table object_table (region_id string tag, plant_id string tag, device_id string tag, temperature float field, file object field)"))
+
+	objectBytes := make([]byte, 1024)
+	for i := 0; i < len(objectBytes); i++ {
+		objectBytes[i] = byte(i % 251)
+	}
+	const segmentSize = 512
+	var objectSegments [][]byte
+	for i := 0; i < len(objectBytes); i += segmentSize {
+		end := i + segmentSize
+		if end > len(objectBytes) {
+			end = len(objectBytes)
+		}
+		objectSegments = append(objectSegments, objectBytes[i:end])
+	}
+
+	tablet, err := client.NewRelationalTablet("object_table", []*client.MeasurementSchema{
+		{Measurement: "region_id", DataType: client.STRING},
+		{Measurement: "plant_id", DataType: client.STRING},
+		{Measurement: "device_id", DataType: client.STRING},
+		{Measurement: "temperature", DataType: client.FLOAT},
+		{Measurement: "file", DataType: client.OBJECT},
+	}, []client.ColumnCategory{client.TAG, client.TAG, client.TAG, client.FIELD, client.FIELD}, 1)
+	assert.NoError(err)
+
+	// insert whole object at time 1
+	tablet.SetTimestamp(1, 0)
+	assert.NoError(tablet.SetValueAt("1", 0, 0))
+	assert.NoError(tablet.SetValueAt("5", 1, 0))
+	assert.NoError(tablet.SetValueAt("3", 2, 0))
+	assert.NoError(tablet.SetValueAt(float32(37.6), 3, 0))
+	assert.NoError(tablet.SetObjectValueAt(true, 0, objectBytes, 4, 0))
+	tablet.RowSize++
+	s.checkError(s.session.Insert(tablet))
+	tablet.Reset()
+
+	// insert object in segments at time 2
+	for i, segment := range objectSegments {
+		tablet.SetTimestamp(2, 0)
+		assert.NoError(tablet.SetValueAt("2", 0, 0))
+		assert.NoError(tablet.SetValueAt("6", 1, 0))
+		assert.NoError(tablet.SetValueAt("4", 2, 0))
+		assert.NoError(tablet.SetValueAt(float32(37.7), 3, 0))
+		isEOF := i == len(objectSegments)-1
+		assert.NoError(tablet.SetObjectValueAt(isEOF, int64(i*segmentSize), segment, 4, 0))
+		tablet.RowSize++
+		s.checkError(s.session.Insert(tablet))
+		tablet.Reset()
+	}
+
+	// insert a row without object value at time 3
+	tablet.SetTimestamp(3, 0)
+	assert.NoError(tablet.SetValueAt("3", 0, 0))
+	assert.NoError(tablet.SetValueAt("7", 1, 0))
+	assert.NoError(tablet.SetValueAt("5", 2, 0))
+	assert.NoError(tablet.SetValueAt(float32(37.8), 3, 0))
+	assert.NoError(tablet.SetValueAt(nil, 4, 0))
+	tablet.RowSize++
+	s.checkError(s.session.Insert(tablet))
+
+	timeoutInMs := int64(10000)
+
+	// count
+	dataSet, err := s.session.ExecuteQueryStatement("select count(*) from object_table", &timeoutInMs)
+	assert.NoError(err)
+	hasNext, err := dataSet.Next()
+	assert.NoError(err)
+	assert.True(hasNext)
+	count, err := dataSet.GetLongByIndex(1)
+	assert.NoError(err)
+	assert.Equal(int64(3), count)
+	dataSet.Close()
+
+	// read back whole object
+	dataSet, err = s.session.ExecuteQueryStatement("select READ_OBJECT(file) from object_table where time = 1", &timeoutInMs)
+	assert.NoError(err)
+	hasNext, err = dataSet.Next()
+	assert.NoError(err)
+	assert.True(hasNext)
+	blob, err := dataSet.GetBlobByIndex(1)
+	assert.NoError(err)
+	assert.True(bytes.Equal(objectBytes, blob.GetValues()))
+	dataSet.Close()
+
+	// read back segmented object
+	dataSet, err = s.session.ExecuteQueryStatement("select READ_OBJECT(file) from object_table where time = 2", &timeoutInMs)
+	assert.NoError(err)
+	hasNext, err = dataSet.Next()
+	assert.NoError(err)
+	assert.True(hasNext)
+	blob, err = dataSet.GetBlobByIndex(1)
+	assert.NoError(err)
+	assert.True(bytes.Equal(objectBytes, blob.GetValues()))
+	dataSet.Close()
+
+	// null object row
+	dataSet, err = s.session.ExecuteQueryStatement("select file from object_table where time = 3", &timeoutInMs)
+	assert.NoError(err)
+	hasNext, err = dataSet.Next()
+	assert.NoError(err)
+	assert.True(hasNext)
+	isNull, err := dataSet.IsNullByIndex(1)
+	assert.NoError(err)
+	assert.True(isNull)
+	dataSet.Close()
+
+	// non-object columns round-trip
+	dataSet, err = s.session.ExecuteQueryStatement("select region_id, plant_id, device_id, temperature from object_table where time = 1", &timeoutInMs)
+	assert.NoError(err)
+	hasNext, err = dataSet.Next()
+	assert.NoError(err)
+	assert.True(hasNext)
+	assert.Equal("1", getValueFromDataSet(dataSet, "region_id"))
+	assert.Equal("5", getValueFromDataSet(dataSet, "plant_id"))
+	assert.Equal("3", getValueFromDataSet(dataSet, "device_id"))
+	temp, err := dataSet.GetFloat("temperature")
+	assert.NoError(err)
+	assert.Equal(float32(37.6), temp)
+	dataSet.Close()
 }
 
 func getValueFromDataSet(dataSet *client.SessionDataSet, columnName string) interface{} {

@@ -39,6 +39,7 @@ const (
 	DATE      TSDataType = 9
 	BLOB      TSDataType = 10
 	STRING    TSDataType = 11
+	OBJECT    TSDataType = 12
 )
 
 var tsTypeMap = map[string]TSDataType{
@@ -52,6 +53,7 @@ var tsTypeMap = map[string]TSDataType{
 	"DATE":      DATE,
 	"BLOB":      BLOB,
 	"STRING":    STRING,
+	"OBJECT":    OBJECT,
 }
 
 var byteToTsDataType = map[byte]TSDataType{
@@ -65,6 +67,7 @@ var byteToTsDataType = map[byte]TSDataType{
 	9:  DATE,
 	10: BLOB,
 	11: STRING,
+	12: OBJECT,
 }
 
 func GetDataTypeByStr(name string) (TSDataType, error) {

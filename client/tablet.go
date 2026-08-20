@@ -74,7 +74,7 @@ func (t *Tablet) Swap(i, j int) {
 		case DOUBLE:
 			sortedSlice := t.values[index].([]float64)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
-		case TEXT, BLOB, STRING:
+		case TEXT, BLOB, STRING, OBJECT:
 			sortedSlice := t.values[index].([][]byte)
 			sortedSlice[i], sortedSlice[j] = sortedSlice[j], sortedSlice[i]
 		}
@@ -195,7 +195,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
-	case TEXT, STRING:
+	case TEXT, STRING, OBJECT:
 		values := t.values[columnIndex].([][]byte)
 		switch v := value.(type) {
 		case string:
@@ -229,6 +229,42 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 	return nil
 }
 
+// SetObjectValueAt writes a segment of an OBJECT column value. An OBJECT value can be
+// written in multiple segments so that a large object does not need to be fully loaded
+// into memory: each segment is wrapped into a 9-byte header (1 byte isEOF flag followed
+// by an 8-byte big-endian offset) and then the raw content, consistent with the Java
+// Tablet.addValue(rowIndex, columnIndex, isEOF, offset, content). Segments of the same
+// object must be written in order with ascending offsets, and the last segment must set
+// isEOF to true.
+//
+// Parameters:
+//   - isEOF: Whether this segment is the last one of the object.
+//   - offset: The offset of this segment within the whole object.
+//   - content: The raw bytes of this segment.
+//   - columnIndex: The column index of the OBJECT column.
+//   - rowIndex: The row index to write the segment into.
+//
+// Returns:
+//   - err: An error if the column/row index is invalid or the column is not of type OBJECT.
+func (t *Tablet) SetObjectValueAt(isEOF bool, offset int64, content []byte, columnIndex, rowIndex int) error {
+	if columnIndex < 0 || columnIndex >= len(t.measurementSchemas) {
+		return fmt.Errorf("illegal argument columnIndex %d", columnIndex)
+	}
+	if rowIndex < 0 || rowIndex >= t.maxRowNumber {
+		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
+	}
+	if t.measurementSchemas[columnIndex].DataType != OBJECT {
+		return fmt.Errorf("column %d must be of type OBJECT", columnIndex)
+	}
+	value := make([]byte, len(content)+9)
+	if isEOF {
+		value[0] = 1
+	}
+	binary.BigEndian.PutUint64(value[1:9], uint64(offset))
+	copy(value[9:], content)
+	return t.SetValueAt(value, columnIndex, rowIndex)
+}
+
 func (t *Tablet) GetMaxRowNumber() int {
 	return t.maxRowNumber
 }
@@ -260,7 +296,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return t.values[columnIndex].([]float64)[rowIndex], nil
 	case TEXT, STRING:
 		return string(t.values[columnIndex].([][]byte)[rowIndex]), nil
-	case BLOB:
+	case BLOB, OBJECT:
 		return t.values[columnIndex].([][]byte)[rowIndex], nil
 	case DATE:
 		return Int32ToDate(t.values[columnIndex].([]int32)[rowIndex])
@@ -313,7 +349,7 @@ func (t *Tablet) getValuesBytes() ([]byte, error) {
 			binary.Write(buff, binary.BigEndian, t.values[i].([]float32)[0:t.RowSize])
 		case DOUBLE:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]float64)[0:t.RowSize])
-		case TEXT, STRING, BLOB:
+		case TEXT, STRING, BLOB, OBJECT:
 			for _, s := range t.values[i].([][]byte)[0:t.RowSize] {
 				binary.Write(buff, binary.BigEndian, int32(len(s)))
 				binary.Write(buff, binary.BigEndian, s)
@@ -365,7 +401,7 @@ func NewTablet(insertTargetName string, measurementSchemas []*MeasurementSchema,
 			tablet.values[i] = make([]float32, maxRowNumber)
 		case DOUBLE:
 			tablet.values[i] = make([]float64, maxRowNumber)
-		case TEXT, STRING, BLOB:
+		case TEXT, STRING, BLOB, OBJECT:
 			tablet.values[i] = make([][]byte, maxRowNumber)
 		default:
 			return nil, fmt.Errorf("illegal datatype %v", schema.DataType)

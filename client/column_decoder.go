@@ -244,7 +244,7 @@ func (decoder *BinaryArrayColumnDecoder) ReadColumn(reader *bytes.Reader, dataTy
 	//    | int32         | bytes |
 	//    +---------------+-------+
 
-	if TEXT != dataType {
+	if TEXT != dataType && STRING != dataType && BLOB != dataType && OBJECT != dataType {
 		return nil, fmt.Errorf("invalid data type: %v", dataType)
 	}
 

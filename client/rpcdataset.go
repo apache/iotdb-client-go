@@ -542,7 +542,7 @@ func (s *IoTDBRpcDataSet) getObjectByTsBlockIndex(tsBlockColumnIndex int32) (int
 		} else {
 			return binary.GetStringValue(), nil
 		}
-	case BLOB:
+	case BLOB, OBJECT:
 		if binary, err := s.curTsBlock.GetColumn(tsBlockColumnIndex).GetBinary(s.tsBlockIndex); err != nil {
 			return nil, err
 		} else {
@@ -639,7 +639,7 @@ func (s *IoTDBRpcDataSet) getStringByTsBlockColumnIndexAndDataType(index int32, 
 		} else {
 			return v.GetStringValue(), nil
 		}
-	case BLOB:
+	case BLOB, OBJECT:
 		if v, err := s.curTsBlock.GetColumn(index).GetBinary(s.tsBlockIndex); err != nil {
 			return "", err
 		} else {
