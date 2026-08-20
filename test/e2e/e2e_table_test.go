@@ -426,6 +426,7 @@ func (s *e2eTableTestSuite) Test_InsertTabletAndQuery() {
 }
 
 func (s *e2eTableTestSuite) Test_InsertObjectTablet() {
+	s.T().Skip("OBJECT type is not supported in the e2e environment")
 	assert := s.Require()
 	s.checkError(s.session.ExecuteNonQueryStatement(
 		"create table object_table (region_id string tag, plant_id string tag, device_id string tag, temperature float field, file object field)"))
