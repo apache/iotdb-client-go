@@ -206,6 +206,30 @@ func bytesToHexString(input []byte) string {
 	return hexString
 }
 
+func objectBytesToString(input []byte) (string, error) {
+	const (
+		kilobyte = uint64(1024)
+		megabyte = kilobyte * 1024
+		gigabyte = megabyte * 1024
+	)
+
+	if len(input) < 8 {
+		return "", fmt.Errorf("invalid OBJECT value: expected at least 8 bytes, got %d", len(input))
+	}
+
+	size := binary.BigEndian.Uint64(input[:8])
+	switch {
+	case size < kilobyte:
+		return fmt.Sprintf("(Object) %d B", size), nil
+	case size < megabyte:
+		return fmt.Sprintf("(Object) %.2f KB", float64(size)/float64(kilobyte)), nil
+	case size < gigabyte:
+		return fmt.Sprintf("(Object) %.2f MB", float64(size)/float64(megabyte)), nil
+	default:
+		return fmt.Sprintf("(Object) %.2f GB", float64(size)/float64(gigabyte)), nil
+	}
+}
+
 func DateToInt32(localDate time.Time) (int32, error) {
 	if localDate.IsZero() {
 		return 0, errors.New("date expression is null or empty")

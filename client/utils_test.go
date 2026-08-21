@@ -20,6 +20,7 @@
 package client
 
 import (
+	"encoding/binary"
 	"testing"
 
 	"github.com/apache/iotdb-client-go/v2/common"
@@ -204,6 +205,37 @@ func Test_bytesToHexString(t *testing.T) {
 				t.Errorf("bytesToHexString() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func Test_objectBytesToString(t *testing.T) {
+	tests := []struct {
+		name string
+		size uint64
+		want string
+	}{
+		{name: "bytes", size: 1023, want: "(Object) 1023 B"},
+		{name: "kilobytes", size: 1024, want: "(Object) 1.00 KB"},
+		{name: "megabytes", size: 1024 * 1024, want: "(Object) 1.00 MB"},
+		{name: "gigabytes", size: 1024 * 1024 * 1024, want: "(Object) 1.00 GB"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value := make([]byte, 8)
+			binary.BigEndian.PutUint64(value, tt.size)
+			got, err := objectBytesToString(value)
+			if err != nil {
+				t.Fatalf("objectBytesToString() error = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("objectBytesToString() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+
+	if _, err := objectBytesToString(make([]byte, 7)); err == nil {
+		t.Fatal("objectBytesToString() with a short value: want error, got nil")
 	}
 }
 

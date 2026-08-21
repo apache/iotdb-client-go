@@ -676,3 +676,119 @@ func TestTablet_Sort(t *testing.T) {
 		})
 	}
 }
+
+func TestTablet_OBJECT(t *testing.T) {
+	tablet, err := NewRelationalTablet("t1", []*MeasurementSchema{
+		{Measurement: "tag1", DataType: STRING},
+		{Measurement: "obj", DataType: OBJECT},
+	}, []ColumnCategory{TAG, FIELD}, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got := tablet.getColumnCategories(); !reflect.DeepEqual(got, []int8{0, 1}) {
+		t.Errorf("getColumnCategories() = %v, want [0 1]", got)
+	}
+
+	if got := tablet.getDataTypes(); !reflect.DeepEqual(got, []int32{11, 12}) {
+		t.Errorf("getDataTypes() = %v, want [11 12]", got)
+	}
+
+	objVal := []byte{0x01, 0x02, 0x03}
+	if err := tablet.SetValueAt(objVal, 1, 0); err == nil {
+		t.Fatal("SetValueAt([]byte) for OBJECT: want error, got nil")
+	}
+	if err := tablet.SetObjectValueAt(true, 0, objVal, 1, 0); err != nil {
+		t.Fatalf("SetObjectValueAt([]byte) error = %v", err)
+	}
+	tablet.SetTimestamp(1608268702780, 0)
+	tablet.RowSize++
+
+	if err := tablet.SetValueAt("hello", 1, 1); err == nil {
+		t.Fatal("SetValueAt(string) for OBJECT: want error, got nil")
+	}
+	if err := tablet.SetObjectValueAt(true, 0, []byte("hello"), 1, 1); err != nil {
+		t.Fatalf("SetObjectValueAt(string bytes) error = %v", err)
+	}
+	tablet.SetTimestamp(1608268702781, 1)
+	tablet.RowSize++
+
+	wantObject1 := append([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0}, objVal...)
+	wantObject2 := append([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0}, []byte("hello")...)
+	if got, err := tablet.GetValueAt(1, 0); err != nil || !reflect.DeepEqual(got, wantObject1) {
+		t.Errorf("GetValueAt(1,0) = %v, %v; want %v, nil", got, err, wantObject1)
+	}
+	if got, err := tablet.GetValueAt(1, 1); err != nil || !reflect.DeepEqual(got, wantObject2) {
+		t.Errorf("GetValueAt(1,1) = %v, %v; want %v, nil", got, err, wantObject2)
+	}
+
+	valuesBytes, err := tablet.getValuesBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantValues := []byte{
+		0, 0, 0, 0,
+		0, 0, 0, 0,
+		0, 0, 0, byte(len(wantObject1)),
+	}
+	wantValues = append(wantValues, wantObject1...)
+	wantValues = append(wantValues, 0, 0, 0, byte(len(wantObject2)))
+	wantValues = append(wantValues, wantObject2...)
+	if !reflect.DeepEqual(valuesBytes, wantValues) {
+		t.Errorf("getValuesBytes() = %v, want %v", valuesBytes, wantValues)
+	}
+}
+
+func TestTablet_SetObjectValueAt(t *testing.T) {
+	tablet, err := NewRelationalTablet("t1", []*MeasurementSchema{
+		{Measurement: "tag1", DataType: STRING},
+		{Measurement: "obj", DataType: OBJECT},
+	}, []ColumnCategory{TAG, FIELD}, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tablet.SetTimestamp(1, 0)
+	if err := tablet.SetObjectValueAt(false, 0, []byte{0x11, 0x22}, 1, 0); err != nil {
+		t.Fatalf("SetObjectValueAt(segment) error = %v", err)
+	}
+	tablet.RowSize++
+
+	tablet.SetTimestamp(1, 1)
+	if err := tablet.SetObjectValueAt(true, 512, []byte{0x33}, 1, 1); err != nil {
+		t.Fatalf("SetObjectValueAt(last segment) error = %v", err)
+	}
+	tablet.RowSize++
+
+	wantSegment1 := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0x11, 0x22}
+	wantSegment2 := []byte{1, 0, 0, 0, 0, 0, 0, 2, 0, 0x33}
+	if got, err := tablet.GetValueAt(1, 0); err != nil || !reflect.DeepEqual(got, wantSegment1) {
+		t.Errorf("GetValueAt(1,0) = %v, %v; want %v, nil", got, err, wantSegment1)
+	}
+	if got, err := tablet.GetValueAt(1, 1); err != nil || !reflect.DeepEqual(got, wantSegment2) {
+		t.Errorf("GetValueAt(1,1) = %v, %v; want %v, nil", got, err, wantSegment2)
+	}
+
+	if err := tablet.SetValueAt(nil, 1, 2); err != nil {
+		t.Fatalf("SetValueAt(nil) error = %v", err)
+	}
+	if tablet.bitMaps == nil || tablet.bitMaps[1] == nil || !tablet.bitMaps[1].IsMarked(2) {
+		t.Fatal("SetValueAt(nil) did not mark the OBJECT cell as null")
+	}
+	if err := tablet.SetObjectValueAt(true, 0, []byte{0x44}, 1, 2); err != nil {
+		t.Fatalf("SetObjectValueAt() after null error = %v", err)
+	}
+	if tablet.bitMaps[1].IsMarked(2) {
+		t.Error("SetObjectValueAt() did not clear the previously marked null bit")
+	}
+
+	if err := tablet.SetObjectValueAt(false, 0, []byte{0x01}, 0, 0); err == nil {
+		t.Error("SetObjectValueAt() on non-OBJECT column: want error, got nil")
+	}
+	if err := tablet.SetObjectValueAt(false, 0, []byte{0x01}, 1, -1); err == nil {
+		t.Error("SetObjectValueAt() with invalid rowIndex: want error, got nil")
+	}
+	if err := tablet.SetObjectValueAt(false, 0, []byte{0x01}, -1, 0); err == nil {
+		t.Error("SetObjectValueAt() with invalid columnIndex: want error, got nil")
+	}
+}
