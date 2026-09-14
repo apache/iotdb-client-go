@@ -19,7 +19,10 @@
 
 package client
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestParseNodeURL(t *testing.T) {
 	tests := []struct {
@@ -56,6 +59,38 @@ func TestParseNodeURL(t *testing.T) {
 			if ep.Host != tt.wantHost || ep.Port != tt.wantPort {
 				t.Errorf("parseNodeURL(%q) = {host %q, port %q}, want {host %q, port %q}",
 					tt.nodeURL, ep.Host, ep.Port, tt.wantHost, tt.wantPort)
+			}
+		})
+	}
+}
+
+func TestBuildOpenSessionConfiguration(t *testing.T) {
+	cases := []struct {
+		name string
+		cfg  *Config
+		want map[string]string
+	}{
+		{
+			name: "table dialect with db",
+			cfg:  &Config{sqlDialect: TableSqlDialect, Database: "mydb"},
+			want: map[string]string{"sql_dialect": TableSqlDialect, "version": string(DEFAULT_VERSION), "db": "mydb"},
+		},
+		{
+			name: "tree dialect, no db (db key omitted)",
+			cfg:  &Config{sqlDialect: TreeSqlDialect},
+			want: map[string]string{"sql_dialect": TreeSqlDialect, "version": string(DEFAULT_VERSION)},
+		},
+		{
+			name: "explicit version passes through",
+			cfg:  &Config{sqlDialect: TableSqlDialect, Version: V_1_0},
+			want: map[string]string{"sql_dialect": TableSqlDialect, "version": string(V_1_0)},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := buildOpenSessionConfiguration(tc.cfg)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("got %v, want %v", got, tc.want)
 			}
 		})
 	}

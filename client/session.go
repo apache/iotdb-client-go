@@ -86,6 +86,25 @@ type endPoint struct {
 	Port string
 }
 
+// buildOpenSessionConfiguration returns the Configuration map every
+// OpenSession request must carry so a (re)connected session speaks the
+// caller's dialect and stays bound to its database. Shared by Open,
+// OpenCluster, and initClusterConn (the reconnect path) so the three cannot
+// drift: omitting it on reconnect silently reverts the session to server
+// defaults.
+func buildOpenSessionConfiguration(cfg *Config) map[string]string {
+	c := map[string]string{"sql_dialect": cfg.sqlDialect}
+	if cfg.Version == "" {
+		c["version"] = string(DEFAULT_VERSION)
+	} else {
+		c["version"] = string(cfg.Version)
+	}
+	if cfg.Database != "" {
+		c["db"] = cfg.Database
+	}
+	return c
+}
+
 func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) error {
 	if s.config.FetchSize <= 0 {
 		s.config.FetchSize = DefaultFetchSize
@@ -118,16 +137,7 @@ func (s *Session) Open(enableRPCCompression bool, connectionTimeoutInMs int) err
 		ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password,
 	}
-	req.Configuration = make(map[string]string)
-	req.Configuration["sql_dialect"] = s.config.sqlDialect
-	if s.config.Version == "" {
-		req.Configuration["version"] = string(DEFAULT_VERSION)
-	} else {
-		req.Configuration["version"] = string(s.config.Version)
-	}
-	if s.config.Database != "" {
-		req.Configuration["db"] = s.config.Database
-	}
+	req.Configuration = buildOpenSessionConfiguration(s.config)
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
 		return err
@@ -176,16 +186,7 @@ func (s *Session) OpenCluster(enableRPCCompression bool) error {
 		ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password,
 	}
-	req.Configuration = make(map[string]string)
-	req.Configuration["sql_dialect"] = s.config.sqlDialect
-	if s.config.Version == "" {
-		req.Configuration["version"] = string(DEFAULT_VERSION)
-	} else {
-		req.Configuration["version"] = string(s.config.Version)
-	}
-	if s.config.Database != "" {
-		req.Configuration["db"] = s.config.Database
-	}
+	req.Configuration = buildOpenSessionConfiguration(s.config)
 
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
@@ -1425,6 +1426,7 @@ func (s *Session) initClusterConn(node endPoint) error {
 		ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3, ZoneId: s.config.TimeZone, Username: s.config.UserName,
 		Password: &s.config.Password,
 	}
+	req.Configuration = buildOpenSessionConfiguration(s.config)
 
 	resp, err := s.client.OpenSession(context.Background(), &req)
 	if err != nil {
