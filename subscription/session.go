@@ -103,7 +103,8 @@ type TopicOwner struct {
 	// Epoch is the new monotonically increasing owner epoch.
 	Epoch int64
 	// LeaseDuration optionally sets the owner's lease. Unlike the Java API's
-	// millisecond argument, this field is expressed as a time.Duration.
+	// millisecond argument, this field is expressed as a time.Duration. It must
+	// represent a whole number of milliseconds to avoid truncation.
 	LeaseDuration *time.Duration
 }
 

@@ -19,7 +19,7 @@ under the License.
 
 # Go subscription 公共接口
 
-当前模块只定义公共接口、配置和数据类型，以及可用 `errors.Is` 判断的错误哨兵。尚无构造函数、连接、消费者或消息解析实现，不能据此创建可运行的订阅客户端。下面描述的是后续实现必须遵守的接口契约，不代表这些行为已经实现。
+当前已实现 `SubscriptionSession` 的默认配置、构造、普通 Thrift 连接与认证，以及 Topic/Subscription 管理。Consumer、记录解析和处理器仍只有公共接口，没有可运行的消费实现。下文对应表同时列出已实现的管理能力和后续消费实现需要遵守的契约。
 
 模块路径为 `github.com/apache/iotdb-client-go/subscription`，使用 Go 1.25，与现有 `github.com/apache/iotdb-client-go/v2` Session 模块分别维护依赖和版本。当前仅依赖现有模块，以复用 `TSDataType` 和 `ColumnCategory`；没有 TsFile、cgo 或 TLS 依赖，也没有改动现有 Session 接口。
 
@@ -31,19 +31,37 @@ Go 使用 `Dialect` 区分树、表模型，管理和消费接口各自共用一
 
 Java 的 `ISubscriptionTreeSession/ISubscriptionTableSession`、树/表 Pull 接口、树/表 Push 接口各自具有相同的方法签名。因此 Go 分别用 `SubscriptionSession`、`SubscriptionPullConsumer`、`SubscriptionPushConsumer` 表达这些共同操作，由配置中的 `Dialect` 选择模型；每个实例对应一个模型。
 
-这里共用的是对外方法契约。后续连接、握手和管理 SQL 必须传递对应模型，记录解析仍需分别处理树模型的设备路径与表模型的数据库、表和 TAG 身份。相同接口不要求树、表使用同一套内部实现。当前仅有接口声明，尚未实现上述模型选择逻辑。
+这里共用的是对外方法契约。管理 Session 已在连接时传递模型；后续消费握手和记录解析仍需分别处理树模型的设备路径与表模型的数据库、表和 TAG 身份。相同接口不要求树、表使用同一套内部实现。
 
 | Go 公共类型 | Java 对应 | Go 中的表达方式 |
 | --- | --- | --- |
 | `Dialect`、`TreeDialect`、`TableDialect` | 树、表 Session/Consumer 类型及 SQL dialect | 在 `SubscriptionSessionConfig` 或 `SubscriptionConsumerConfig` 中选择模型 |
 | `ConnectionConfig` | Session/Consumer Builder 的节点、认证、连接超时、最大帧配置 | `NodeURLs` 同时表示单节点和集群种子地址；时间使用 `time.Duration`；明文与加密密码互斥 |
-| `SubscriptionSessionConfig` | `SubscriptionTreeSessionBuilder`、`SubscriptionTableSessionBuilder` | 组合连接配置和 `Dialect`，本步不提供 Builder 或构造函数 |
+| `SubscriptionSessionConfig` | `SubscriptionTreeSessionBuilder`、`SubscriptionTableSessionBuilder` | 通过 `DefaultSubscriptionSessionConfig` 获取默认值，再交给 `NewSubscriptionSession`；构造不建立连接 |
 | `SubscriptionConsumerConfig` | `AbstractSubscriptionConsumerBuilder` | 公共消费配置，包含消费身份、owner、心跳、端点同步及并行度 |
 | `SubscriptionPullConsumerConfig` | `AbstractSubscriptionPullConsumerBuilder` | `AutoCommit == nil` 表示沿用 Java 默认值 `true`，指向 `false` 表示显式手动提交 |
 | `SubscriptionPushConsumerConfig` | `AbstractSubscriptionPushConsumerBuilder` | 组合 Handler、ACK 策略及拉取间隔、超时 |
 | `AckStrategy`、`AckAfterConsume`、`AckBeforeConsume` | `AckStrategy.AFTER_CONSUME`、`BEFORE_CONSUME` | 零值为消费后确认；消费前确认下，回调失败不导致重新投递 |
 
-`SubscriptionConsumerConfig.OwnerEpoch == nil` 表示未提供 epoch，指向零表示显式 epoch 0。配置的运行时默认值和校验会在构造函数实现阶段补齐，本步不执行配置校验。
+`SubscriptionConsumerConfig.OwnerEpoch == nil` 表示未提供 epoch，指向零表示显式 epoch 0。Consumer 的默认值、构造和校验仍待后续实现。
+
+管理 Session 的默认配置为 `localhost:6667`、树模型、root/root、64 MiB 帧和十秒连接及认证超时。Java 管理 Session 默认不限制连接时长，Go 入口在这里采用有界超时。构造函数补齐空节点、用户名、模型以及为零的超时和帧大小，校验地址与互斥认证，并复制节点列表。密码始终保留调用方提供的值，包括空字符串；需要 root/root 默认值时应从默认配置函数开始。使用加密密码时清空 `Password` 后设置 `EncryptedPassword`。
+
+```go
+cfg := subscription.DefaultSubscriptionSessionConfig()
+cfg.Dialect = subscription.TableDialect
+s, err := subscription.NewSubscriptionSession(cfg)
+if err != nil {
+    return err
+}
+if err := s.Open(ctx); err != nil {
+    return err
+}
+defer s.Close()
+topics, err := s.Topics(ctx)
+```
+
+管理连接自行处理查询分页与关闭，复用现有 TsBlock 解码器；不使用会以 `context.Background()` 分页的现有 SessionDataSet。取消会中断原始连接，后续操作重建连接时继续使用原模型和认证配置。已发送的管理语句不会因连接失败被自动重放；失败后可由调用方查询服务端状态再决定是否重试。管理 Session 关闭后可以再次打开，这与 Consumer 成功关闭后不可重新打开的契约分开处理。
 
 ## 管理 Session
 
@@ -137,4 +155,4 @@ SubscriptionMessageProcessor 保留消息时必须实现 `BufferingProcessor`，
 
 这些哨兵可以被后续操作错误包装，调用方使用 `errors.Is` 识别。TsFile 不支持错误不得触发连接重试或文件载荷确认。Pull 本轮返回错误而不交付任何消息，包括并行分支已经取得的记录；本轮记录不得推进位置、进入处理器或自动提交缓存，此前成功交付及提交的状态不回滚。调用方可退订相关 Topic 后继续拉取。
 
-后续步骤尚需实现构造函数与默认配置、配置校验、连接和协议编解码、管理 SQL、记录解析、Consumer、提交和恢复、后台任务、内置 Watermark/ColumnAlign Processor，以及示例和行为测试。本步没有编译、运行测试或执行格式工具，不提供运行验证结论。
+后续步骤尚需实现订阅消息协议编解码、记录解析、Consumer 及其默认配置和构造、提交和恢复、后台任务、内置 Watermark/ColumnAlign Processor，以及消费示例和行为测试。管理查询复用根模块解码器，本轮不修改其对畸形数据的处理逻辑。当前仅完成静态核对，没有编译、运行测试或执行格式工具，不提供运行验证结论。

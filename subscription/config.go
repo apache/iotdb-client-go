@@ -38,6 +38,7 @@ const (
 type ConnectionConfig struct {
 	// NodeURLs lists host:port endpoints to use when establishing connections.
 	// A single entry selects a single seed; multiple entries provide alternatives.
+	// SubscriptionSession uses localhost:6667 when the list is empty.
 	NodeURLs []string
 	// Username is the IoTDB user used for session and subscription authentication.
 	Username string
@@ -47,10 +48,12 @@ type ConnectionConfig struct {
 	// EncryptedPassword supplies an already encrypted password and must not be
 	// combined with Password.
 	EncryptedPassword string
-	// ConnectTimeout limits connection establishment. The Java consumer default
-	// is 10 seconds; default resolution belongs to the future constructors.
+	// ConnectTimeout limits connection establishment and authentication for each
+	// seed endpoint. SubscriptionSession uses ten seconds for zero and rejects
+	// negative values. Java consumers also default to ten seconds.
 	ConnectTimeout time.Duration
 	// MaxFrameSize is the maximum accepted Thrift frame size in bytes.
+	// SubscriptionSession uses 64 MiB for zero and rejects negative values.
 	MaxFrameSize int32
 }
 

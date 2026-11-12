@@ -20,9 +20,9 @@
 // Package subscription defines the public contracts for IoTDB tree-model and
 // table-model subscriptions. It is a separate Go module from the Session client.
 //
-// This initial module contains interfaces and data types only. Connections,
-// consumers, constructors, protocol decoding, and built-in processors will be
-// implemented in subsequent steps.
+// SubscriptionSession provides topic and subscription management through
+// NewSubscriptionSession. Consumer interfaces, record decoding, and built-in
+// processors are contracts for subsequent implementation steps.
 //
 // Record messages are the supported payload format. Topic management and
 // subscription do not reject TsFile topics; decoding a TsFile payload must return
