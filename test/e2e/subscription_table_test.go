@@ -1,0 +1,510 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package e2e
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"reflect"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/subscription"
+	subconsumer "github.com/apache/iotdb-client-go/subscription/consumer"
+	subpayload "github.com/apache/iotdb-client-go/subscription/payload"
+	subsession "github.com/apache/iotdb-client-go/subscription/session"
+)
+
+// These cases require subscription support and, for incremental topics, a
+// consensus protocol that supports WAL subscriptions. Unsupported server
+// configurations fail after the shared explicit E2E opt-in.
+// Subscription operations honor the test context. The existing ITableSession
+// write/DDL API has no context parameter, including for database cleanup.
+func subscriptionTableWriter(t *testing.T, connection subscription.ConnectionConfig) client.ITableSession {
+	t.Helper()
+	writer, err := client.NewClusterTableSession(&client.ClusterConfig{
+		NodeUrls: connection.NodeURLs,
+		UserName: connection.Username,
+		Password: connection.Password,
+	}, false)
+	if err != nil {
+		t.Fatalf("open table writer: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := writer.Close(); err != nil {
+			t.Errorf("close table writer: %v", err)
+		}
+	})
+	return writer
+}
+
+func subscriptionTableSQL(t *testing.T, writer client.ITableSession, statements ...string) {
+	t.Helper()
+	for _, statement := range statements {
+		if err := writer.ExecuteNonQueryStatement(statement); err != nil {
+			t.Fatalf("table SQL %q: %v", statement, err)
+		}
+	}
+}
+
+func subscriptionTableDatabase(t *testing.T, connection subscription.ConnectionConfig, writer client.ITableSession) string {
+	t.Helper()
+	database := subscriptionE2EName("sub_table_db")
+	subscriptionTableSQL(t, writer, "create database "+database)
+	t.Cleanup(func() {
+		// Cleanup uses a fresh connection, independent of the test's deadline.
+		cleanup, err := client.NewClusterTableSession(&client.ClusterConfig{
+			NodeUrls: connection.NodeURLs, UserName: connection.Username, Password: connection.Password,
+		}, false)
+		if err != nil {
+			t.Errorf("open database cleanup connection: %v", err)
+			return
+		}
+		defer func() {
+			if err := cleanup.Close(); err != nil {
+				t.Errorf("close database cleanup connection: %v", err)
+			}
+		}()
+		if err := cleanup.ExecuteNonQueryStatement("drop database if exists "+database); err != nil {
+			t.Errorf("drop table database %s: %v", database, err)
+		}
+	})
+	return database
+}
+
+func subscriptionTableCreate(t *testing.T, writer client.ITableSession, database, table string) {
+	t.Helper()
+	subscriptionTableSQL(t, writer, "create table "+database+"."+table+
+		" (tag1 STRING TAG, s1 INT64 FIELD, s2 DOUBLE FIELD, s3 BOOLEAN FIELD)")
+}
+
+func subscriptionTableInsert(t *testing.T, writer client.ITableSession, database, table string, timestamps ...int64) {
+	t.Helper()
+	for _, timestamp := range timestamps {
+		subscriptionTableSQL(t, writer, fmt.Sprintf(
+			"insert into %s.%s(time,tag1,s1,s2,s3) values (%d,'device_%d',%d,%d.5,true)",
+			database, table, timestamp, timestamp, timestamp*10, timestamp))
+	}
+	subscriptionTableSQL(t, writer, "flush")
+}
+
+type subscriptionTableRecord struct {
+	Database string
+	Table string
+	Timestamp int64
+	Values map[string]any
+}
+
+// Validate visible time projection and copy public raw records, so push
+// callbacks never retain borrowed data or require time in the visible schema.
+func subscriptionTableRead(message subpayload.SubscriptionMessage, timeSelected bool) ([]subscriptionTableRecord, error) {
+	batches, err := message.Records()
+	if err != nil {
+		return nil, err
+	}
+	var records []subscriptionTableRecord
+	for _, batch := range batches {
+		if batch.Dialect() != subscription.TableDialect {
+			return nil, fmt.Errorf("table message decoded using %s", batch.Dialect())
+		}
+		if batch.TimeSelected() != timeSelected {
+			return nil, fmt.Errorf("table time projection: got=%t, want=%t", batch.TimeSelected(), timeSelected)
+		}
+		columns := batch.Columns()
+		visibleRows := 0
+		for row, err := range batch.Rows() {
+			if err != nil {
+				return nil, err
+			}
+			if (row.Timestamp != nil) != timeSelected || len(row.Values) != len(columns) {
+				return nil, fmt.Errorf("invalid table row: %+v", row)
+			}
+			visibleRows++
+		}
+		if visibleRows != batch.Len() {
+			return nil, fmt.Errorf("visible table row count: got=%d, want=%d", visibleRows, batch.Len())
+		}
+		// Time can be excluded from Rows by column-filter. Public raw access
+		// still exposes timestamps, keeping exact identity/value assertions
+		// independent of the visible projection and of iterator ordering.
+		for row := 0; row < batch.Len(); row++ {
+			timestamp, err := batch.Timestamp(row)
+			if err != nil {
+				return nil, err
+			}
+			record := subscriptionTableRecord{
+				Database: batch.Database(), Table: batch.Target(), Timestamp: timestamp,
+				Values: make(map[string]any, len(columns)),
+			}
+			for index, column := range columns {
+				if _, duplicate := record.Values[column.Name]; duplicate {
+					return nil, fmt.Errorf("duplicate column %s", column.Name)
+				}
+				value, err := batch.Value(row, index)
+				if err != nil {
+					return nil, err
+				}
+				record.Values[column.Name] = value
+			}
+			records = append(records, record)
+		}
+	}
+	return records, nil
+}
+
+func subscriptionTableExpected(database, table string, projected bool, timestamps ...int64) map[int64]subscriptionTableRecord {
+	result := make(map[int64]subscriptionTableRecord)
+	for _, timestamp := range timestamps {
+		values := map[string]any{"tag1": fmt.Sprintf("device_%d", timestamp), "s2": float64(timestamp)+0.5}
+		if !projected {
+			values["s1"], values["s3"] = timestamp*10, true
+		}
+		result[timestamp] = subscriptionTableRecord{database, table, timestamp, values}
+	}
+	return result
+}
+
+func subscriptionTablePollExact(t *testing.T, ctx context.Context, consumer subconsumer.SubscriptionPullConsumer,
+	want map[int64]subscriptionTableRecord, manualCommit, snapshot, timeSelected bool) {
+	t.Helper()
+	seen := make(map[int64]subscriptionTableRecord)
+	emptyAfterRows := 0
+	for {
+		messages, err := consumer.Poll(ctx, time.Second)
+		if err != nil {
+			t.Fatalf("poll table records: %v", err)
+		}
+		for _, message := range messages {
+			records, readErr := subscriptionTableRead(message, timeSelected)
+			if readErr != nil {
+				message.Release()
+				t.Fatal(readErr)
+			}
+			for _, record := range records {
+				expected, exists := want[record.Timestamp]
+				if !exists || !reflect.DeepEqual(record, expected) {
+					message.Release()
+					t.Fatalf("unexpected table record: got=%+v, want=%+v", record, expected)
+				}
+				if _, duplicate := seen[record.Timestamp]; duplicate {
+					message.Release()
+					t.Fatalf("duplicate table record at %d", record.Timestamp)
+				}
+				seen[record.Timestamp] = record
+			}
+			if manualCommit {
+				if err := consumer.Commit(ctx, message); err != nil {
+					message.Release()
+					t.Fatalf("commit table records: %v", err)
+				}
+			}
+			message.Release()
+		}
+		if snapshot && consumer.AllConsumed() {
+			if !reflect.DeepEqual(seen, want) {
+				t.Fatalf("snapshot finished with wrong records: got=%+v, want=%+v", seen, want)
+			}
+			return
+		}
+		if !snapshot && len(seen) == len(want) {
+			if len(messages) == 0 {
+				emptyAfterRows++
+			} else {
+				emptyAfterRows = 0
+			}
+			if emptyAfterRows == 3 {
+				return
+			}
+		}
+		if err := ctx.Err(); err != nil {
+			t.Fatalf("table delivery incomplete: got=%+v, want=%+v: %v", seen, want, err)
+		}
+	}
+}
+
+// Java reference: local/tablemodel/IoTDBSubscriptionIsolationIT.testTopicIsolation.
+func TestSubscriptionTableTopicIsolation(t *testing.T) {
+	connection := subscriptionE2EConnection(t)
+	ctx := subscriptionE2EContext(t)
+	tree := subscriptionE2EManager(t, connection, subscription.TreeDialect)
+	table := subscriptionE2EManager(t, connection, subscription.TableDialect)
+	name := subscriptionE2EName("sub_isolation")
+	subscriptionE2ETopic(t, ctx, tree, name, map[string]string{"path": "root.subscription_tree.**"})
+	subscriptionE2ETopic(t, ctx, table, name, map[string]string{"database": "subscription_table", "table": "events"})
+	if err := table.AlterTopic(ctx, name, map[string]string{"database": "subscription_table_altered"}); err != nil {
+		t.Fatal(err)
+	}
+	treeTopic, treeFound, treeErr := tree.Topic(ctx, name)
+	tableTopic, tableFound, tableErr := table.Topic(ctx, name)
+	if treeErr != nil || tableErr != nil || !treeFound || !tableFound ||
+		!strings.Contains(treeTopic.Attributes, "root.subscription_tree.**") ||
+		strings.Contains(treeTopic.Attributes, "subscription_table_altered") ||
+		!strings.Contains(tableTopic.Attributes, "subscription_table_altered") {
+		t.Fatalf("tree/table topic alteration leaked: tree=%+v/%v/%v, table=%+v/%v/%v",
+			treeTopic, treeFound, treeErr, tableTopic, tableFound, tableErr)
+	}
+	if err := tree.DropTopic(ctx, name, subsession.DropOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := tree.Topic(ctx, name); err != nil || found {
+		t.Fatalf("tree topic survived drop: found=%t, error=%v", found, err)
+	}
+	if _, found, err := table.Topic(ctx, name); err != nil || !found {
+		t.Fatalf("dropping tree topic removed table topic: found=%t, error=%v", found, err)
+	}
+}
+
+// Java references: dual/treemodel/IoTDBSubscriptionTopicIT.testTabletTopicWithTime
+// and testTabletTopicWithSnapshotMode. Database/table interference is a Go
+// table-model extension of those time-filter and snapshot-completion scenarios.
+func TestSubscriptionTableSnapshotFiltersAndAutoCommitCompletion(t *testing.T) {
+	connection := subscriptionE2EConnection(t)
+	ctx := subscriptionE2EContext(t)
+	writer := subscriptionTableWriter(t, connection)
+	database := subscriptionTableDatabase(t, connection, writer)
+	otherDatabase := subscriptionTableDatabase(t, connection, writer)
+	for _, target := range [][2]string{{database, "events"}, {database, "other"}, {otherDatabase, "events"}} {
+		subscriptionTableCreate(t, writer, target[0], target[1])
+		subscriptionTableInsert(t, writer, target[0], target[1], 99, 100, 101, 102, 103)
+	}
+	manager := subscriptionE2EManager(t, connection, subscription.TableDialect)
+	topic := subscriptionE2EName("sub_table_snapshot")
+	subscriptionE2ETopic(t, ctx, manager, topic, map[string]string{
+		"database": database, "table": "events", "mode": "snapshot",
+		"format": "SubscriptionRecordHandler", "start-time": "100", "end-time": "102",
+	})
+	consumer := subscriptionE2EPull(t, ctx, connection, subscription.TableDialect, topic, true)
+	subscriptionTablePollExact(t, ctx, consumer, subscriptionTableExpected(database, "events", false, 100, 101, 102), false, true, true)
+}
+
+// Java reference: consensus/local/tablemodel/IoTDBConsensusSubscriptionFilterTableIT.testColumnFiltering.
+// The column filter excludes time as well as s1/s3; raw timestamps remain usable.
+func TestSubscriptionTableIncrementalColumnProjection(t *testing.T) {
+	connection := subscriptionE2EConnection(t)
+	ctx := subscriptionE2EContext(t)
+	writer := subscriptionTableWriter(t, connection)
+	database := subscriptionTableDatabase(t, connection, writer)
+	subscriptionTableCreate(t, writer, database, "events")
+	subscriptionTableInsert(t, writer, database, "events", 0)
+	manager := subscriptionE2EManager(t, connection, subscription.TableDialect)
+	topic := subscriptionE2EName("sub_table_columns")
+	subscriptionE2ETopic(t, ctx, manager, topic, map[string]string{
+		"database": database, "table": "events", "mode": "incremental",
+		"format": "SubscriptionRecordHandler", "column-filter": `column_name REGEXP "(tag1|s2)"`,
+	})
+	consumer := subscriptionE2EPull(t, ctx, connection, subscription.TableDialect, topic, false)
+	subscriptionTableInsert(t, writer, database, "events", 101, 102, 103)
+	subscriptionTablePollExact(t, ctx, consumer, subscriptionTableExpected(database, "events", true, 101, 102, 103), true, false, false)
+}
+
+// Java references: consensus/local/IoTDBConsensusSubscriptionSeekIT.testSeekAfterCheckpointReplaysExactTail
+// and consensus/local/tablemodel/IoTDBConsensusSubscriptionBasicTableIT.testRealtimeOnlyAfterSubscribe.
+// Exact per-writer checkpoint replay in the table model is a Go extension.
+func TestSubscriptionTableSeekAfterReplaysOnlyTail(t *testing.T) {
+	connection := subscriptionE2EConnection(t)
+	ctx := subscriptionE2EContext(t)
+	writer := subscriptionTableWriter(t, connection)
+	database := subscriptionTableDatabase(t, connection, writer)
+	subscriptionTableCreate(t, writer, database, "events")
+	subscriptionTableInsert(t, writer, database, "events", 0)
+	manager := subscriptionE2EManager(t, connection, subscription.TableDialect)
+	topic := subscriptionE2EName("sub_table_seek")
+	subscriptionE2ETopic(t, ctx, manager, topic, map[string]string{
+		"database": database, "table": "events", "mode": "incremental", "format": "SubscriptionRecordHandler",
+		"order-mode": "per-writer",
+	})
+	consumer := subscriptionE2EPull(t, ctx, connection, subscription.TableDialect, topic, false)
+	subscriptionTableInsert(t, writer, database, "events", 101, 102)
+	subscriptionTablePollExact(t, ctx, consumer, subscriptionTableExpected(database, "events", false, 101, 102), true, false, true)
+	checkpoint, err := consumer.CommittedPositions(topic)
+	if err != nil || len(checkpoint) == 0 {
+		t.Fatalf("committed prefix has no resumable checkpoint: %v, %v", checkpoint, err)
+	}
+	subscriptionTableInsert(t, writer, database, "events", 201, 202)
+	tail := subscriptionTableExpected(database, "events", false, 201, 202)
+	subscriptionTablePollExact(t, ctx, consumer, tail, true, false, true)
+	if err := consumer.SeekAfter(ctx, topic, checkpoint); err != nil {
+		t.Fatalf("seek after committed prefix: %v", err)
+	}
+	subscriptionTablePollExact(t, ctx, consumer, tail, true, false, true)
+}
+
+func subscriptionTablePush(t *testing.T, ctx context.Context, connection subscription.ConnectionConfig,
+	topic string, handler subconsumer.ConsumeFunc) subconsumer.SubscriptionPushConsumer {
+	t.Helper()
+	config := subconsumer.DefaultSubscriptionPushConsumerConfig()
+	config.Consumer.Connection = connection
+	config.Consumer.Dialect = subscription.TableDialect
+	config.Consumer.ConsumerID = subscriptionE2EName("sub_table_consumer")
+	config.Consumer.GroupID = subscriptionE2EName("sub_table_group")
+	config.AckStrategy = subconsumer.AckAfterConsume
+	config.PollTimeout = time.Second
+	config.Handler = handler
+	consumer, err := subconsumer.NewSubscriptionPushConsumer(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := consumer.Close(); err != nil {
+			t.Errorf("close table push consumer: %v", err)
+		}
+	})
+	if err := consumer.Open(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := consumer.Subscribe(ctx, topic); err != nil {
+		t.Fatalf("subscribe table push topic: %v", err)
+	}
+	return consumer
+}
+
+// Go-specific coverage: an ordinary after-consumption callback error must cause
+// redelivery, and the successful retry must produce observable writer ACK progress.
+func TestSubscriptionTablePushRetriesFailedCallback(t *testing.T) {
+	connection := subscriptionE2EConnection(t)
+	ctx := subscriptionE2EContext(t)
+	writer := subscriptionTableWriter(t, connection)
+	database := subscriptionTableDatabase(t, connection, writer)
+	subscriptionTableCreate(t, writer, database, "events")
+	subscriptionTableInsert(t, writer, database, "events", 0)
+	manager := subscriptionE2EManager(t, connection, subscription.TableDialect)
+	topic := subscriptionE2EName("sub_table_push")
+	subscriptionE2ETopic(t, ctx, manager, topic, map[string]string{
+		"database": database, "table": "events", "mode": "incremental", "format": "SubscriptionRecordHandler",
+		"order-mode": "per-writer",
+	})
+	type attempt struct {
+		records []subscriptionTableRecord
+		err error
+		context subpayload.CommitContext
+	}
+	attempts := make(chan attempt, 8)
+	var calls atomic.Int32
+	consumer := subscriptionTablePush(t, ctx, connection, topic, func(callbackCtx context.Context, message subpayload.SubscriptionMessage) error {
+		records, err := subscriptionTableRead(message, true)
+		select {
+		case attempts <- attempt{records, err, message.CommitContext()}:
+		case <-callbackCtx.Done():
+			return callbackCtx.Err()
+		}
+		if calls.Add(1) == 1 {
+			return errors.New("retry this application failure")
+		}
+		return err
+	})
+	subscriptionTableInsert(t, writer, database, "events", 101)
+	want := subscriptionTableExpected(database, "events", false, 101)[101]
+	var first subpayload.CommitContext
+	for index := 0; index < 2; index++ {
+		select {
+		case got := <-attempts:
+			if got.err != nil || !reflect.DeepEqual(got.records, []subscriptionTableRecord{want}) {
+				t.Fatalf("callback received wrong table data: %+v, %v", got.records, got.err)
+			}
+			if index == 0 {
+				first = got.context
+			} else if !reflect.DeepEqual(first, got.context) {
+				t.Fatalf("retry changed delivery identity: first=%+v, retry=%+v", first, got.context)
+			}
+		case err := <-consumer.Errors():
+			t.Fatalf("ordinary callback failure terminated push delivery: %v", err)
+		case <-ctx.Done():
+			t.Fatalf("callback was not redelivered: %v", ctx.Err())
+		}
+	}
+	if first.Writer == nil {
+		t.Fatal("per-writer delivery omitted the progress needed to verify acknowledgment")
+	}
+	// Observe confirmation after callback success, rather than treating the
+	// callback itself or absence of a terminal error as proof of acknowledgment.
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		progress, err := consumer.CommittedPositions(topic)
+		if err != nil {
+			t.Fatal(err)
+		}
+		confirmed, found := progress[first.Writer.ID.RegionID][first.Writer.ID]
+		wanted := first.Writer.Progress
+		if found && (confirmed.PhysicalTime > wanted.PhysicalTime ||
+			(confirmed.PhysicalTime == wanted.PhysicalTime && confirmed.LocalSeq >= wanted.LocalSeq)) {
+			break
+		}
+		select {
+		case err := <-consumer.Errors():
+			t.Fatalf("push terminated before confirming retry: %v", err)
+		case <-ctx.Done():
+			t.Fatalf("successful retry was not confirmed: %v", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+	if err := consumer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		select {
+		case err, ok := <-consumer.Errors():
+			if !ok {
+				return
+			}
+			if err != nil {
+				t.Fatalf("ordinary callback failure became terminal: %v", err)
+			}
+		case <-ctx.Done():
+			t.Fatalf("push loop did not exit after Close: %v", ctx.Err())
+		}
+	}
+}
+
+// Go-specific coverage: TsFile management/subscription is allowed, while actual
+// payload decoding must stop push delivery before any record handler callback.
+func TestSubscriptionTableTsFilePushFailsBeforeCallback(t *testing.T) {
+	connection := subscriptionE2EConnection(t)
+	ctx := subscriptionE2EContext(t)
+	writer := subscriptionTableWriter(t, connection)
+	database := subscriptionTableDatabase(t, connection, writer)
+	subscriptionTableCreate(t, writer, database, "events")
+	subscriptionTableInsert(t, writer, database, "events", 101)
+	manager := subscriptionE2EManager(t, connection, subscription.TableDialect)
+	topic := subscriptionE2EName("sub_table_tsfile")
+	subscriptionE2ETopic(t, ctx, manager, topic, map[string]string{
+		"database": database, "table": "events", "mode": "snapshot", "format": "SubscriptionTsFileHandler",
+	})
+	var calls atomic.Int32
+	consumer := subscriptionTablePush(t, ctx, connection, topic, func(context.Context, subpayload.SubscriptionMessage) error {
+		calls.Add(1)
+		return nil
+	})
+	select {
+	case err, ok := <-consumer.Errors():
+		if !ok || !errors.Is(err, subscription.ErrUnsupportedTsFile) {
+			t.Fatalf("TsFile did not report unsupported decoding: %v, channel open=%t", err, ok)
+		}
+	case <-ctx.Done():
+		t.Fatalf("TsFile topic produced no decoding error: %v", ctx.Err())
+	}
+	if calls.Load() != 0 {
+		t.Fatalf("TsFile payload reached record callback %d times", calls.Load())
+	}
+}

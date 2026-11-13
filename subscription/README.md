@@ -25,9 +25,53 @@ The module path is `github.com/apache/iotdb-client-go/subscription`. It uses Go 
 
 The Java reference is `iotdb-client/subscription` at IoTDB commit `d9122d837610`. The supported payload format is records: this module defines no TsFile handler, download, file-management, or Reader API. Topic management and `Subscribe` do not reject TsFile topics in advance. Dispatching a file payload during decoding returns `ErrUnsupportedTsFile`; that payload must not be delivered or acknowledged.
 
-Standalone [tree and table examples](example/README.md) cover ordinary record Pull/Push consumption and incremental subscriptions with progress, checkpoint resume, and optional processors. They are part of this module and use the existing Session client only to prepare sample data.
+Standalone [tree and table examples](../example/subscription/README.md) cover ordinary record Pull/Push consumption and incremental subscriptions with progress, checkpoint resume, and optional processors. They belong to the independent example module, alongside the existing Session and database/sql examples, and use the Session client to prepare sample data.
+
+## Package Responsibilities and Import Migration
+
+Public business APIs now live in packages within this subscription module. The root package contains only shared `Dialect`, `TreeDialect`, `TableDialect`, `ConnectionConfig`, and sentinel errors. Previous root business imports must move to the owning package; there are no root compatibility aliases or forwarding constructors. Public type and method names retain their original meanings.
+
+| Package under `github.com/apache/iotdb-client-go/subscription` | Public responsibility |
+| --- | --- |
+| Root `subscription` | Model selection, shared connection settings, and error identities used with `errors.Is` |
+| `session` | `SubscriptionSession`, its configuration/default/constructor, topic and subscription management DTOs, and SQL management operations |
+| `consumer` | Pull/Push lifecycle and configuration/defaults/constructors, `AckStrategy`, `ConsumeFunc`, consumer identity, `PollResult`, and `Positioner` |
+| `payload` | Messages, kinds, batches, rows, columns, commit contexts, topic/region progress, and Writer identity/progress types |
+| `processor` | Processing capability interfaces, buffering metadata, Watermark and ColumnAlign implementations/configuration/constructors |
+
+The snippets below use explicit aliases so local variables named `consumer`, `session`, or `processor` do not hide package constructors:
+
+```go
+import (
+    "github.com/apache/iotdb-client-go/subscription"
+    subconsumer "github.com/apache/iotdb-client-go/subscription/consumer"
+    subpayload "github.com/apache/iotdb-client-go/subscription/payload"
+    subprocessor "github.com/apache/iotdb-client-go/subscription/processor"
+    subsession "github.com/apache/iotdb-client-go/subscription/session"
+)
+```
+
+Import only the packages used by your program. For example, migrate `subscription.NewSubscriptionSession` to `subsession.NewSubscriptionSession`, consumer constructors to `subconsumer`, `SubscriptionMessage` and `TopicProgress` to `subpayload`, and processor constructors/interfaces to `subprocessor`. Shared settings, model constants, and sentinel errors continue to use `subscription`.
+
+Seven internal packages implement the lower-level boundaries:
+
+| Internal package | Responsibility |
+| --- | --- |
+| `internal/wire` | Java-compatible primitive binary readers/writers and bounds checking |
+| `internal/transport` | Plain TCP/framed Thrift client construction, socket cancellation, and idempotent connection shutdown |
+| `internal/identifier` | SQL identifier validation and protocol identifier parsing |
+| `internal/configutil` | Shared connection defaults/copying/validation and dialect normalization |
+| `internal/record` | Concrete record/watermark messages, borrowed batch storage, ordering views, release, and ownership |
+| `internal/protocol` | Subscription request/response codecs, commit/progress formats, Tablet decoding, continuation checks, and payload dispatch |
+| `internal/rpcsession` | Authentication, Session/statement IDs, RPC calls, SHOW result pagination/decoding, and query cleanup |
+
+The root shared package has no dependency on business packages. `payload` defines the shared contracts; concrete record storage implements those contracts internally. `session` coordinates management over `internal/rpcsession`; `consumer` coordinates providers, protocol events, progress, and processor pipelines; `processor` consumes payload contracts and builds owned record output through internal record support. Lower-level packages do not import these public coordinators. All seven internal packages remain in the existing subscription module and are unavailable as external public import paths.
+
+Package boundaries do not add modules or dependencies. The subscription module, the existing independent example module, and the independent E2E module retain their own `go.mod` files alongside the root Session module. The example and E2E modules keep local replacements for the two production modules. Their module paths and dependency versions are unchanged by this package migration.
 
 ## Configuration and Data Model Selection
+
+In this section, model constants and `ConnectionConfig` belong to the root package; management configuration belongs to `session`, and consumer configuration and acknowledgment types belong to `consumer`.
 
 Go uses `Dialect` to distinguish the tree and table models. Management and consumption each share a contract rather than duplicating Java's tree/table types and Builder hierarchy.
 
@@ -50,9 +94,9 @@ Only the public method contract is shared. Management sessions pass the model wh
 The management session defaults are `localhost:6667`, the tree model, root/root authentication, a 64 MiB frame limit, and a ten-second connection and authentication timeout. Java management sessions do not limit connection time by default; the Go entry point uses a bounded timeout here. The constructor fills empty endpoints, username, and dialect, as well as zero timeout and frame size, validates addresses and mutually exclusive authentication, and copies the endpoint slice. Passwords are always preserved as supplied, including empty strings. Start with the default configuration function when root/root defaults are needed. To use an encrypted password, clear `Password` and set `EncryptedPassword`.
 
 ```go
-cfg := subscription.DefaultSubscriptionSessionConfig()
+cfg := subsession.DefaultSubscriptionSessionConfig()
 cfg.Dialect = subscription.TableDialect
-s, err := subscription.NewSubscriptionSession(cfg)
+s, err := subsession.NewSubscriptionSession(cfg)
 if err != nil {
     return err
 }
@@ -94,11 +138,11 @@ Records use the Tablet serialization format of Java's current `2.5.1-261023-SNAP
 `NewSubscriptionPullConsumer` copies and validates configuration without connecting. `Open(ctx)` opens seed connections and discovers other nodes. Background lifetime is independent of the opening context. `Subscribe/Unsubscribe` update subscriptions, and `AddProcessor` adds processors in order.
 
 ```go
-cfg := subscription.DefaultSubscriptionPullConsumerConfig()
+cfg := subconsumer.DefaultSubscriptionPullConsumerConfig()
 cfg.Consumer.Dialect = subscription.TableDialect
 autoCommit := false
 cfg.AutoCommit = &autoCommit
-consumer, err := subscription.NewSubscriptionPullConsumer(cfg)
+consumer, err := subconsumer.NewSubscriptionPullConsumer(cfg)
 if err != nil {
     return err
 }
@@ -143,10 +187,10 @@ return consumer.Commit(ctx, messages...)
 `NewSubscriptionPushConsumer` normalizes configuration once, requires a non-nil Handler, and does not connect. It reuses the manual Pull core for providers, progress, and polling, without installing processors or enabling automatic commits. `Open(ctx)` starts one fixed-delay polling loop; its background lifetime is independent of the opening context. Handlers run sequentially, and the next round starts only after the current round and `PollInterval` delay finish.
 
 ```go
-cfg := subscription.DefaultSubscriptionPushConsumerConfig()
+cfg := subconsumer.DefaultSubscriptionPushConsumerConfig()
 cfg.Consumer.Dialect = subscription.TableDialect
-cfg.AckStrategy = subscription.AckAfterConsume
-cfg.Handler = func(callbackCtx context.Context, message subscription.SubscriptionMessage) error {
+cfg.AckStrategy = subconsumer.AckAfterConsume
+cfg.Handler = func(callbackCtx context.Context, message subpayload.SubscriptionMessage) error {
     batches, err := message.Records()
     if err != nil {
         return err
@@ -164,7 +208,7 @@ cfg.Handler = func(callbackCtx context.Context, message subscription.Subscriptio
     }
     return nil
 }
-consumer, err := subscription.NewSubscriptionPushConsumer(cfg)
+consumer, err := subconsumer.NewSubscriptionPushConsumer(cfg)
 if err != nil {
     return err
 }
@@ -195,6 +239,8 @@ case <-ctx.Done():
 
 ## Management Sessions
 
+All management interfaces, DTOs, defaults, and constructors in this mapping belong to `session`, including `SubscriptionSessionConfig`, `DefaultSubscriptionSessionConfig`, and `NewSubscriptionSession`.
+
 `SubscriptionSession` corresponds to Java's `ISubscriptionTreeSession` and `ISubscriptionTableSession`. Methods take an explicit `context.Context`, while parameter structures express existence conditions.
 
 | Go method or type | Java counterpart | Consolidation |
@@ -211,6 +257,8 @@ case <-ctx.Done():
 | `Subscription` | `model.Subscription` | Retains the server's raw `ConsumerIDs` text rather than assuming it is CSV |
 
 ## Consumers, Commits, and Progress
+
+Consumer interfaces, configurations, defaults, constructors, acknowledgment types, `ConsumeFunc`, `PollResult`, and `Positioner` belong to `consumer`. Message and commit/progress types in the same mapping belong to `payload`, including `TopicProgress`, `RegionProgress`, `WriterID`, `WriterProgress`, `WriterPosition`, and `CommitContext`.
 
 `SubscriptionConsumer` is the common interface for Pull and Push. It embeds `Positioner`, so both share progress and seek contracts, including public methods inherited by Java's concrete consumers from their base class.
 
@@ -245,6 +293,8 @@ The `SubscriptionPushConsumer.Errors()` channel buffers one error. A TsFile deco
 
 ## Messages, Records, and Processors
 
+Message/record/progress types in this mapping belong to `payload`; processor interfaces, `ProcessorBuffer`, configurations, and concrete processors belong to `processor`.
+
 | Go method or type | Java counterpart | Go representation |
 | --- | --- | --- |
 | `SubscriptionMessage`, `SubscriptionMessageKind`, `RecordMessage`, `WatermarkMessage` | `SubscriptionMessage`, record and watermark message kinds | Public kinds are independent of numeric wire types; Pull and Push deliver records only, while processors can receive watermarks |
@@ -274,14 +324,14 @@ Create processors and install them with `AddProcessor` before the first Poll. A 
 
 ```go
 // This example assumes the server uses millisecond timestamps.
-watermark, err := subscription.NewWatermarkProcessor(subscription.WatermarkProcessorConfig{
+watermark, err := subprocessor.NewWatermarkProcessor(subprocessor.WatermarkProcessorConfig{
     MaxOutOfOrderness: 5000,
     Timeout: 30 * time.Second,
 })
 if err != nil {
     return err
 }
-alignment, err := subscription.NewColumnAlignProcessor(subscription.TableDialect)
+alignment, err := subprocessor.NewColumnAlignProcessor(subscription.TableDialect)
 if err != nil {
     return err
 }
@@ -326,4 +376,12 @@ Alignment reads inputs through the existing public RecordBatch API, copies recor
 
 Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for that round, including records obtained by parallel branches. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again.
 
-The built-in Watermark/ColumnAlign processors and standalone tree/table examples are implemented; behavior tests and runtime verification are pending. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. No compilation, tests, formatting tools, or compiler/syntax checks have run as part of the example work, and no runtime validation result is claimed.
+The built-in Watermark/ColumnAlign processors and standalone tree/table examples are implemented. The existing 19 unit-test cases now live in `internal/protocol` (protocol and real-message lifecycle cases) and the external `processor_test` package under `processor` (processor behavior). This package migration moves those cases without expanding their scenarios; runtime verification is pending. Management queries reuse the root module's decoder; this work does not change its handling of malformed data.
+
+## Testing
+
+This subscription module requires Go 1.25 or later. To run its unit tests, enter `subscription` from the repository root and run `go test ./...`.
+
+Server-backed tree/table tests live in the independent [E2E module](../test/e2e/README.md), which uses local replacements for both production modules. Root-module commands do not traverse the subscription, example, or E2E modules. See the E2E instructions for module-specific commands, the local subscription test selector, credentials, and subscription/WAL server requirements. The Docker workflow keeps subscription cases disabled unless explicitly configured through a suitable override.
+
+These commands are provided for the user to run. No compilation, tests, examples, formatting tools, or compiler/syntax checks were run during this package migration, and no runtime validation result is claimed.

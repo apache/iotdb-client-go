@@ -17,29 +17,16 @@
  * under the License.
  */
 
-// Package subscription defines the public contracts for IoTDB tree-model and
-// table-model subscriptions. It is a separate Go module from the Session client.
+// Package subscription provides shared connection settings, model selection,
+// and sentinel errors for the IoTDB subscription client module.
 //
-// SubscriptionSession provides topic and subscription management through
-// NewSubscriptionSession. Consumer configuration defaults and internal control
-// protocol/provider support are available. Poll response and record decoding,
-// record views, message release, and watermark messages are implemented internally.
-// NewSubscriptionPullConsumer provides pull consumption, record continuation,
-// commit and seek coordination, background heartbeats, and provider recovery.
-// NewSubscriptionPushConsumer adds sequential callback delivery with before- or
-// after-consumption acknowledgment and a terminal-error channel.
-// NewWatermarkProcessor and NewColumnAlignProcessor provide optional Pull
-// pipeline stages for message reordering and per-device NULL forward filling.
+// Management sessions live in the session subpackage. Pull and push consumers
+// live in consumer, message and progress contracts in payload, and optional
+// processing stages in processor. Business types and constructors are defined
+// in those packages; this package does not forward their APIs.
 //
-// Record messages are the supported payload format. Topic management and
-// subscription do not reject TsFile topics; decoding a TsFile payload must return
-// ErrUnsupportedTsFile before delivering or acknowledging it. This API exposes
-// no TsFile handlers or TLS configuration and adds no native library dependency.
-//
-// Contexts passed to Open limit the opening operation. Background work belongs
-// to the consumer and stops on Close, rather than when that context is canceled.
-// Other operation contexts bound the corresponding operation only.
-// Push Close cancels the active callback context and closes connection resources
-// without waiting for user code to return. Its borrowed message is released only
-// after that callback returns; the error channel can therefore close later.
+// Topic management and subscription accept TsFile topics. Decoding a file
+// payload returns ErrUnsupportedTsFile before delivery or acknowledgment.
+// The module exposes no TsFile readers or TLS configuration and adds no native
+// library dependency. It is versioned separately from the Session client.
 package subscription
