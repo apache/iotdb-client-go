@@ -27,8 +27,9 @@
 // NewSubscriptionPullConsumer provides pull consumption, record continuation,
 // commit and seek coordination, background heartbeats, and provider recovery.
 // NewSubscriptionPushConsumer adds sequential callback delivery with before- or
-// after-consumption acknowledgment and a terminal-error channel. Built-in
-// processors remain a subsequent implementation step.
+// after-consumption acknowledgment and a terminal-error channel.
+// NewWatermarkProcessor and NewColumnAlignProcessor provide optional Pull
+// pipeline stages for message reordering and per-device NULL forward filling.
 //
 // Record messages are the supported payload format. Topic management and
 // subscription do not reject TsFile topics; decoding a TsFile payload must return

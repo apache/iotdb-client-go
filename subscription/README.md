@@ -19,7 +19,7 @@ under the License.
 
 # Go Subscription API
 
-The module implements `SubscriptionSession` management, Pull consumption with record polling, commits, progress, seek, processor pipelines, and background connection coordination, and Push consumption with sequential callbacks and acknowledgment strategies. Poll response decoding, record decoding, and message release are also connected. Built-in processors remain for a subsequent step. These implementations have not been compiled or exercised at runtime; this document describes the code and its contracts.
+The module implements `SubscriptionSession` management, Pull consumption with record polling, commits, progress, seek, processor pipelines, and background connection coordination, and Push consumption with sequential callbacks and acknowledgment strategies. Poll response decoding, record decoding, and message release are also connected. Built-in Watermark and ColumnAlign processors are available for the Pull pipeline. These implementations have not been compiled or exercised at runtime; this document describes the code and its contracts.
 
 The module path is `github.com/apache/iotdb-client-go/subscription`. It uses Go 1.25 and maintains dependencies and versions separately from the existing `github.com/apache/iotdb-client-go/v2` Session module. Its direct dependencies are `github.com/apache/iotdb-client-go/v2` at `v2.0.0-20260914074454-a25f68aa9681`, which provides existing types such as `TSDataType` and `ColumnCategory`, and `github.com/apache/thrift` at `v0.24.0`, which provides the RPC transport and protocol. It adds no TsFile, cgo, or TLS dependency and does not change the existing Session interfaces.
 
@@ -259,8 +259,47 @@ The `SubscriptionPushConsumer.Errors()` channel buffers one error. A TsFile deco
 | `BufferingProcessor.Buffered()`, `ProcessorBuffer` | `getBufferedCount/getBufferedCommitContexts` | An optional buffering interface reports both the count and all renewable contexts |
 | `TopicResetter.ResetTopic(topic)` | `supportsTopicScopedReset/reset(topic)` | Interface implementation replaces Java's capability flag |
 | `WatermarkReporter.Watermark()` | `WatermarkProcessor.getWatermark()` | Optionally exposes a processor's ordering watermark, distinct from the Consumer's latest server watermark |
+| `NewWatermarkProcessor(config)`, `WatermarkProcessorConfig` | Both `WatermarkProcessor` constructors | One configuration structure; event-time distance retains server precision, while timeout fields use `time.Duration` |
+| `WatermarkProcessor.Process/Flush/Buffered/Reset/ResetTopic/Watermark` | `process/flush/getBufferedCount/getBufferedCommitContexts/reset/getWatermark` | Buffers whole messages by maximum timestamp, renews every retained commit context, and resets by topic |
+| `NewColumnAlignProcessor(dialect)` | Both `ColumnAlignProcessor` constructors and its nested `Dialect` | Reuses the module's `Dialect`; empty selects tree and table requires `TableDialect` |
+| `ColumnAlignProcessor.Process/Flush/Reset/ResetTopic` | Methods with the same roles | Preserves delivery identity and returns independently owned record buffers with NULLs forward-filled |
 
 A `SubscriptionMessageProcessor` that retains messages must implement `BufferingProcessor` so heartbeats can renew undelivered records. Seek clears only its target topic. With multiple subscribed topics, a processor without `TopicResetter` makes seek fail before server positions change. A single-topic consumer can fall back to `Reset()`. Messages returned by `Flush` pass through subsequent stages; the processor must not retain or modify messages after transferring them.
+
+## Built-in Pull Processors
+
+Create processors and install them with `AddProcessor` before the first Poll. A processor instance belongs to one consumer. Installation order determines pipeline order; putting watermark ordering before column alignment lets aligned records benefit from message reordering.
+
+```go
+// This example assumes the server uses millisecond timestamps.
+watermark, err := subscription.NewWatermarkProcessor(subscription.WatermarkProcessorConfig{
+    MaxOutOfOrderness: 5000,
+    Timeout: 30 * time.Second,
+})
+if err != nil {
+    return err
+}
+alignment, err := subscription.NewColumnAlignProcessor(subscription.TableDialect)
+if err != nil {
+    return err
+}
+if err := consumer.AddProcessor(watermark); err != nil {
+    return err
+}
+if err := consumer.AddProcessor(alignment); err != nil {
+    return err
+}
+```
+
+`WatermarkProcessor` tracks sources by topic, DataNode ID, and region ID, matching Java's region identity. Its watermark is the minimum latest timestamp among active sources minus `MaxOutOfOrderness`. Repeated or older timestamps do not refresh source activity. Zero `StaleRegionTimeout` selects 30 seconds, a negative value disables stale-source exclusion, and zero `MaxBufferBytes` selects 64 MiB. Negative event-time distance, timeout, or byte limit is rejected. `Timeout == 0` immediately flushes remaining buffered messages on a Process call without ordered output. The timeout is evaluated on Process calls, including empty calls from Poll; no independent timer goroutine is installed.
+
+Messages are ordered by their maximum raw timestamp and emitted whole when that maximum is at most the watermark. This does not globally sort rows across messages or batches. Equal message maxima have no guaranteed order. Capacity overflow force-flushes all remaining messages after normal emission. A timeout force-flushes when no message was emitted and the interval since the previous emission has elapsed. When every source is stale, the previous watermark remains in effect. New sources and topic resets can move the watermark backward, matching Java. Subtraction saturates at the minimum timestamp instead of overflowing. Empty record messages use the current wall-clock milliseconds, matching Java's fallback; actual record and watermark timestamps retain server precision.
+
+`Buffered()` snapshots the message count and every committable context for heartbeat renewal. `Flush()` transfers buffered records in maximum-timestamp order without clearing source progress. `Reset()` releases all retained records and clears ordering state; `ResetTopic(topic)` releases only that topic and recomputes ordering from the remaining sources. Reset discards unconfirmed records without acknowledging them. `Watermark()` returns `ok == false` before progress is known or when reset leaves no active sources.
+
+`ColumnAlignProcessor` preserves raw row order, as Java does. It fills a NULL only from a cached non-null value with a strictly earlier timestamp; a non-null observation updates the cache at equal or greater timestamps. Columns are identified by name and data type, so reordered columns remain independent and changed types cannot reuse incompatible values. Tree state is isolated by topic and device path. Table state is isolated by topic, database, table name, and ordered TAG values per row. Trailing NULL TAGs are ignored as in TsFile device IDs, while interior NULL and empty strings remain distinct. Tables without TAGs and those with all TAGs NULL still have a device identity.
+
+Alignment reads inputs through the existing public RecordBatch API, copies record buffers, and returns replacement messages with the same commit contexts and projection. It releases consumed originals only after all input access succeeds. Input errors and dialect mismatches leave inputs and cache unchanged. Cache byte values and filled byte values are independently copied so earlier Release calls cannot invalidate later records. Watermarks pass through unchanged. It buffers no messages, so Flush is empty; Reset and ResetTopic clear the corresponding cached values. The per-device value cache is not size-bounded. The processor borrows no message storage across calls.
 
 ## Data Ownership and Context Contracts
 
@@ -285,4 +324,4 @@ A `SubscriptionMessageProcessor` that retains messages must implement `Buffering
 
 Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for that round, including records obtained by parallel branches. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again.
 
-The remaining implementation step is the built-in Watermark/ColumnAlign processors; further consumption examples and behavior tests are also pending. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. Verification has been static only: no compilation, tests, or formatting tools have run, and no runtime validation result is claimed.
+The built-in Watermark/ColumnAlign processors are implemented; further consumption examples, behavior tests, and runtime verification are pending. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. Verification has been static only: no compilation, tests, or formatting tools have run, and no runtime validation result is claimed.
