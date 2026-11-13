@@ -25,6 +25,8 @@ The module path is `github.com/apache/iotdb-client-go/subscription`. It uses Go 
 
 The Java reference is `iotdb-client/subscription` at IoTDB commit `d9122d837610`. The supported payload format is records: this module defines no TsFile handler, download, file-management, or Reader API. Topic management and `Subscribe` do not reject TsFile topics in advance. Dispatching a file payload during decoding returns `ErrUnsupportedTsFile`; that payload must not be delivered or acknowledged.
 
+Standalone [tree and table examples](example/README.md) cover ordinary record Pull/Push consumption and incremental subscriptions with progress, checkpoint resume, and optional processors. They are part of this module and use the existing Session client only to prepare sample data.
+
 ## Configuration and Data Model Selection
 
 Go uses `Dialect` to distinguish the tree and table models. Management and consumption each share a contract rather than duplicating Java's tree/table types and Builder hierarchy.
@@ -324,4 +326,4 @@ Alignment reads inputs through the existing public RecordBatch API, copies recor
 
 Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for that round, including records obtained by parallel branches. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again.
 
-The built-in Watermark/ColumnAlign processors are implemented; further consumption examples, behavior tests, and runtime verification are pending. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. Verification has been static only: no compilation, tests, or formatting tools have run, and no runtime validation result is claimed.
+The built-in Watermark/ColumnAlign processors and standalone tree/table examples are implemented; behavior tests and runtime verification are pending. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. No compilation, tests, formatting tools, or compiler/syntax checks have run as part of the example work, and no runtime validation result is claimed.
