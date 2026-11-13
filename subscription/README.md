@@ -19,7 +19,7 @@ under the License.
 
 # Go Subscription API
 
-The module implements `SubscriptionSession` management and the configuration, construction, subscription management, record polling, commits, progress, seek, processor pipeline, and background connection coordination of `SubscriptionPullConsumer`. Poll response decoding, record decoding, and message release are also connected. Push consumers and built-in processors remain for subsequent steps. These implementations have not been compiled or exercised at runtime; this document describes the code and its contracts.
+The module implements `SubscriptionSession` management, Pull consumption with record polling, commits, progress, seek, processor pipelines, and background connection coordination, and Push consumption with sequential callbacks and acknowledgment strategies. Poll response decoding, record decoding, and message release are also connected. Built-in processors remain for a subsequent step. These implementations have not been compiled or exercised at runtime; this document describes the code and its contracts.
 
 The module path is `github.com/apache/iotdb-client-go/subscription`. It uses Go 1.25 and maintains dependencies and versions separately from the existing `github.com/apache/iotdb-client-go/v2` Session module. Its direct dependencies are `github.com/apache/iotdb-client-go/v2` at `v2.0.0-20260914074454-a25f68aa9681`, which provides existing types such as `TSDataType` and `ColumnCategory`, and `github.com/apache/thrift` at `v0.24.0`, which provides the RPC transport and protocol. It adds no TsFile, cgo, or TLS dependency and does not change the existing Session interfaces.
 
@@ -43,7 +43,7 @@ Only the public method contract is shared. Management sessions pass the model wh
 | `SubscriptionPushConsumerConfig` | `AbstractSubscriptionPushConsumerBuilder` | Combines a Handler, ACK strategy, and polling interval and timeout |
 | `AckStrategy`, `AckAfterConsume`, `AckBeforeConsume` | `AckStrategy.AFTER_CONSUME`, `BEFORE_CONSUME` | The zero value acknowledges after consumption; callback failure does not cause redelivery when acknowledgment precedes consumption |
 
-`SubscriptionConsumerConfig.OwnerEpoch == nil` means that no epoch was supplied; a pointer to zero explicitly supplies epoch 0. `DefaultSubscriptionConsumerConfig`, `DefaultSubscriptionPullConsumerConfig`, and `DefaultSubscriptionPushConsumerConfig` are available. The default Push Handler remains nil, so callers must supply a real handler. Internal normalization copies endpoint slices and optional pointers. Zero durations select defaults, negative durations return errors, and positive values below Java's minimum are raised to that minimum. Construct Pull consumers with `NewSubscriptionPullConsumer`; a Push constructor is not yet available.
+`SubscriptionConsumerConfig.OwnerEpoch == nil` means that no epoch was supplied; a pointer to zero explicitly supplies epoch 0. `DefaultSubscriptionConsumerConfig`, `DefaultSubscriptionPullConsumerConfig`, and `DefaultSubscriptionPushConsumerConfig` are available. The default Push Handler remains nil, so callers must supply a real handler. Internal normalization copies endpoint slices and optional pointers. Zero durations select defaults, negative durations return errors, and positive values below Java's minimum are raised to that minimum. Construct consumers with `NewSubscriptionPullConsumer` or `NewSubscriptionPushConsumer`; neither constructor connects to the network.
 
 The management session defaults are `localhost:6667`, the tree model, root/root authentication, a 64 MiB frame limit, and a ten-second connection and authentication timeout. Java management sessions do not limit connection time by default; the Go entry point uses a bounded timeout here. The constructor fills empty endpoints, username, and dialect, as well as zero timeout and frame size, validates addresses and mutually exclusive authentication, and copies the endpoint slice. Passwords are always preserved as supplied, including empty strings. Start with the default configuration function when root/root defaults are needed. To use an encrypted password, clear `Password` and set `EncryptedPassword`.
 
@@ -65,7 +65,7 @@ Management connections own query pagination and closing while reusing the existi
 
 ## Internal Subscription Protocol and Providers
 
-The internal implementation covers handshakes, heartbeats, subscribe/unsubscribe, close, commits, seek, Poll and Tablet-continuation requests, and oversized-request slicing. These are connected to the public Pull consumer.
+The internal implementation covers handshakes, heartbeats, subscribe/unsubscribe, close, commits, seek, Poll and Tablet-continuation requests, and oversized-request slicing. Pull and Push share these internal capabilities.
 
 - Primitive encoding uses Java's big-endian layout. Commit contexts use version 2 and retain legacy commit fields plus optional Writer identity and progress. Topic/Region/Writer progress follows the original protocol structure.
 - Topic sets in subscribe and Poll requests use Java ObjectSet string tags, separately from the ordinary StringList used by heartbeat unsubscribe lists. Set encoding is sorted for stability. Null strings map to empty strings in existing Go string fields.
@@ -136,6 +136,61 @@ return consumer.Commit(ctx, messages...)
 - Heartbeats are scheduled independently per Provider. Endpoint synchronization and connection failure trigger recovery. Background recovery attempts are at least five seconds apart. Late old-connection responses cannot reactivate an old Provider or incorrectly fence the replacement connection's Consumer.
 - `Close` interrupts blocked polling and stops background work. In manual mode, buffered processor messages make closing return an error while preserving the drain path. Call `DrainBufferedMessages`, process and commit its records, then close again. Automatic mode makes a best-effort commit of delivered and drained records during closing. Commit failures return errors; a successful close does not imply that all historical messages were processed.
 
+## Push Consumption
+
+`NewSubscriptionPushConsumer` normalizes configuration once, requires a non-nil Handler, and does not connect. It reuses the manual Pull core for providers, progress, and polling, without installing processors or enabling automatic commits. `Open(ctx)` starts one fixed-delay polling loop; its background lifetime is independent of the opening context. Handlers run sequentially, and the next round starts only after the current round and `PollInterval` delay finish.
+
+```go
+cfg := subscription.DefaultSubscriptionPushConsumerConfig()
+cfg.Consumer.Dialect = subscription.TableDialect
+cfg.AckStrategy = subscription.AckAfterConsume
+cfg.Handler = func(callbackCtx context.Context, message subscription.SubscriptionMessage) error {
+    batches, err := message.Records()
+    if err != nil {
+        return err
+    }
+    for _, batch := range batches {
+        for row, err := range batch.Rows() {
+            if err != nil {
+                return err
+            }
+            if err := callbackCtx.Err(); err != nil {
+                return err
+            }
+            fmt.Println(row.Timestamp, row.Values)
+        }
+    }
+    return nil
+}
+consumer, err := subscription.NewSubscriptionPushConsumer(cfg)
+if err != nil {
+    return err
+}
+if err := consumer.Open(ctx); err != nil {
+    return err
+}
+defer consumer.Close()
+if err := consumer.Subscribe(ctx, "measurements"); err != nil {
+    return err
+}
+select {
+case err, ok := <-consumer.Errors():
+    if !ok {
+        return nil
+    }
+    return err
+case <-ctx.Done():
+    return ctx.Err()
+}
+```
+
+- `AckBeforeConsume` acknowledges the whole batch before invoking any Handler. A partial or failed ACK prevents callbacks for that batch. A later Handler error or panic does not trigger NACK under this strategy.
+- `AckAfterConsume` runs all callbacks in order, then acknowledges the successful group and nacks the failed group. An ACK error skips the subsequent NACK request. A nil Handler result means success; an error or panic means consumption failed, not that the background loop has terminated.
+- Ordinary network failures are retried in a later polling round. TsFile decoding, fencing, and critical background errors stop delivery. `Errors()` buffers one result, sends the first terminal error once, and is closed by the loop when it exits. Normal closing does not invent a terminal error. A TsFile failure never enters the Handler or acknowledgment path.
+- Handlers run without an internal consumer operation gate and may call Subscribe, Seek, or Close. Push seek invalidates pending delivery for the target topic before sending the request. That topic's active callback context is canceled after the seek request finishes, whether it succeeds or fails, so a Handler can use its own context to call Seek without canceling that request at entry. An already-started callback can run until it returns; later callbacks and ACKs for the old delivery generation are skipped. A failed seek does not restore the old batch because server positions may already have changed partially. Already accepted acknowledgments are not rolled back.
+- `Close` cancels the active callback context and synchronously closes core connection resources, but does not wait for user Handler code to return. This permits calling Close from inside a Handler without waiting on itself. The active message is released only after its callback returns, so borrowed data remains valid during that callback. Handlers should return promptly after cancellation. If a callback has not returned, the loop and `Errors()` channel may finish after Close returns.
+- Push messages are owned by the delivery loop. Do not call `Release` in a Handler; copy any record data that must outlive the callback. Watermarks update consumer state but do not reach record Handlers. Push does not expose the Pull processor pipeline.
+
 ## Management Sessions
 
 `SubscriptionSession` corresponds to Java's `ISubscriptionTreeSession` and `ISubscriptionTableSession`. Methods take an explicit `context.Context`, while parameter structures express existence conditions.
@@ -159,6 +214,8 @@ return consumer.Commit(ctx, messages...)
 
 | Go method or type | Java counterpart | Consolidation |
 | --- | --- | --- |
+| `NewSubscriptionPullConsumer(config)` | `SubscriptionTreePullConsumerBuilder.build`, `SubscriptionTablePullConsumerBuilder.build` | One constructor with `Dialect`; validates configuration without connecting |
+| `NewSubscriptionPushConsumer(config)` | `SubscriptionTreePushConsumerBuilder.build`, `SubscriptionTablePushConsumerBuilder.build` | One constructor with `Dialect` and a required Go Handler; validates configuration without connecting |
 | `SubscriptionConsumer.Open(ctx)`, `Close()` | Each Consumer's `open/close` | Shared lifecycle interface |
 | `Subscribe(ctx, topics...)`, `Unsubscribe(ctx, topics...)` | Single-topic, array, and collection overloads | Variadic topic names |
 | `Info()`, `SubscriptionConsumerInfo` | `getConsumerId/getConsumerGroupId/getOwnerId/getOwnerEpoch` | Returns a credential-free identity snapshot, including server-assigned IDs |
@@ -182,7 +239,7 @@ return consumer.Commit(ctx, messages...)
 
 `CommitAsync` returns a channel with capacity 1. It sends one result, nil on success, then closes. An unread result cannot block cleanup. Canceling the context does not undo commits accepted by the server, and a synchronous or asynchronous commit error does not mean that the whole batch failed.
 
-The `SubscriptionPushConsumer.Errors()` channel buffers at least one error. A TsFile decoding error must stop automatic polling before notification; the failed round cannot enter the Handler or ACK path. The lifecycle owner closes the channel after coordinating background senders.
+The `SubscriptionPushConsumer.Errors()` channel buffers one error. A TsFile decoding error stops automatic polling before notification; the failed round cannot enter the Handler or ACK path. The polling loop owns channel closure. If Close cancels a still-running Handler, channel closure can occur after Close returns, when that Handler returns and the loop finishes.
 
 ## Messages, Records, and Processors
 
@@ -211,8 +268,8 @@ A `SubscriptionMessageProcessor` that retains messages must implement `Buffering
 - Batches, columns, and row data from `SubscriptionMessage.Records()` are borrowed, read-only views valid until the message's `Release()`. Callers must copy values and byte slices that need to outlive that point.
 - `Release()` is idempotent. Do not reuse borrowed batch, column, or row data after release. `Records()` returns `ErrDataReleased`, while kind, commit context, and watermark remain available.
 - Nil in `Row.Values` means SQL NULL. DATE uses `time.Time`; TIMESTAMP and record timestamps use `int64` in server precision; BLOB/OBJECT use `[]byte`.
-- A Push Handler must not release its message. Copy record data before returning if it is needed afterward. The callback context is canceled when delivery stops.
-- The `Open(ctx)` context bounds opening only, not the background lifetime. Background work stops with `Close()`. Other operation contexts bound their corresponding operations only.
+- A Push Handler must not release its message. Copy record data before returning if it is needed afterward. The callback context is canceled when delivery stops or after a seek request for its topic finishes, regardless of that request's outcome. Close does not wait for the Handler; its message remains valid until the Handler returns.
+- The `Open(ctx)` context bounds opening only, not the background lifetime. Close stops new work and cancels active work. Other operation contexts bound their corresponding operations only; Push user code can finish after Close returns.
 - A positive Pull timeout bounds foreground queue waiting and network polling, subject to an earlier context deadline. Zero has the single-round behavior described above; processor callbacks must return promptly. Operation timeouts use `time.Duration` without changing message timestamp units.
 - Repeated Consumer `Open` while open and repeated `Close` after closing are harmless. A successfully closed Consumer cannot reopen. A failed close requiring buffered data to be drained preserves the drain-and-commit recovery path.
 
@@ -228,4 +285,4 @@ A `SubscriptionMessageProcessor` that retains messages must implement `Buffering
 
 Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for that round, including records obtained by parallel branches. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again.
 
-Remaining work includes Push consumers, built-in Watermark/ColumnAlign processors, further consumption examples, and behavior tests. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. Verification has been static only: no compilation, tests, or formatting tools have run, and no runtime validation result is claimed.
+The remaining implementation step is the built-in Watermark/ColumnAlign processors; further consumption examples and behavior tests are also pending. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. Verification has been static only: no compilation, tests, or formatting tools have run, and no runtime validation result is claimed.

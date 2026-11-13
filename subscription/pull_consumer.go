@@ -42,6 +42,16 @@ func NewSubscriptionPullConsumer(config SubscriptionPullConsumerConfig) (Subscri
 	if err != nil {
 		return nil, err
 	}
+	consumer, err := newSubscriptionPullConsumer(resolved)
+	if err != nil {
+		return nil, err
+	}
+	return consumer, nil
+}
+
+// newSubscriptionPullConsumer accepts normalized configuration so push consumers
+// can reuse the connection and progress engine without parsing identities twice.
+func newSubscriptionPullConsumer(resolved SubscriptionPullConsumerConfig) (*subscriptionPullConsumer, error) {
 	var suffix [8]byte
 	if _, err := rand.Read(suffix[:]); err != nil {
 		return nil, fmt.Errorf("subscription: generate consumer instance identity: %w", err)

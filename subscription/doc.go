@@ -26,7 +26,9 @@
 // record views, message release, and watermark messages are implemented internally.
 // NewSubscriptionPullConsumer provides pull consumption, record continuation,
 // commit and seek coordination, background heartbeats, and provider recovery.
-// Push consumers and built-in processors remain subsequent implementation steps.
+// NewSubscriptionPushConsumer adds sequential callback delivery with before- or
+// after-consumption acknowledgment and a terminal-error channel. Built-in
+// processors remain a subsequent implementation step.
 //
 // Record messages are the supported payload format. Topic management and
 // subscription do not reject TsFile topics; decoding a TsFile payload must return
@@ -36,4 +38,7 @@
 // Contexts passed to Open limit the opening operation. Background work belongs
 // to the consumer and stops on Close, rather than when that context is canceled.
 // Other operation contexts bound the corresponding operation only.
+// Push Close cancels the active callback context and closes connection resources
+// without waiting for user code to return. Its borrowed message is released only
+// after that callback returns; the error channel can therefore close later.
 package subscription

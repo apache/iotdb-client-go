@@ -35,7 +35,9 @@ type SubscriptionConsumer interface {
 	// work. It returns an error if opening fails. The context limits this
 	// operation only; canceling it after Open returns does not stop consumption.
 	Open(ctx context.Context) error
-	// Close stops background work and releases connections. In manual-commit
+	// Close stops background work and releases connections. Push cancels the
+	// current callback context but does not wait for the callback to return;
+	// that callback's message remains valid until it returns. In manual-commit
 	// mode, buffered processor output must first be drained, processed, and
 	// committed before retrying a close that reports undelivered messages.
 	// Closing does not guarantee that every outstanding commit succeeded.
@@ -125,21 +127,39 @@ type SubscriptionPullConsumer interface {
 // ConsumeFunc handles a delivered record message. A nil error means success;
 // a non-nil error means failure. Acknowledgment and redelivery depend on the
 // configured AckStrategy rather than on the callback alone.
-// The callback context is canceled when the consumer stops delivery. The message
-// remains valid for the callback; the callback must not release it or retain
+// Callbacks run sequentially and without holding an internal consumer operation
+// gate. They may call Subscribe, Seek, or Close. A panic is treated as a failed
+// consumption attempt, not as a terminal background error.
+// The callback context is canceled when delivery stops or after a seek request
+// for its topic finishes, whether that request succeeds or fails. Close does
+// not wait for the callback, so it should return promptly when
+// its context is canceled. The message remains valid for the callback; the
+// callback must not release it or retain
 // borrowed record data after returning without copying that data.
 type ConsumeFunc func(ctx context.Context, message SubscriptionMessage) error
 
-// SubscriptionPushConsumer polls in the background and delivers records to SubscriptionPushConsumerConfig.Handler.
+// SubscriptionPushConsumer polls in the background and delivers records to
+// SubscriptionPushConsumerConfig.Handler. One fixed-delay loop invokes handlers
+// sequentially and does not install record processors. Before-consumption ACK
+// confirms the whole batch before any callback; a failed ACK prevents delivery.
+// After-consumption ACK confirms successful callbacks before nacking failed ones.
+// A failed ACK skips that batch's subsequent NACK request.
 // A TsFile decoding error stops automatic polling before it is reported; no
 // record callback or acknowledgment is performed for that failed poll round.
+// Seeking invalidates pending delivery for the target topic before its request
+// starts, then cancels that topic's active callback context after the request
+// finishes. No new callbacks or ACKs are started for invalidated records,
+// even if seek fails, because server positions might have changed partially.
+// Already accepted acknowledgments are not undone.
 type SubscriptionPushConsumer interface {
 	SubscriptionConsumer
 
-	// Errors reports the first terminal background error, then delivery stops.
+	// Errors reports the first terminal background error after new delivery stops.
 	// The channel has capacity at least one; the error is sent once even if the
-	// caller is not receiving. The lifecycle owner closes it after all senders
-	// have stopped. An ordinary callback failure is not a terminal error.
+	// caller is not receiving. The polling loop closes it when that loop exits.
+	// A Close during an active callback may return before this
+	// channel closes. An ordinary callback error or panic is not terminal;
+	// TsFile decoding, fencing, and critical background errors stop delivery.
 	Errors() <-chan error
 }
 

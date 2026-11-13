@@ -116,10 +116,12 @@ type SubscriptionPullConsumerConfig struct {
 type AckStrategy uint8
 
 const (
-	// AckAfterConsume acknowledges successful callbacks and nacks failed ones.
+	// AckAfterConsume runs callbacks sequentially, acknowledges the successful
+	// group, then nacks the failed group. An ACK error skips the subsequent NACK.
 	AckAfterConsume AckStrategy = iota
-	// AckBeforeConsume acknowledges before invoking callbacks; callback failure
-	// does not cause redelivery under this strategy.
+	// AckBeforeConsume acknowledges the entire batch before invoking callbacks.
+	// A partial or failed ACK prevents callbacks for that batch; callback failure
+	// does not cause a NACK or redelivery under this strategy.
 	AckBeforeConsume
 )
 
@@ -131,11 +133,14 @@ type SubscriptionPushConsumerConfig struct {
 	// AckStrategy selects acknowledgment before delivery or after successful
 	// processing. Its zero value is AckAfterConsume.
 	AckStrategy AckStrategy
-	// Handler receives record messages. It is required; nil returned by a call
-	// means successful processing, and a non-nil error means processing failed.
+	// Handler receives record messages sequentially. It is required; nil returned
+	// by a call means success, while an error or panic means consumption failed.
+	// It must not release the borrowed message and should return promptly when
+	// its context is canceled. Close does not wait for Handler to return.
 	Handler ConsumeFunc
-	// PollInterval controls the interval between automatic polling work. Java
-	// defaults to 100 milliseconds and requires an interval greater than zero.
+	// PollInterval is the fixed delay after one polling and delivery round
+	// finishes before another starts. Java defaults to 100 milliseconds and
+	// requires an interval greater than zero.
 	PollInterval time.Duration
 	// PollTimeout limits one automatic poll. Java defaults to ten seconds and
 	// enforces a one-second minimum. Message timestamps retain server precision.
