@@ -22,8 +22,10 @@
 //
 // SubscriptionSession provides topic and subscription management through
 // NewSubscriptionSession. Consumer configuration defaults and internal control
-// protocol/provider support are available. Public consumer implementations,
-// record decoding, and built-in processors remain subsequent implementation steps.
+// protocol/provider support are available. Poll response and record decoding,
+// record views, message release, and watermark messages are implemented internally.
+// Public consumers, background coordination, and built-in processors remain
+// subsequent implementation steps.
 //
 // Record messages are the supported payload format. Topic management and
 // subscription do not reject TsFile topics; decoding a TsFile payload must return

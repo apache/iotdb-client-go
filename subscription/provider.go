@@ -337,7 +337,7 @@ func (p *subscriptionProvider) seek(ctx context.Context, topic string, kind int1
 	return err
 }
 
-func (p *subscriptionProvider) poll(ctx context.Context, topics []string, timeoutMs, maxBytes int64, progress map[string]TopicProgress) ([][]byte, error) {
+func (p *subscriptionProvider) poll(ctx context.Context, topics []string, timeoutMs, maxBytes int64, progress map[string]TopicProgress) ([]subscriptionPollResponse, error) {
 	request, err := encodeSubscriptionPoll(topics, timeoutMs, maxBytes, progress)
 	if err != nil {
 		return nil, err
@@ -345,7 +345,7 @@ func (p *subscriptionProvider) poll(ctx context.Context, topics []string, timeou
 	return p.pollPayloads(ctx, request)
 }
 
-func (p *subscriptionProvider) pollTablets(ctx context.Context, commitContext CommitContext, offset int32, timeoutMs, maxBytes int64) ([][]byte, error) {
+func (p *subscriptionProvider) pollTablets(ctx context.Context, commitContext CommitContext, offset int32, timeoutMs, maxBytes int64) ([]subscriptionPollResponse, error) {
 	request, err := encodeSubscriptionPollTablets(commitContext, offset, timeoutMs, maxBytes)
 	if err != nil {
 		return nil, err
@@ -353,7 +353,7 @@ func (p *subscriptionProvider) pollTablets(ctx context.Context, commitContext Co
 	return p.pollPayloads(ctx, request)
 }
 
-func (p *subscriptionProvider) pollPayloads(ctx context.Context, request *rpc.TPipeSubscribeReq) ([][]byte, error) {
+func (p *subscriptionProvider) pollPayloads(ctx context.Context, request *rpc.TPipeSubscribeReq) ([]subscriptionPollResponse, error) {
 	response, err := p.call(ctx, request)
 	if err != nil {
 		var statusErr *subscriptionStatusError
@@ -369,7 +369,7 @@ func (p *subscriptionProvider) pollPayloads(ctx context.Context, request *rpc.TP
 		}
 		return nil, err
 	}
-	return response.Body, nil
+	return decodeSubscriptionPollResponses(response.Body)
 }
 
 // close preserves subscriptions during fenced/recovery teardown. A regular close

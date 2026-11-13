@@ -19,7 +19,7 @@ under the License.
 
 # Go subscription 公共接口
 
-当前已实现 `SubscriptionSession` 的默认配置、构造、普通 Thrift 连接与认证，以及 Topic/Subscription 管理；Consumer 默认配置、内部控制协议和单节点 Provider 也已补齐。公共 Consumer、记录解析和处理器仍没有可运行的消费实现。下文对应表同时列出已实现能力和后续消费实现需要遵守的契约。
+当前已实现 `SubscriptionSession` 的默认配置、构造、普通 Thrift 连接与认证，以及 Topic/Subscription 管理；Consumer 默认配置、内部控制协议和单节点 Provider、Poll 响应与记录解析、消息及记录访问实现也已补齐。公共 Consumer 和处理器仍没有可运行的消费实现。下文对应表同时列出已实现能力和后续消费实现需要遵守的契约。
 
 模块路径为 `github.com/apache/iotdb-client-go/subscription`，使用 Go 1.25，与现有 `github.com/apache/iotdb-client-go/v2` Session 模块分别维护依赖和版本。当前仅依赖现有模块，以复用 `TSDataType` 和 `ColumnCategory`；没有 TsFile、cgo 或 TLS 依赖，也没有改动现有 Session 接口。
 
@@ -73,7 +73,19 @@ topics, err := s.Topics(ctx)
 - 帧限制取本地与服务端较小值并预留协议空间；旧服务端没有属性字段或不支持属性探测 RPC 时回退本地限制。可分片请求的所有片段保持同一连接、顺序和批次身份。
 - 心跳按报文大小分批发送缓存上下文；提交预留响应空间分批，后续批次失败时仍返回先前已接受的上下文和进度。没有响应 body 时保留空结果，不推断整批提交成功。
 - 状态码保留普通错误、owner fencing、consumer fencing、连接替换和致命错误的区别。Poll 返回消费组 Broker 丢失诊断时使旧连接失效，供后续 Consumer 重建；失效连接不会被旧响应重新启用。
-- 本轮只编码记录拉取请求，不解析其响应，也不实现文件拉取。TsFile 在解析时报错的契约保留，实际分派与记录解码在后续阶段接入。
+- Provider 现在解析全部非空 Poll 响应 body，保留记录、错误、终止和水位线事件。文件响应在类型分派处返回 `ErrUnsupportedTsFile`；混合响应不会返回已经解析的部分记录，不实现文件拉取。
+
+## 记录消息与解析
+
+记录数据采用 Java 当前依赖的 `2.5.1-261023-SNAPSHOT` Tablet 序列化格式，与写入 RPC 和查询 TsBlock 格式分开处理，不依赖 TsFile Go 或原生库。
+
+- 支持 BOOLEAN、INT32、INT64、FLOAT、DOUBLE、TEXT、STRING、TIMESTAMP、DATE、BLOB 和 OBJECT，保留 TAG/FIELD/ATTRIBUTE 类别。TEXT/STRING 暴露为 string，BLOB/OBJECT 为 `[]byte`，DATE 为 UTC 零点的 `time.Time`。
+- NULL 由 Bitmap 和缺失值列决定。Binary 的缺省标记先恢复为空内容，再应用 Bitmap；不把空字符串或空 BLOB 自动变成 NULL。日期按 Java 的日期整数规则读取。
+- 原始行号用于 `Timestamp/Value`；`Rows()` 通过独立的稳定排序视图按时间递增遍历，相同时间戳保持原始顺序。行值切片不在迭代间复用，调用用户的迭代函数时不持内部锁。
+- 树模型始终显示时间戳；表模型优先采用按数据库、表指定的时间投影，未指定时回退消息级标志。旧响应缺少投影尾部时保持 Java 的默认选择时间行为。
+- 消息释放幂等并清理记录缓存；提交上下文及其可选 Writer 元数据仍以独立快照返回，水位线和消息类型继续可访问。已借用的批次在释放后数据访问报错。
+- 记录续取组装校验完整提交上下文，逐页合并数据和时间投影；最终数量按 Tablet 个数核对，不按行数核对。该组装能力尚未接入 Consumer 的实际续取循环。
+- 空记录交付和终止事件在解析层保留上下文，不自动 ACK 或退订；服务端 ERROR 保留严重级别，水位线可转为处理器消息。消费循环中的处理仍待下一步实现。
 
 ## 管理 Session
 
@@ -167,4 +179,4 @@ SubscriptionMessageProcessor 保留消息时必须实现 `BufferingProcessor`，
 
 这些哨兵可以被后续操作错误包装，调用方使用 `errors.Is` 识别。TsFile 不支持错误不得触发连接重试或文件载荷确认。Pull 本轮返回错误而不交付任何消息，包括并行分支已经取得的记录；本轮记录不得推进位置、进入处理器或自动提交缓存，此前成功交付及提交的状态不回滚。调用方可退订相关 Topic 后继续拉取。
 
-后续步骤尚需实现记录及 Poll 响应解析、公共 Consumer 和构造、多节点协调、提交进度与恢复、后台任务、内置 Watermark/ColumnAlign Processor，以及消费示例和行为测试。内部 Provider 已有提交 RPC，但尚未实现公共 Consumer 的交付和确认链。管理查询复用根模块解码器，本轮不修改其对畸形数据的处理逻辑。当前仅完成静态核对，没有编译、运行测试或执行格式工具，不提供运行验证结论。
+后续步骤尚需实现公共 Consumer 和构造、实际记录续取循环、多节点协调、提交进度与恢复、后台任务、内置 Watermark/ColumnAlign Processor，以及消费示例和行为测试。内部 Provider 已有提交 RPC，但尚未实现公共 Consumer 的交付和确认链。管理查询复用根模块解码器，本轮不修改其对畸形数据的处理逻辑。当前仅完成静态核对，没有编译、运行测试或执行格式工具，不提供运行验证结论。
