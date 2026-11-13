@@ -17,35 +17,35 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-# Go subscription 公共接口
+# Go Subscription API
 
-当前已实现 `SubscriptionSession` 的默认配置、构造、普通 Thrift 连接与认证，以及 Topic/Subscription 管理；Consumer 默认配置、内部控制协议和单节点 Provider、Poll 响应与记录解析、消息及记录访问实现也已补齐。公共 Consumer 和处理器仍没有可运行的消费实现。下文对应表同时列出已实现能力和后续消费实现需要遵守的契约。
+The module implements `SubscriptionSession` management and the configuration, construction, subscription management, record polling, commits, progress, seek, processor pipeline, and background connection coordination of `SubscriptionPullConsumer`. Poll response decoding, record decoding, and message release are also connected. Push consumers and built-in processors remain for subsequent steps. These implementations have not been compiled or exercised at runtime; this document describes the code and its contracts.
 
-模块路径为 `github.com/apache/iotdb-client-go/subscription`，使用 Go 1.25，与现有 `github.com/apache/iotdb-client-go/v2` Session 模块分别维护依赖和版本。当前仅依赖现有模块，以复用 `TSDataType` 和 `ColumnCategory`；没有 TsFile、cgo 或 TLS 依赖，也没有改动现有 Session 接口。
+The module path is `github.com/apache/iotdb-client-go/subscription`. It uses Go 1.25 and maintains dependencies and versions separately from the existing `github.com/apache/iotdb-client-go/v2` Session module. Its direct dependencies are `github.com/apache/iotdb-client-go/v2` at `v2.0.0-20260914074454-a25f68aa9681`, which provides existing types such as `TSDataType` and `ColumnCategory`, and `github.com/apache/thrift` at `v0.24.0`, which provides the RPC transport and protocol. It adds no TsFile, cgo, or TLS dependency and does not change the existing Session interfaces.
 
-Java 对照基线为 IoTDB `d9122d837610` 的 `iotdb-client/subscription`。本次支持范围是记录消息：不定义 TsFile handler、下载、文件操作或 Reader API。Topic 管理和 `Subscribe` 不预先拒绝 TsFile Topic；后续解析分派到文件载荷时必须返回 `ErrUnsupportedTsFile`，不能交付或确认该载荷。
+The Java reference is `iotdb-client/subscription` at IoTDB commit `d9122d837610`. The supported payload format is records: this module defines no TsFile handler, download, file-management, or Reader API. Topic management and `Subscribe` do not reject TsFile topics in advance. Dispatching a file payload during decoding returns `ErrUnsupportedTsFile`; that payload must not be delivered or acknowledged.
 
-## 配置与模型选择
+## Configuration and Data Model Selection
 
-Go 使用 `Dialect` 区分树、表模型，管理和消费接口各自共用一份契约，避免复制 Java 的树、表类型及 Builder 层次。
+Go uses `Dialect` to distinguish the tree and table models. Management and consumption each share a contract rather than duplicating Java's tree/table types and Builder hierarchy.
 
-Java 的 `ISubscriptionTreeSession/ISubscriptionTableSession`、树/表 Pull 接口、树/表 Push 接口各自具有相同的方法签名。因此 Go 分别用 `SubscriptionSession`、`SubscriptionPullConsumer`、`SubscriptionPushConsumer` 表达这些共同操作，由配置中的 `Dialect` 选择模型；每个实例对应一个模型。
+Java's `ISubscriptionTreeSession/ISubscriptionTableSession`, tree/table Pull interfaces, and tree/table Push interfaces have identical method signatures within each pair. Go therefore uses `SubscriptionSession`, `SubscriptionPullConsumer`, and `SubscriptionPushConsumer` for those common operations. Configuration selects the model through `Dialect`; each instance uses one model.
 
-这里共用的是对外方法契约。管理 Session 已在连接时传递模型；后续消费握手和记录解析仍需分别处理树模型的设备路径与表模型的数据库、表和 TAG 身份。相同接口不要求树、表使用同一套内部实现。
+Only the public method contract is shared. Management sessions pass the model when connecting. Consumer handshakes carry the selected model, and record decoding distinguishes tree device paths from table databases, tables, and TAG identities. Sharing an interface does not require the two models to use the same internal implementation.
 
-| Go 公共类型 | Java 对应 | Go 中的表达方式 |
+| Public Go type | Java counterpart | Go representation |
 | --- | --- | --- |
-| `Dialect`、`TreeDialect`、`TableDialect` | 树、表 Session/Consumer 类型及 SQL dialect | 在 `SubscriptionSessionConfig` 或 `SubscriptionConsumerConfig` 中选择模型 |
-| `ConnectionConfig` | Session/Consumer Builder 的节点、认证、连接超时、最大帧配置 | `NodeURLs` 同时表示单节点和集群种子地址；时间使用 `time.Duration`；明文与加密密码互斥 |
-| `SubscriptionSessionConfig` | `SubscriptionTreeSessionBuilder`、`SubscriptionTableSessionBuilder` | 通过 `DefaultSubscriptionSessionConfig` 获取默认值，再交给 `NewSubscriptionSession`；构造不建立连接 |
-| `SubscriptionConsumerConfig` | `AbstractSubscriptionConsumerBuilder` | 公共消费配置，包含消费身份、owner、心跳、端点同步及并行度 |
-| `SubscriptionPullConsumerConfig` | `AbstractSubscriptionPullConsumerBuilder` | `AutoCommit == nil` 表示沿用 Java 默认值 `true`，指向 `false` 表示显式手动提交 |
-| `SubscriptionPushConsumerConfig` | `AbstractSubscriptionPushConsumerBuilder` | 组合 Handler、ACK 策略及拉取间隔、超时 |
-| `AckStrategy`、`AckAfterConsume`、`AckBeforeConsume` | `AckStrategy.AFTER_CONSUME`、`BEFORE_CONSUME` | 零值为消费后确认；消费前确认下，回调失败不导致重新投递 |
+| `Dialect`, `TreeDialect`, `TableDialect` | Tree/table Session and Consumer types, SQL dialect | Select the model in `SubscriptionSessionConfig` or `SubscriptionConsumerConfig` |
+| `ConnectionConfig` | Session/Consumer Builder settings for nodes, authentication, connection timeout, and maximum frame size | `NodeURLs` represents either a single node or cluster seed addresses; durations use `time.Duration`; plaintext and encrypted passwords are mutually exclusive |
+| `SubscriptionSessionConfig` | `SubscriptionTreeSessionBuilder`, `SubscriptionTableSessionBuilder` | Obtain defaults through `DefaultSubscriptionSessionConfig`, then pass them to `NewSubscriptionSession`; construction does not connect |
+| `SubscriptionConsumerConfig` | `AbstractSubscriptionConsumerBuilder` | Shared configuration for consumer identity, ownership, heartbeats, endpoint synchronization, and parallelism |
+| `SubscriptionPullConsumerConfig` | `AbstractSubscriptionPullConsumerBuilder` | `AutoCommit == nil` selects Java's default, `true`; a pointer to `false` explicitly selects manual commits |
+| `SubscriptionPushConsumerConfig` | `AbstractSubscriptionPushConsumerBuilder` | Combines a Handler, ACK strategy, and polling interval and timeout |
+| `AckStrategy`, `AckAfterConsume`, `AckBeforeConsume` | `AckStrategy.AFTER_CONSUME`, `BEFORE_CONSUME` | The zero value acknowledges after consumption; callback failure does not cause redelivery when acknowledgment precedes consumption |
 
-`SubscriptionConsumerConfig.OwnerEpoch == nil` 表示未提供 epoch，指向零表示显式 epoch 0。已提供 `DefaultSubscriptionConsumerConfig`、`DefaultSubscriptionPullConsumerConfig`、`DefaultSubscriptionPushConsumerConfig`。Push 默认配置的 Handler 保持 nil，调用方需设置实际处理函数。内部归一化会复制节点列表及可选指针；时长零值使用默认值，负值报错，低于 Java 正数下限的配置提升到对应下限。Consumer 构造函数尚未提供。
+`SubscriptionConsumerConfig.OwnerEpoch == nil` means that no epoch was supplied; a pointer to zero explicitly supplies epoch 0. `DefaultSubscriptionConsumerConfig`, `DefaultSubscriptionPullConsumerConfig`, and `DefaultSubscriptionPushConsumerConfig` are available. The default Push Handler remains nil, so callers must supply a real handler. Internal normalization copies endpoint slices and optional pointers. Zero durations select defaults, negative durations return errors, and positive values below Java's minimum are raised to that minimum. Construct Pull consumers with `NewSubscriptionPullConsumer`; a Push constructor is not yet available.
 
-管理 Session 的默认配置为 `localhost:6667`、树模型、root/root、64 MiB 帧和十秒连接及认证超时。Java 管理 Session 默认不限制连接时长，Go 入口在这里采用有界超时。构造函数补齐空节点、用户名、模型以及为零的超时和帧大小，校验地址与互斥认证，并复制节点列表。密码始终保留调用方提供的值，包括空字符串；需要 root/root 默认值时应从默认配置函数开始。使用加密密码时清空 `Password` 后设置 `EncryptedPassword`。
+The management session defaults are `localhost:6667`, the tree model, root/root authentication, a 64 MiB frame limit, and a ten-second connection and authentication timeout. Java management sessions do not limit connection time by default; the Go entry point uses a bounded timeout here. The constructor fills empty endpoints, username, and dialect, as well as zero timeout and frame size, validates addresses and mutually exclusive authentication, and copies the endpoint slice. Passwords are always preserved as supplied, including empty strings. Start with the default configuration function when root/root defaults are needed. To use an encrypted password, clear `Password` and set `EncryptedPassword`.
 
 ```go
 cfg := subscription.DefaultSubscriptionSessionConfig()
@@ -61,122 +61,171 @@ defer s.Close()
 topics, err := s.Topics(ctx)
 ```
 
-管理连接自行处理查询分页与关闭，复用现有 TsBlock 解码器；不使用会以 `context.Background()` 分页的现有 SessionDataSet。取消会中断原始连接，后续操作重建连接时继续使用原模型和认证配置。已发送的管理语句不会因连接失败被自动重放；失败后可由调用方查询服务端状态再决定是否重试。管理 Session 关闭后可以再次打开，这与 Consumer 成功关闭后不可重新打开的契约分开处理。
+Management connections own query pagination and closing while reusing the existing TsBlock decoder. They do not use the existing SessionDataSet, whose pagination uses `context.Background()`. Cancellation interrupts the underlying connection. Later operations rebuild a failed connection with the same model and authentication settings. Already-sent management statements are not automatically replayed after a connection failure; callers can query server state before deciding whether to retry. A management session can be opened again after closing, separately from the Consumer contract that prohibits reopening after a successful close.
 
-## 内部订阅协议与 Provider
+## Internal Subscription Protocol and Providers
 
-当前内部实现覆盖握手、心跳、订阅/退订、关闭、提交、seek、Poll 请求与 Tablet 续取请求，以及超大请求分片。它们尚未接入公共 Consumer，不能仅凭这一层直接消费记录。
+The internal implementation covers handshakes, heartbeats, subscribe/unsubscribe, close, commits, seek, Poll and Tablet-continuation requests, and oversized-request slicing. These are connected to the public Pull consumer.
 
-- 基础编解码采用 Java 的 big-endian 布局。提交上下文使用版本 2，保留旧式提交字段及可选 Writer 身份和进度；Topic/Region/Writer 进度按原协议结构编码。
-- 订阅和 Poll 的 Topic 集合使用 Java ObjectSet 字符串标记，不与心跳退订列表的普通 StringList 混用。集合编码稳定排序；null 字符串在现有 Go string 字段中映射为空串。
-- 每个 Provider 自持普通 Thrift 连接和串行 RPC 通道，打开阶段包含认证、帧协商和订阅握手，均受打开超时约束。服务端分配的消费身份保留在 Provider 中，实例身份与 owner 信息通过握手传递。
-- 帧限制取本地与服务端较小值并预留协议空间；旧服务端没有属性字段或不支持属性探测 RPC 时回退本地限制。可分片请求的所有片段保持同一连接、顺序和批次身份。
-- 心跳按报文大小分批发送缓存上下文；提交预留响应空间分批，后续批次失败时仍返回先前已接受的上下文和进度。没有响应 body 时保留空结果，不推断整批提交成功。
-- 状态码保留普通错误、owner fencing、consumer fencing、连接替换和致命错误的区别。Poll 返回消费组 Broker 丢失诊断时使旧连接失效，供后续 Consumer 重建；失效连接不会被旧响应重新启用。
-- Provider 现在解析全部非空 Poll 响应 body，保留记录、错误、终止和水位线事件。文件响应在类型分派处返回 `ErrUnsupportedTsFile`；混合响应不会返回已经解析的部分记录，不实现文件拉取。
+- Primitive encoding uses Java's big-endian layout. Commit contexts use version 2 and retain legacy commit fields plus optional Writer identity and progress. Topic/Region/Writer progress follows the original protocol structure.
+- Topic sets in subscribe and Poll requests use Java ObjectSet string tags, separately from the ordinary StringList used by heartbeat unsubscribe lists. Set encoding is sorted for stability. Null strings map to empty strings in existing Go string fields.
+- Each Provider owns a plain Thrift connection and a serialized RPC channel. Opening includes authentication, frame negotiation, and the subscription handshake, all bounded by the opening timeout. The Provider retains server-assigned consumer identities and sends instance identity and ownership information in the handshake.
+- The frame limit is the smaller of the local and server limits, with protocol space reserved. Older servers without the property field or property-probe RPC fall back to the local limit. All slices of a sliceable request retain the same connection, order, and batch identity.
+- Heartbeats batch buffered commit contexts by message size. Commits reserve response space and send batches; a later batch failure still returns earlier accepted contexts and progress. A response without a body retains an empty result rather than implying that the entire batch succeeded.
+- Status handling distinguishes ordinary errors, owner fencing, consumer fencing, connection replacement, and critical errors. A Poll diagnostic reporting a missing consumer-group Broker invalidates the old connection for Consumer recovery. Late responses cannot reactivate an invalidated connection.
+- Providers decode every nonempty Poll response body and retain record, error, termination, and watermark events. File responses return `ErrUnsupportedTsFile` during type dispatch. Mixed responses do not return partially decoded records, and file polling is not implemented.
 
-## 记录消息与解析
+## Record Messages and Decoding
 
-记录数据采用 Java 当前依赖的 `2.5.1-261023-SNAPSHOT` Tablet 序列化格式，与写入 RPC 和查询 TsBlock 格式分开处理，不依赖 TsFile Go 或原生库。
+Records use the Tablet serialization format of Java's current `2.5.1-261023-SNAPSHOT` dependency, separately from insert RPC and query TsBlock formats. They do not depend on TsFile Go or native libraries.
 
-- 支持 BOOLEAN、INT32、INT64、FLOAT、DOUBLE、TEXT、STRING、TIMESTAMP、DATE、BLOB 和 OBJECT，保留 TAG/FIELD/ATTRIBUTE 类别。TEXT/STRING 暴露为 string，BLOB/OBJECT 为 `[]byte`，DATE 为 UTC 零点的 `time.Time`。
-- NULL 由 Bitmap 和缺失值列决定。Binary 的缺省标记先恢复为空内容，再应用 Bitmap；不把空字符串或空 BLOB 自动变成 NULL。日期按 Java 的日期整数规则读取。
-- 原始行号用于 `Timestamp/Value`；`Rows()` 通过独立的稳定排序视图按时间递增遍历，相同时间戳保持原始顺序。行值切片不在迭代间复用，调用用户的迭代函数时不持内部锁。
-- 树模型始终显示时间戳；表模型优先采用按数据库、表指定的时间投影，未指定时回退消息级标志。旧响应缺少投影尾部时保持 Java 的默认选择时间行为。
-- 消息释放幂等并清理记录缓存；提交上下文及其可选 Writer 元数据仍以独立快照返回，水位线和消息类型继续可访问。已借用的批次在释放后数据访问报错。
-- 记录续取组装校验完整提交上下文，逐页合并数据和时间投影；最终数量按 Tablet 个数核对，不按行数核对。该组装能力尚未接入 Consumer 的实际续取循环。
-- 空记录交付和终止事件在解析层保留上下文，不自动 ACK 或退订；服务端 ERROR 保留严重级别，水位线可转为处理器消息。消费循环中的处理仍待下一步实现。
+- Supported types are BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, TIMESTAMP, DATE, BLOB, and OBJECT, preserving TAG/FIELD/ATTRIBUTE categories. TEXT/STRING values are strings, BLOB/OBJECT values are `[]byte`, and DATE values are `time.Time` at midnight UTC.
+- Bitmaps and absent value columns determine NULL values. A Binary absence marker first becomes empty content, after which the Bitmap is applied. Empty strings and empty BLOBs are not automatically converted to NULL. Dates follow Java's integer date representation.
+- `Timestamp/Value` use original row indexes. `Rows()` iterates a separate stable view in ascending timestamp order, retaining original order for equal timestamps. Row value slices are not reused between iterations, and internal locks are not held while invoking the caller's iteration function.
+- Tree records always expose timestamps. Table records first use database/table-specific time projection, falling back to the message-level flag. Older responses without the projection suffix retain Java's default of selecting time.
+- Message release is idempotent and clears record buffers. Commit contexts and their optional Writer metadata remain available as independent snapshots, as do watermark and message kind. Accessing data through previously borrowed batches after release returns an error.
+- Record continuation uses the original DataNode Provider, checks the complete commit context, and merges data and time projections across pages. The final count is checked against the number of Tablets, not rows. Outdated or unavailable partial deliveries are not exposed.
+- Empty-record deliveries and termination events retain their contexts at the decoding layer. Pull handles empty-message ACKs and termination unsubscribe only after confirming that the entire poll round has no TsFile or fencing error. Server ERROR payloads retain their severity, and watermarks can become processor messages.
 
-## 管理 Session
+## Pull Consumption
 
-`SubscriptionSession` 对应 Java 的 `ISubscriptionTreeSession` 和 `ISubscriptionTableSession`。方法接收显式 `context.Context`，存在性条件通过参数结构表达。
+`NewSubscriptionPullConsumer` copies and validates configuration without connecting. `Open(ctx)` opens seed connections and discovers other nodes. Background lifetime is independent of the opening context. `Subscribe/Unsubscribe` update subscriptions, and `AddProcessor` adds processors in order.
 
-| Go 方法或类型 | Java 对应 | 合并方式 |
+```go
+cfg := subscription.DefaultSubscriptionPullConsumerConfig()
+cfg.Consumer.Dialect = subscription.TableDialect
+autoCommit := false
+cfg.AutoCommit = &autoCommit
+consumer, err := subscription.NewSubscriptionPullConsumer(cfg)
+if err != nil {
+    return err
+}
+if err := consumer.Open(ctx); err != nil {
+    return err
+}
+defer consumer.Close()
+if err := consumer.Subscribe(ctx, "measurements"); err != nil {
+    return err
+}
+messages, err := consumer.Poll(ctx, 5*time.Second)
+if err != nil {
+    return err
+}
+for _, message := range messages {
+    batches, err := message.Records()
+    if err != nil {
+        return err
+    }
+    for _, batch := range batches {
+        for row, err := range batch.Rows() {
+            if err != nil {
+                return err
+            }
+            fmt.Println(row.Timestamp, row.Values)
+        }
+    }
+    message.Release()
+}
+return consumer.Commit(ctx, messages...)
+```
+
+- A positive Poll timeout starts at entry and covers waiting for the serialized foreground gate and the network budget. Processor callbacks must return promptly. Negative timeouts return argument errors. A zero timeout does not wait for a busy foreground gate or perform synchronous provider recovery; it sends one round of requests to available Providers with server timeout 0. Network I/O can still wait and is bounded by the caller's context. Caller context cancellation always returns an error.
+- Multiple topics are partitioned according to `MaxPollParallelism`. When only Poll's own budget expires, already completed healthy partitions may still be delivered while incomplete sibling results are discarded. TsFile or current-consumer fencing makes the entire round fail, without passing records to processors, automatic commit tracking, or fetch positions. Custom processor code must still avoid blocking indefinitely.
+- Heartbeats renew records buffered by Pull processors. Automatic commits track only records delivered to the caller and wait at least one configured interval. Manual `Commit` can run concurrently with Poll; `CommitAsync` reports its result once through a buffered channel.
+- Commit and seek server requests and local progress updates are mutually exclusive. Partial acceptance is applied first and accepted contexts leave the pending queue; only the remainder is retried. NACKs are not replayed. A writer ACK pending after node loss is redirected only after the same Topic/Region reappears through a healthy node.
+- Heartbeats are scheduled independently per Provider. Endpoint synchronization and connection failure trigger recovery. Background recovery attempts are at least five seconds apart. Late old-connection responses cannot reactivate an old Provider or incorrectly fence the replacement connection's Consumer.
+- `Close` interrupts blocked polling and stops background work. In manual mode, buffered processor messages make closing return an error while preserving the drain path. Call `DrainBufferedMessages`, process and commit its records, then close again. Automatic mode makes a best-effort commit of delivered and drained records during closing. Commit failures return errors; a successful close does not imply that all historical messages were processed.
+
+## Management Sessions
+
+`SubscriptionSession` corresponds to Java's `ISubscriptionTreeSession` and `ISubscriptionTableSession`. Methods take an explicit `context.Context`, while parameter structures express existence conditions.
+
+| Go method or type | Java counterpart | Consolidation |
 | --- | --- | --- |
-| `Open(ctx)`、`Close()` | `open()`、`AutoCloseable.close()` | 打开操作可取消；关闭统一负责释放资源 |
-| `CreateTopic(ctx, name, options)`、`CreateTopicOptions` | 四个 `createTopic/createTopicIfNotExists` 重载 | `Attributes` 表示可选属性，`IfNotExists` 表示条件创建 |
-| `AlterTopic(ctx, name, attributes)` | `alterTopic(name, properties)` | 属性用 `map[string]string` |
-| `AlterTopicOwner(ctx, name, owner)`、`TopicOwner` | 两个 `alterTopicOwner` 重载 | `LeaseDuration` 指针表达可选租约时长 |
-| `DropTopic(ctx, name, options)`、`DropOptions` | `dropTopic/dropTopicIfExists` | `IfExists` 表示条件删除 |
-| `Topics(ctx)`、`Topic(ctx, name)` | `getTopics()`、`getTopic(name)` | 集合用 slice；单 Topic 不存在时返回 `found == false` |
-| `Subscriptions(ctx, topic)` | `getSubscriptions()`、`getSubscriptions(topic)` | `topic == ""` 表示查询全部 |
-| `DropSubscription(ctx, id, options)` | `dropSubscription/dropSubscriptionIfExists` | 复用 `DropOptions` |
-| `Topic` | `model.Topic` | 保留服务端返回的属性原始文本，不假定其可直接解析为 map |
-| `Subscription` | `model.Subscription` | 保留服务端的 `ConsumerIDs` 原始文本，不假定其是 CSV |
+| `Open(ctx)`, `Close()` | `open()`, `AutoCloseable.close()` | Opening is cancelable; closing owns resource release |
+| `CreateTopic(ctx, name, options)`, `CreateTopicOptions` | Four `createTopic/createTopicIfNotExists` overloads | `Attributes` carries optional properties; `IfNotExists` requests conditional creation |
+| `AlterTopic(ctx, name, attributes)` | `alterTopic(name, properties)` | Attributes use `map[string]string` |
+| `AlterTopicOwner(ctx, name, owner)`, `TopicOwner` | Two `alterTopicOwner` overloads | A `LeaseDuration` pointer represents an optional lease duration |
+| `DropTopic(ctx, name, options)`, `DropOptions` | `dropTopic/dropTopicIfExists` | `IfExists` requests conditional deletion |
+| `Topics(ctx)`, `Topic(ctx, name)` | `getTopics()`, `getTopic(name)` | Collections are slices; an absent single topic returns `found == false` |
+| `Subscriptions(ctx, topic)` | `getSubscriptions()`, `getSubscriptions(topic)` | `topic == ""` lists all subscriptions |
+| `DropSubscription(ctx, id, options)` | `dropSubscription/dropSubscriptionIfExists` | Reuses `DropOptions` |
+| `Topic` | `model.Topic` | Retains the server's raw attribute text rather than assuming it is directly parseable as a map |
+| `Subscription` | `model.Subscription` | Retains the server's raw `ConsumerIDs` text rather than assuming it is CSV |
 
-## Consumer、提交与进度
+## Consumers, Commits, and Progress
 
-`SubscriptionConsumer` 是 Pull 和 Push 的共同接口。它包含 `Positioner`，因此两类消费者共用进度与 seek 契约；这也覆盖 Java 具体 Consumer 从基类继承的公开能力。
+`SubscriptionConsumer` is the common interface for Pull and Push. It embeds `Positioner`, so both share progress and seek contracts, including public methods inherited by Java's concrete consumers from their base class.
 
-| Go 方法或类型 | Java 对应 | 合并方式 |
+| Go method or type | Java counterpart | Consolidation |
 | --- | --- | --- |
-| `SubscriptionConsumer.Open(ctx)`、`Close()` | 各 Consumer 的 `open/close` | 共用生命周期接口 |
-| `Subscribe(ctx, topics...)`、`Unsubscribe(ctx, topics...)` | 单个、数组、集合重载 | 统一为 variadic Topic 名称 |
-| `Info()`、`SubscriptionConsumerInfo` | `getConsumerId/getConsumerGroupId/getOwnerId/getOwnerEpoch` | 一次返回不含凭据的身份快照，包含服务端分配的 ID |
-| `LatestWatermark()` | `getLatestWatermarkTimestamp()` | 额外返回 `ok`，区分尚无水位线与有效时间值 |
-| `AllConsumed()` | `allTopicMessagesHaveBeenConsumed()` | 无订阅时为 true；活跃的无界 Topic 阻止完成 |
-| `SubscriptionPullConsumer.Poll(ctx, timeout, topics...)` | 四个 `poll` 重载 | `time.Duration` 替代毫秒和 Java Duration 重载；不传 Topic 表示当前全部订阅 |
-| `PollWithInfo(ctx, timeout, topics...)`、`PollResult` | 具体 Pull 类的 `pollWithInfo`、`payload.PollResult` | 一并返回消息、缓存条数及处理器水位线 |
-| `DrainBufferedMessages(ctx)` | `drainBufferedMessages()` | 显式排空处理器或待交付缓存 |
-| `Commit(ctx, messages...)` | 单条/批量 `commitSync` | 同步提交统一为 variadic 消息 |
-| `CommitAsync(ctx, messages...)` | `CompletableFuture` 及 `AsyncCommitCallback` 重载 | 返回 `<-chan error`；调用方可直接等待，或用 goroutine 等待后执行回调 |
-| `AddProcessor(processor)` | 具体 Pull 类的 `addProcessor` | 按调用顺序添加处理阶段，返回错误而非链式 Builder |
-| `ConsumeFunc`、`SubscriptionPushConsumerConfig.Handler` | `ConsumeListener.onReceive`、`ConsumeResult` | `func(ctx, message) error`，nil 表示成功，非 nil 表示消费失败 |
-| `SubscriptionPushConsumer.Errors()` | Java 自动拉取异常路径的 Go 显式错误出口 | 首次终止性后台错误通知一次；普通 Handler 失败不视为终止错误 |
-| `Positioner.Positions(topic)` | `positions(topic)` | 返回当前已拉取位置的深快照 |
-| `CommittedPositions(topic)` | `committedPositions(topic)` | 单独保留已确认、可恢复的位置 |
-| `SeekToBeginning(ctx, topic)`、`SeekToEnd(ctx, topic)` | 同名 Java 方法 | 保留两种定位行为 |
-| `Seek(ctx, topic, progress)`、`SeekAfter(ctx, topic, progress)` | `seek/seekAfter` | 分别从指定进度重放和从其后继续 |
-| `TopicProgress`、`RegionProgress` | 同名 Java 类 | Topic → Region → Writer 的 map，不合并成单 offset |
-| `WriterID`、`WriterProgress` | `WriterId`、`WriterProgress` | 可比较 Writer ID 作为 map key；进度保留物理时间和本地序号 |
-| `WriterPosition`、`CommitContext`、`InvalidCommitID` | `SubscriptionCommitContext` 的可选 writer 进度及旧式 commit 元数据 | writer 身份与进度成对保留，同时保留路由、重启和 seek-generation 信息 |
+| `SubscriptionConsumer.Open(ctx)`, `Close()` | Each Consumer's `open/close` | Shared lifecycle interface |
+| `Subscribe(ctx, topics...)`, `Unsubscribe(ctx, topics...)` | Single-topic, array, and collection overloads | Variadic topic names |
+| `Info()`, `SubscriptionConsumerInfo` | `getConsumerId/getConsumerGroupId/getOwnerId/getOwnerEpoch` | Returns a credential-free identity snapshot, including server-assigned IDs |
+| `LatestWatermark()` | `getLatestWatermarkTimestamp()` | An additional `ok` distinguishes an unavailable watermark from a valid timestamp |
+| `AllConsumed()` | `allTopicMessagesHaveBeenConsumed()` | True without subscriptions; an active unbounded topic prevents completion |
+| `SubscriptionPullConsumer.Poll(ctx, timeout, topics...)` | Four `poll` overloads | `time.Duration` replaces millisecond and Java Duration overloads; omitted topics mean all current subscriptions |
+| `PollWithInfo(ctx, timeout, topics...)`, `PollResult` | Concrete Pull classes' `pollWithInfo`, `payload.PollResult` | Returns messages, buffered count, and processor watermark together |
+| `DrainBufferedMessages(ctx)` | `drainBufferedMessages()` | Explicitly drains processors or pending delivery buffers |
+| `Commit(ctx, messages...)` | Single/batch `commitSync` | Variadic messages for synchronous commits |
+| `CommitAsync(ctx, messages...)` | `CompletableFuture` and `AsyncCommitCallback` overloads | Returns `<-chan error`; callers can wait directly or wait in a goroutine before invoking a callback |
+| `AddProcessor(processor)` | Concrete Pull classes' `addProcessor` | Adds processing stages in order and returns an error rather than a chained Builder |
+| `ConsumeFunc`, `SubscriptionPushConsumerConfig.Handler` | `ConsumeListener.onReceive`, `ConsumeResult` | `func(ctx, message) error`; nil means success and a non-nil error means failure |
+| `SubscriptionPushConsumer.Errors()` | Explicit Go error outlet for Java's automatic-poll exception path | Reports the first terminal background error once; ordinary Handler failures are not terminal |
+| `Positioner.Positions(topic)` | `positions(topic)` | Returns a deep snapshot of current fetch positions |
+| `CommittedPositions(topic)` | `committedPositions(topic)` | Separately retains confirmed, recoverable positions |
+| `SeekToBeginning(ctx, topic)`, `SeekToEnd(ctx, topic)` | Methods with the same names | Retains both positioning operations |
+| `Seek(ctx, topic, progress)`, `SeekAfter(ctx, topic, progress)` | `seek/seekAfter` | Replays from progress or resumes after it, respectively |
+| `TopicProgress`, `RegionProgress` | Classes with the same names | Topic → Region → Writer maps rather than a single offset |
+| `WriterID`, `WriterProgress` | `WriterId`, `WriterProgress` | Comparable Writer IDs serve as map keys; progress retains physical time and local sequence |
+| `WriterPosition`, `CommitContext`, `InvalidCommitID` | Optional writer progress and legacy commit metadata in `SubscriptionCommitContext` | Preserves paired writer identity and progress, routing, restart, and seek-generation information |
 
-`CommitAsync` 的返回 channel 容量为 1，只发送一次结果（成功时为 nil）后关闭。调用方不读取结果不能阻塞清理。取消 context 不撤回服务端已接受的提交；同步或异步提交报错也不代表整批都失败。
+`CommitAsync` returns a channel with capacity 1. It sends one result, nil on success, then closes. An unread result cannot block cleanup. Canceling the context does not undo commits accepted by the server, and a synchronous or asynchronous commit error does not mean that the whole batch failed.
 
-`SubscriptionPushConsumer.Errors()` 的 channel 至少缓冲一个错误。TsFile 解析错误必须先停止自动拉取再报告，失败轮次不能进入 Handler 或 ACK；channel 关闭由统一生命周期管理，避免与后台发送竞争。
+The `SubscriptionPushConsumer.Errors()` channel buffers at least one error. A TsFile decoding error must stop automatic polling before notification; the failed round cannot enter the Handler or ACK path. The lifecycle owner closes the channel after coordinating background senders.
 
-## 消息、记录与 Processor
+## Messages, Records, and Processors
 
-| Go 方法或类型 | Java 对应 | Go 中的表达方式 |
+| Go method or type | Java counterpart | Go representation |
 | --- | --- | --- |
-| `SubscriptionMessage`、`SubscriptionMessageKind`、`RecordMessage`、`WatermarkMessage` | `SubscriptionMessage`、记录和水位线消息类型 | 公共消息种类与协议数字解耦；Pull 和 Push 只交付记录，Processor 可接收水位线 |
-| `SubscriptionMessage.Kind()`、`CommitContext()` | `getMessageType/getCommitContext` | 方法返回公开种类和提交上下文快照 |
-| `SubscriptionMessage.Records()` | `getResultSets/getRecordTabletIterator`、`SubscriptionRecordHandler` | 返回多数据库、多 Tablet 的 `[]RecordBatch`，不复制 Java ResultSet 继承层次 |
-| `SubscriptionMessage.Watermark()` | `getWatermarkTimestamp()` | 用 `ok` 标识是否为水位线消息 |
-| `EstimatedSize()`、`Release()` | `estimateSize/removeUserData` | 释放记录缓存后保留消息类型与提交身份，仍可提交 |
-| `RecordBatch` | `SubscriptionRecordHandler.SubscriptionResultSet` 和底层 Tablet 视图 | 提供模型、数据库、目标、列信息、时间投影、行数和按索引访问 |
-| `Column` | measurement schema、列类型与类别 | 复用现有 `client.TSDataType/ColumnCategory`；时间列单独表示 |
-| `RecordBatch.Rows()`、`Row` | `ResultSet`、`RowRecord`、`TSRecord` 的遍历视图 | 使用 `iter.Seq2[Row, error]`；索引从 0 开始 |
-| `RecordBatch.TimeSelected()`、`Row.Timestamp` | 消息和表级时间列选择信息 | 每个批次独立保留投影；未选择时间列时 `Row.Timestamp == nil` |
-| `RecordBatch.Timestamp(row)` | 底层 Tablet 的时间戳访问 | 即使不投影时间列，处理器仍可读取原始时间戳 |
-| `SubscriptionMessageProcessor.Process/Flush/Reset` | `SubscriptionMessageProcessor` 的同名能力 | 处理和排空显式返回 error；consumer 串行调用每个 Processor |
-| `BufferingProcessor.Buffered()`、`ProcessorBuffer` | `getBufferedCount/getBufferedCommitContexts` | 缓存能力用可选接口表达，同时报告条数和全部可续租上下文 |
-| `TopicResetter.ResetTopic(topic)` | `supportsTopicScopedReset/reset(topic)` | 是否实现接口代替 Java 的能力布尔值 |
-| `WatermarkReporter.Watermark()` | `WatermarkProcessor.getWatermark()` | 可选暴露处理器计算的排序水位线；不等同于 Consumer 最新服务端水位线 |
+| `SubscriptionMessage`, `SubscriptionMessageKind`, `RecordMessage`, `WatermarkMessage` | `SubscriptionMessage`, record and watermark message kinds | Public kinds are independent of numeric wire types; Pull and Push deliver records only, while processors can receive watermarks |
+| `SubscriptionMessage.Kind()`, `CommitContext()` | `getMessageType/getCommitContext` | Returns the public kind and a commit-context snapshot |
+| `SubscriptionMessage.Records()` | `getResultSets/getRecordTabletIterator`, `SubscriptionRecordHandler` | Returns `[]RecordBatch` across databases and Tablets without reproducing Java's ResultSet hierarchy |
+| `SubscriptionMessage.Watermark()` | `getWatermarkTimestamp()` | `ok` identifies a watermark message |
+| `EstimatedSize()`, `Release()` | `estimateSize/removeUserData` | Releases record buffers while retaining kind and commit identity, allowing a later commit |
+| `RecordBatch` | `SubscriptionRecordHandler.SubscriptionResultSet` and its Tablet view | Exposes model, database, target, column metadata, time projection, row count, and indexed access |
+| `Column` | Measurement schema, column type, and category | Reuses `client.TSDataType/ColumnCategory`; time is represented separately |
+| `RecordBatch.Rows()`, `Row` | Iteration views of `ResultSet`, `RowRecord`, and `TSRecord` | Uses `iter.Seq2[Row, error]` with zero-based indexes |
+| `RecordBatch.TimeSelected()`, `Row.Timestamp` | Message-level and per-table time-selection metadata | Each batch retains its projection; `Row.Timestamp == nil` when time is not selected |
+| `RecordBatch.Timestamp(row)` | Raw Tablet timestamp access | Processors can read raw timestamps even when time is not projected |
+| `SubscriptionMessageProcessor.Process/Flush/Reset` | Methods with the same roles in `SubscriptionMessageProcessor` | Processing and flushing explicitly return errors; consumers invoke each processor serially |
+| `BufferingProcessor.Buffered()`, `ProcessorBuffer` | `getBufferedCount/getBufferedCommitContexts` | An optional buffering interface reports both the count and all renewable contexts |
+| `TopicResetter.ResetTopic(topic)` | `supportsTopicScopedReset/reset(topic)` | Interface implementation replaces Java's capability flag |
+| `WatermarkReporter.Watermark()` | `WatermarkProcessor.getWatermark()` | Optionally exposes a processor's ordering watermark, distinct from the Consumer's latest server watermark |
 
-SubscriptionMessageProcessor 保留消息时必须实现 `BufferingProcessor`，让后续心跳实现能够续租未交付记录。seek 只清理目标 Topic；同时订阅多个 Topic 时，未实现 `TopicResetter` 的 Processor 会使 seek 在修改服务端位置前失败；单 Topic 场景允许回退到 `Reset()`。`Flush` 返回的消息经后续处理阶段继续处理，Processor 不得再保留或修改已移交的消息。
+A `SubscriptionMessageProcessor` that retains messages must implement `BufferingProcessor` so heartbeats can renew undelivered records. Seek clears only its target topic. With multiple subscribed topics, a processor without `TopicResetter` makes seek fail before server positions change. A single-topic consumer can fall back to `Reset()`. Messages returned by `Flush` pass through subsequent stages; the processor must not retain or modify messages after transferring them.
 
-## 数据所有权与 context 契约
+## Data Ownership and Context Contracts
 
-- Session 查询集合、Consumer 身份、提交上下文和进度返回调用方拥有的快照；进度 map 为深快照。seek 复制输入，不长期借用调用方的 map。
-- `SubscriptionMessage.Records()` 的批次、列和行数据是借用的只读视图，有效期到所属消息 `Release()`。需要跨越该有效期保留数据时，调用方负责复制值和字节数组。
-- `Release()` 幂等。释放后不再使用已借用的批次、列和行数据；`Records()` 返回 `ErrDataReleased`，消息类型、提交上下文和水位线仍可访问。
-- `Row.Values` 的 nil 表示 SQL NULL；DATE 使用 `time.Time`；TIMESTAMP 和记录时间戳使用服务端精度的 `int64`；BLOB/OBJECT 使用 `[]byte`。
-- Push Handler 不得释放收到的消息；回调返回后若仍需记录数据，必须先复制。回调 context 随消费交付停止而取消。
-- `Open(ctx)` 的 context 只限制打开操作，不持有后台任务生命周期；后台任务随 `Close()` 停止。其他操作 context 仅限制对应操作。
-- Pull 超时受 `timeout` 和 context deadline 中较早者约束。操作超时使用 `time.Duration`，不改变消息中的时间戳单位。
-- 已打开时重复 `Open`、已关闭时重复 `Close` 无副作用。成功关闭后不能重新打开；要求先排空缓存的关闭失败仍保留排空和提交的恢复路径。
+- Session query collections, Consumer identity, commit contexts, and progress are caller-owned snapshots; progress maps are deep snapshots. Seek copies its input rather than retaining the caller's maps.
+- Batches, columns, and row data from `SubscriptionMessage.Records()` are borrowed, read-only views valid until the message's `Release()`. Callers must copy values and byte slices that need to outlive that point.
+- `Release()` is idempotent. Do not reuse borrowed batch, column, or row data after release. `Records()` returns `ErrDataReleased`, while kind, commit context, and watermark remain available.
+- Nil in `Row.Values` means SQL NULL. DATE uses `time.Time`; TIMESTAMP and record timestamps use `int64` in server precision; BLOB/OBJECT use `[]byte`.
+- A Push Handler must not release its message. Copy record data before returning if it is needed afterward. The callback context is canceled when delivery stops.
+- The `Open(ctx)` context bounds opening only, not the background lifetime. Background work stops with `Close()`. Other operation contexts bound their corresponding operations only.
+- A positive Pull timeout bounds foreground queue waiting and network polling, subject to an earlier context deadline. Zero has the single-round behavior described above; processor callbacks must return promptly. Operation timeouts use `time.Duration` without changing message timestamp units.
+- Repeated Consumer `Open` while open and repeated `Close` after closing are harmless. A successfully closed Consumer cannot reopen. A failed close requiring buffered data to be drained preserves the drain-and-commit recovery path.
 
-## 错误与当前未实现内容
+## Errors and Remaining Work
 
-| Go 错误哨兵 | Java 对应或行为 |
+| Go sentinel error | Java counterpart or behavior |
 | --- | --- |
-| `ErrUnsupportedTsFile` | 本轮明确排除的 TsFile handler；仅解析文件载荷时返回，管理及订阅不提前拒绝 |
-| `ErrClosed`、`ErrNotOpen` | Consumer 生命周期检查 |
-| `ErrDataReleased` | 记录数据已释放后的访问 |
-| `ErrIncompatibleMessage` | `SubscriptionIncompatibleHandlerException` 所表达的消息访问不匹配 |
-| `ErrConsumerFenced`、`ErrOwnerFenced` | `SubscriptionConsumerFencedException`、`SubscriptionOwnerFencedException` |
+| `ErrUnsupportedTsFile` | The excluded TsFile handler; returned only while decoding a file payload, not during management or subscribe |
+| `ErrClosed`, `ErrNotOpen` | Consumer lifecycle checks |
+| `ErrDataReleased` | Record access after user data release |
+| `ErrIncompatibleMessage` | Incompatible payload access represented by `SubscriptionIncompatibleHandlerException` |
+| `ErrConsumerFenced`, `ErrOwnerFenced` | `SubscriptionConsumerFencedException`, `SubscriptionOwnerFencedException` |
 
-这些哨兵可以被后续操作错误包装，调用方使用 `errors.Is` 识别。TsFile 不支持错误不得触发连接重试或文件载荷确认。Pull 本轮返回错误而不交付任何消息，包括并行分支已经取得的记录；本轮记录不得推进位置、进入处理器或自动提交缓存，此前成功交付及提交的状态不回滚。调用方可退订相关 Topic 后继续拉取。
+Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for that round, including records obtained by parallel branches. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again.
 
-后续步骤尚需实现公共 Consumer 和构造、实际记录续取循环、多节点协调、提交进度与恢复、后台任务、内置 Watermark/ColumnAlign Processor，以及消费示例和行为测试。内部 Provider 已有提交 RPC，但尚未实现公共 Consumer 的交付和确认链。管理查询复用根模块解码器，本轮不修改其对畸形数据的处理逻辑。当前仅完成静态核对，没有编译、运行测试或执行格式工具，不提供运行验证结论。
+Remaining work includes Push consumers, built-in Watermark/ColumnAlign processors, further consumption examples, and behavior tests. Management queries reuse the root module's decoder; this step does not change its handling of malformed data. Verification has been static only: no compilation, tests, or formatting tools have run, and no runtime validation result is claimed.

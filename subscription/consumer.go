@@ -76,8 +76,9 @@ type SubscriptionConsumerInfo struct {
 
 // SubscriptionPullConsumer fetches record messages explicitly. Poll and PollWithInfo use
 // server timestamp units for message data and time.Duration for timeouts. The
-// shorter of the timeout and the context deadline bounds a polling operation.
-// No topics means all subscribed topics.
+// positive timeout includes waiting for other foreground operations and bounds
+// network polling, subject to an earlier context deadline. Processor callbacks
+// run serially and must return promptly. No topics means all subscribed topics.
 //
 // A TsFile decoding error returns no messages for that poll round, including
 // records from parallel requests. That round is not acknowledged, added to the
@@ -90,6 +91,11 @@ type SubscriptionPullConsumer interface {
 	// Poll retrieves messages from the named topics, waiting up to timeout.
 	// Omitting topics selects all current subscriptions. An empty result with a
 	// nil error is normal when no records arrive within the polling period.
+	// A negative timeout is invalid. Zero skips waiting for a busy consumer or
+	// connection recovery and attempts one round of server polls with no server
+	// wait; network I/O remains bounded by ctx. Caller cancellation is an error.
+	// Only expiration of the poll's own budget may return complete records from
+	// healthy parallel requests while discarding incomplete sibling results.
 	// It returns an error when polling, context cancellation, or decoding fails.
 	Poll(ctx context.Context, timeout time.Duration, topics ...string) ([]SubscriptionMessage, error)
 	// PollWithInfo polls with the same topic, timeout, and error semantics as
