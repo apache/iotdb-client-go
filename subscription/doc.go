@@ -21,8 +21,9 @@
 // table-model subscriptions. It is a separate Go module from the Session client.
 //
 // SubscriptionSession provides topic and subscription management through
-// NewSubscriptionSession. Consumer interfaces, record decoding, and built-in
-// processors are contracts for subsequent implementation steps.
+// NewSubscriptionSession. Consumer configuration defaults and internal control
+// protocol/provider support are available. Public consumer implementations,
+// record decoding, and built-in processors remain subsequent implementation steps.
 //
 // Record messages are the supported payload format. Topic management and
 // subscription do not reject TsFile topics; decoding a TsFile payload must return

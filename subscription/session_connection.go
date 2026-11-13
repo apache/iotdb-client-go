@@ -178,7 +178,12 @@ func (c *sessionConnection) call(ctx context.Context, invoke func() error) error
 		return contextErr
 	}
 	if err != nil {
-		_ = c.abort()
+		// An older server can reject an optional RPC without corrupting the
+		// stream. Keep that connection usable for the caller's fallback.
+		var applicationError thrift.TApplicationException
+		if !errors.As(err, &applicationError) || applicationError.TypeId() != thrift.UNKNOWN_METHOD {
+			_ = c.abort()
+		}
 	}
 	return err
 }

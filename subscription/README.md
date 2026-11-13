@@ -19,7 +19,7 @@ under the License.
 
 # Go subscription 公共接口
 
-当前已实现 `SubscriptionSession` 的默认配置、构造、普通 Thrift 连接与认证，以及 Topic/Subscription 管理。Consumer、记录解析和处理器仍只有公共接口，没有可运行的消费实现。下文对应表同时列出已实现的管理能力和后续消费实现需要遵守的契约。
+当前已实现 `SubscriptionSession` 的默认配置、构造、普通 Thrift 连接与认证，以及 Topic/Subscription 管理；Consumer 默认配置、内部控制协议和单节点 Provider 也已补齐。公共 Consumer、记录解析和处理器仍没有可运行的消费实现。下文对应表同时列出已实现能力和后续消费实现需要遵守的契约。
 
 模块路径为 `github.com/apache/iotdb-client-go/subscription`，使用 Go 1.25，与现有 `github.com/apache/iotdb-client-go/v2` Session 模块分别维护依赖和版本。当前仅依赖现有模块，以复用 `TSDataType` 和 `ColumnCategory`；没有 TsFile、cgo 或 TLS 依赖，也没有改动现有 Session 接口。
 
@@ -43,7 +43,7 @@ Java 的 `ISubscriptionTreeSession/ISubscriptionTableSession`、树/表 Pull 接
 | `SubscriptionPushConsumerConfig` | `AbstractSubscriptionPushConsumerBuilder` | 组合 Handler、ACK 策略及拉取间隔、超时 |
 | `AckStrategy`、`AckAfterConsume`、`AckBeforeConsume` | `AckStrategy.AFTER_CONSUME`、`BEFORE_CONSUME` | 零值为消费后确认；消费前确认下，回调失败不导致重新投递 |
 
-`SubscriptionConsumerConfig.OwnerEpoch == nil` 表示未提供 epoch，指向零表示显式 epoch 0。Consumer 的默认值、构造和校验仍待后续实现。
+`SubscriptionConsumerConfig.OwnerEpoch == nil` 表示未提供 epoch，指向零表示显式 epoch 0。已提供 `DefaultSubscriptionConsumerConfig`、`DefaultSubscriptionPullConsumerConfig`、`DefaultSubscriptionPushConsumerConfig`。Push 默认配置的 Handler 保持 nil，调用方需设置实际处理函数。内部归一化会复制节点列表及可选指针；时长零值使用默认值，负值报错，低于 Java 正数下限的配置提升到对应下限。Consumer 构造函数尚未提供。
 
 管理 Session 的默认配置为 `localhost:6667`、树模型、root/root、64 MiB 帧和十秒连接及认证超时。Java 管理 Session 默认不限制连接时长，Go 入口在这里采用有界超时。构造函数补齐空节点、用户名、模型以及为零的超时和帧大小，校验地址与互斥认证，并复制节点列表。密码始终保留调用方提供的值，包括空字符串；需要 root/root 默认值时应从默认配置函数开始。使用加密密码时清空 `Password` 后设置 `EncryptedPassword`。
 
@@ -62,6 +62,18 @@ topics, err := s.Topics(ctx)
 ```
 
 管理连接自行处理查询分页与关闭，复用现有 TsBlock 解码器；不使用会以 `context.Background()` 分页的现有 SessionDataSet。取消会中断原始连接，后续操作重建连接时继续使用原模型和认证配置。已发送的管理语句不会因连接失败被自动重放；失败后可由调用方查询服务端状态再决定是否重试。管理 Session 关闭后可以再次打开，这与 Consumer 成功关闭后不可重新打开的契约分开处理。
+
+## 内部订阅协议与 Provider
+
+当前内部实现覆盖握手、心跳、订阅/退订、关闭、提交、seek、Poll 请求与 Tablet 续取请求，以及超大请求分片。它们尚未接入公共 Consumer，不能仅凭这一层直接消费记录。
+
+- 基础编解码采用 Java 的 big-endian 布局。提交上下文使用版本 2，保留旧式提交字段及可选 Writer 身份和进度；Topic/Region/Writer 进度按原协议结构编码。
+- 订阅和 Poll 的 Topic 集合使用 Java ObjectSet 字符串标记，不与心跳退订列表的普通 StringList 混用。集合编码稳定排序；null 字符串在现有 Go string 字段中映射为空串。
+- 每个 Provider 自持普通 Thrift 连接和串行 RPC 通道，打开阶段包含认证、帧协商和订阅握手，均受打开超时约束。服务端分配的消费身份保留在 Provider 中，实例身份与 owner 信息通过握手传递。
+- 帧限制取本地与服务端较小值并预留协议空间；旧服务端没有属性字段或不支持属性探测 RPC 时回退本地限制。可分片请求的所有片段保持同一连接、顺序和批次身份。
+- 心跳按报文大小分批发送缓存上下文；提交预留响应空间分批，后续批次失败时仍返回先前已接受的上下文和进度。没有响应 body 时保留空结果，不推断整批提交成功。
+- 状态码保留普通错误、owner fencing、consumer fencing、连接替换和致命错误的区别。Poll 返回消费组 Broker 丢失诊断时使旧连接失效，供后续 Consumer 重建；失效连接不会被旧响应重新启用。
+- 本轮只编码记录拉取请求，不解析其响应，也不实现文件拉取。TsFile 在解析时报错的契约保留，实际分派与记录解码在后续阶段接入。
 
 ## 管理 Session
 
@@ -155,4 +167,4 @@ SubscriptionMessageProcessor 保留消息时必须实现 `BufferingProcessor`，
 
 这些哨兵可以被后续操作错误包装，调用方使用 `errors.Is` 识别。TsFile 不支持错误不得触发连接重试或文件载荷确认。Pull 本轮返回错误而不交付任何消息，包括并行分支已经取得的记录；本轮记录不得推进位置、进入处理器或自动提交缓存，此前成功交付及提交的状态不回滚。调用方可退订相关 Topic 后继续拉取。
 
-后续步骤尚需实现订阅消息协议编解码、记录解析、Consumer 及其默认配置和构造、提交和恢复、后台任务、内置 Watermark/ColumnAlign Processor，以及消费示例和行为测试。管理查询复用根模块解码器，本轮不修改其对畸形数据的处理逻辑。当前仅完成静态核对，没有编译、运行测试或执行格式工具，不提供运行验证结论。
+后续步骤尚需实现记录及 Poll 响应解析、公共 Consumer 和构造、多节点协调、提交进度与恢复、后台任务、内置 Watermark/ColumnAlign Processor，以及消费示例和行为测试。内部 Provider 已有提交 RPC，但尚未实现公共 Consumer 的交付和确认链。管理查询复用根模块解码器，本轮不修改其对畸形数据的处理逻辑。当前仅完成静态核对，没有编译、运行测试或执行格式工具，不提供运行验证结论。

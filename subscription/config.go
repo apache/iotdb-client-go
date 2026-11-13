@@ -38,7 +38,8 @@ const (
 type ConnectionConfig struct {
 	// NodeURLs lists host:port endpoints to use when establishing connections.
 	// A single entry selects a single seed; multiple entries provide alternatives.
-	// SubscriptionSession uses localhost:6667 when the list is empty.
+	// SubscriptionSession and consumer config normalization use localhost:6667
+	// when the list is empty.
 	NodeURLs []string
 	// Username is the IoTDB user used for session and subscription authentication.
 	Username string
@@ -49,11 +50,13 @@ type ConnectionConfig struct {
 	// combined with Password.
 	EncryptedPassword string
 	// ConnectTimeout limits connection establishment and authentication for each
-	// seed endpoint. SubscriptionSession uses ten seconds for zero and rejects
-	// negative values. Java consumers also default to ten seconds.
+	// seed endpoint. SubscriptionSession and consumer config normalization use
+	// ten seconds for zero and reject negative values. Java consumers also
+	// default to ten seconds.
 	ConnectTimeout time.Duration
 	// MaxFrameSize is the maximum accepted Thrift frame size in bytes.
-	// SubscriptionSession uses 64 MiB for zero and rejects negative values.
+	// SubscriptionSession and consumer config normalization use 64 MiB for zero
+	// and reject negative values.
 	MaxFrameSize int32
 }
 
@@ -96,8 +99,8 @@ type SubscriptionConsumerConfig struct {
 }
 
 // SubscriptionPullConsumerConfig adds automatic commit settings. A nil AutoCommit selects the Java
-// default, true; an explicit false selects manual commit. Timing defaults will
-// follow the Java consumer defaults when constructors are implemented.
+// default, true; an explicit false selects manual commit. Use
+// DefaultSubscriptionPullConsumerConfig to obtain explicit timing defaults.
 type SubscriptionPullConsumerConfig struct {
 	// Consumer contains the shared connection, identity, and polling settings.
 	Consumer SubscriptionConsumerConfig
