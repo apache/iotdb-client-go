@@ -213,9 +213,9 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 		c.mu.Unlock()
 	}
 	// The caller/lifetime context aborts the entire round. Exhausting only the
-	// polling budget instead preserves already complete healthy partitions, as
-	// Java does for completed sibling futures. Do not start cleanup RPCs after
-	// that budget has expired; undelivered events remain unconfirmed.
+	// polling budget preserves complete healthy partitions, as Java does for
+	// completed sibling futures. Keep rollback and empty-delivery ACKs tied to
+	// the poll budget; a received termination is handled using operationCtx below.
 	c.rollbackFlow(pollCtx, failedContexts)
 	if pollCtx.Err() == nil && len(emptyContexts) != 0 {
 		if err := c.commitContexts(pollCtx, emptyContexts, false); err != nil {
@@ -225,13 +225,11 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 			}
 		}
 	}
-	if pollCtx.Err() == nil && len(terminations) != 0 {
+	if operationCtx.Err() == nil && len(terminations) != 0 {
 		names := uniqueFlowTopics(terminations)
-		if err := c.changeSubscriptions(pollCtx, names, true); err != nil {
-			if !(operationCtx.Err() == nil && pollCtx.Err() != nil && errors.Is(err, context.DeadlineExceeded)) {
-				c.rollbackFlow(pollCtx, allContexts)
-				return nil, err
-			}
+		if err := c.changeSubscriptions(operationCtx, names, true); err != nil {
+			c.rollbackFlow(operationCtx, allContexts)
+			return nil, err
 		}
 	}
 	processed := messages

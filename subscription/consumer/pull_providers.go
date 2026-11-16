@@ -292,7 +292,10 @@ func (c *subscriptionPullConsumer) providerHeartbeat(ctx context.Context, provid
 	}
 	c.mu.Lock()
 	if c.providers[provider.dataNodeID] == provider && !provider.connection.Closed() && !c.released && !c.closing {
-		if c.topicRevision == revision {
+		// changeSubscriptions marks an in-flight update with an odd revision.
+		// A heartbeat started during that window is not an authoritative topic
+		// snapshot, even if no second revision increment has happened yet.
+		if c.topicRevision == revision && revision%2 == 0 {
 			c.topics = response.Topics
 		} else {
 			response.Unsubscribe = nil
