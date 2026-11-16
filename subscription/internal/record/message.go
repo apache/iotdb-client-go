@@ -24,11 +24,12 @@ import (
 	"iter"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
 )
+
+const tabletColumnStorageEstimate = int64(240)
 
 // subscriptionMessage keeps immutable delivery metadata separate from releasable
 // record buffers. Its factories take ownership of decoded batches.
@@ -74,6 +75,15 @@ func (m *subscriptionMessage) Kind() payload.SubscriptionMessageKind {
 
 func (m *subscriptionMessage) CommitContext() payload.CommitContext {
 	return CloneCommitContext(m.context)
+}
+
+// ReadCommitContext avoids copying immutable metadata of an internally owned
+// message. External message implementations keep their public snapshot contract.
+func ReadCommitContext(message payload.SubscriptionMessage) payload.CommitContext {
+	if internal, ok := message.(*subscriptionMessage); ok {
+		return internal.context
+	}
+	return message.CommitContext()
 }
 
 func (m *subscriptionMessage) Records() ([]payload.RecordBatch, error) {
@@ -138,7 +148,7 @@ type subscriptionRecordBatch struct {
 	rowCount int
 	columns []payload.Column
 	timestamps []int64
-	values [][]any
+	values []TabletColumn
 	rowOrder []int
 	released bool
 }
@@ -238,13 +248,11 @@ func (b *subscriptionRecordBatch) valueLocked(row, column int) (any, error) {
 	if column >= len(b.values) {
 		return nil, fmt.Errorf("subscription: record column %d has no value storage", column)
 	}
-	if b.values[column] == nil {
-		return nil, nil
-	}
-	if row >= len(b.values[column]) {
+	value, ok := b.values[column].Value(row)
+	if !ok {
 		return nil, fmt.Errorf("subscription: record column %d has no value for row %d", column, row)
 	}
-	return b.values[column][row], nil
+	return value, nil
 }
 
 func (b *subscriptionRecordBatch) Rows() iter.Seq2[payload.Row, error] {
@@ -310,44 +318,20 @@ func (b *subscriptionRecordBatch) release() {
 func (b *subscriptionRecordBatch) estimatedSize() int64 {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+	return b.estimatedSizeLocked()
+}
+
+func (b *subscriptionRecordBatch) estimatedSizeLocked() int64 {
 	size := int64(128) + int64(len(b.dialect)) + int64(len(b.database)) +
 		int64(len(b.target)) + int64(len(b.timestamps))*8 + int64(len(b.rowOrder))*8
-	size += int64(len(b.columns))*32 + int64(len(b.values))*24
+	size += int64(len(b.columns))*32 + int64(len(b.values))*tabletColumnStorageEstimate
 	for _, column := range b.columns {
 		size += int64(len(column.Name))
 	}
-	for _, values := range b.values {
-		size += int64(len(values))*16
-		for _, value := range values {
-			switch value := value.(type) {
-			case bool:
-				size++
-			case int32, float32:
-				size += 4
-			case int64, float64:
-				size += 8
-			case string:
-				size += 16 + int64(len(value))
-			case []byte:
-				size += 24 + int64(len(value))
-			case time.Time:
-				size += 24
-			}
-		}
+	for column := range b.values {
+		size += b.values[column].estimatedSize()
 	}
 	return size
-}
-
-// Tablet follows TsFile 2.5.1-261023-SNAPSHOT Tablet's stream
-// format, independently of the Session insert protocol and TsBlock query format.
-// Nil Timestamps represents RowCount zero timestamps. Each nil Values column
-// represents RowCount null values without allocating storage for absent data.
-type Tablet struct {
-	Target string
-	Columns []payload.Column
-	RowCount int
-	Timestamps []int64
-	Values [][]any
 }
 
 // Committable reports whether a delivery has writer progress or a legacy ID.

@@ -26,6 +26,7 @@ import (
 	"github.com/apache/iotdb-client-go/subscription/internal/record"
 	"github.com/apache/iotdb-client-go/subscription/internal/identifier"
 
+	"container/heap"
 	"context"
 	"errors"
 	"fmt"
@@ -50,7 +51,34 @@ type subscriptionCommitKey struct {
 
 type subscriptionPendingCommit struct {
 	Context payload.CommitContext
-	DeliveredAt time.Time
+	ExpiresAt time.Time
+}
+
+type subscriptionCommitDeadline struct {
+	key subscriptionCommitKey
+	ExpiresAt time.Time
+}
+
+type subscriptionCommitDeadlineHeap []subscriptionCommitDeadline
+
+func (h subscriptionCommitDeadlineHeap) Len() int { return len(h) }
+func (h subscriptionCommitDeadlineHeap) Less(i, j int) bool {
+	if h[i].ExpiresAt.Equal(h[j].ExpiresAt) {
+		return h[i].key.CommitID < h[j].key.CommitID
+	}
+	return h[i].ExpiresAt.Before(h[j].ExpiresAt)
+}
+func (h subscriptionCommitDeadlineHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h *subscriptionCommitDeadlineHeap) Push(value any) {
+	*h = append(*h, value.(subscriptionCommitDeadline))
+}
+func (h *subscriptionCommitDeadlineHeap) Pop() any {
+	old := *h
+	last := len(old) - 1
+	value := old[last]
+	old[last] = subscriptionCommitDeadline{}
+	*h = old[:last]
+	return value
 }
 
 func subscriptionContextKey(value payload.CommitContext) subscriptionCommitKey {
@@ -69,14 +97,6 @@ func subscriptionContextKey(value payload.CommitContext) subscriptionCommitKey {
 		key.Writer = *value.Writer
 	}
 	return key
-}
-
-func cloneCommitContexts(contexts []payload.CommitContext) []payload.CommitContext {
-	result := make([]payload.CommitContext, len(contexts))
-	for index, commitContext := range contexts {
-		result[index] = record.CloneCommitContext(commitContext)
-	}
-	return result
 }
 
 func cloneTopicProgress(progress payload.TopicProgress) payload.TopicProgress {
@@ -101,7 +121,7 @@ func (c *subscriptionPullConsumer) Commit(ctx context.Context, messages ...paylo
 	if err != nil {
 		return err
 	}
-	return c.commitContexts(operationCtx, contexts, false)
+	return c.commitUniqueContexts(operationCtx, contexts, false)
 }
 
 func (c *subscriptionPullConsumer) CommitAsync(ctx context.Context, messages ...payload.SubscriptionMessage) <-chan error {
@@ -122,7 +142,7 @@ func (c *subscriptionPullConsumer) CommitAsync(ctx context.Context, messages ...
 	go func() {
 		defer finish()
 		defer close(result)
-		result <- c.commitContexts(operationCtx, contexts, false)
+		result <- c.commitUniqueContexts(operationCtx, contexts, false)
 	}()
 	return result
 }
@@ -131,8 +151,11 @@ func (c *subscriptionPullConsumer) messageCommitContexts(messages []payload.Subs
 	c.mu.RLock()
 	groupID := c.identity.GroupID
 	c.mu.RUnlock()
+	var seen map[subscriptionCommitKey]struct{}
+	if len(messages) > 1 {
+		seen = make(map[subscriptionCommitKey]struct{}, len(messages))
+	}
 	contexts := make([]payload.CommitContext, 0, len(messages))
-	seen := make(map[subscriptionCommitKey]struct{}, len(messages))
 	for _, message := range messages {
 		if record.IsNilMessage(message) {
 			return nil, errors.New("subscription: cannot commit a nil message")
@@ -140,17 +163,21 @@ func (c *subscriptionPullConsumer) messageCommitContexts(messages []payload.Subs
 		if message.Kind() != payload.RecordMessage {
 			return nil, subscription.ErrIncompatibleMessage
 		}
-		commitContext := message.CommitContext()
+		commitContext := record.ReadCommitContext(message)
 		if commitContext.Topic == "" || commitContext.GroupID != groupID {
 			return nil, errors.New("subscription: message does not belong to this consumer group")
 		}
 		if !record.Committable(commitContext) {
 			return nil, errors.New("subscription: message has no committable context")
 		}
+		if seen == nil {
+			contexts = append(contexts, commitContext)
+			continue
+		}
 		key := subscriptionContextKey(commitContext)
 		if _, exists := seen[key]; !exists {
 			seen[key] = struct{}{}
-			contexts = append(contexts, record.CloneCommitContext(commitContext))
+			contexts = append(contexts, commitContext)
 		}
 	}
 	return contexts, nil
@@ -175,11 +202,28 @@ func (c *subscriptionPullConsumer) commitContexts(ctx context.Context, contexts 
 		return err
 	}
 	defer func() { <-c.progressOperations }()
-	return c.commitContextsLocked(ctx, contexts, nack)
+	return c.commitUniqueContextsLocked(ctx, normalizeCommitContexts(contexts), nack)
 }
 
-func (c *subscriptionPullConsumer) commitContextsLocked(ctx context.Context, contexts []payload.CommitContext, nack bool) error {
-	groups := make(map[int32][]payload.CommitContext)
+func (c *subscriptionPullConsumer) commitUniqueContexts(ctx context.Context, contexts []payload.CommitContext, nack bool) error {
+	if err := c.acquireProgress(ctx); err != nil {
+		return err
+	}
+	defer func() { <-c.progressOperations }()
+	return c.commitUniqueContextsLocked(ctx, contexts, nack)
+}
+
+func normalizeCommitContexts(contexts []payload.CommitContext) []payload.CommitContext {
+	if len(contexts) == 0 {
+		return nil
+	}
+	if len(contexts) == 1 {
+		if !record.Committable(contexts[0]) {
+			return nil
+		}
+		return []payload.CommitContext{record.CloneCommitContext(contexts[0])}
+	}
+	unique := make([]payload.CommitContext, 0, len(contexts))
 	seen := make(map[subscriptionCommitKey]struct{}, len(contexts))
 	for _, commitContext := range contexts {
 		if !record.Committable(commitContext) {
@@ -190,13 +234,28 @@ func (c *subscriptionPullConsumer) commitContextsLocked(ctx context.Context, con
 			continue
 		}
 		seen[key] = struct{}{}
-		groups[commitContext.DataNodeID] = append(groups[commitContext.DataNodeID], record.CloneCommitContext(commitContext))
+		unique = append(unique, record.CloneCommitContext(commitContext))
 	}
-	nodes := make([]int, 0, len(groups))
-	for node := range groups {
-		nodes = append(nodes, int(node))
+	return unique
+}
+
+func (c *subscriptionPullConsumer) commitUniqueContextsLocked(ctx context.Context, contexts []payload.CommitContext, nack bool) error {
+	groups := make(map[int32][]payload.CommitContext)
+	for _, commitContext := range contexts {
+		groups[commitContext.DataNodeID] = append(groups[commitContext.DataNodeID], commitContext)
 	}
-	sort.Ints(nodes)
+	var nodes []int
+	if len(groups) > 1 {
+		nodes = make([]int, 0, len(groups))
+		for node := range groups {
+			nodes = append(nodes, int(node))
+		}
+		sort.Ints(nodes)
+	} else {
+		for node := range groups {
+			nodes = []int{int(node)}
+		}
+	}
 	var failures []error
 	for _, node := range nodes {
 		if err := c.commitNode(ctx, int32(node), groups[int32(node)], nack); err != nil {
@@ -211,7 +270,7 @@ func (c *subscriptionPullConsumer) commitContextsLocked(ctx context.Context, con
 }
 
 func (c *subscriptionPullConsumer) commitNode(ctx context.Context, node int32, contexts []payload.CommitContext, nack bool) error {
-	remaining := cloneCommitContexts(contexts)
+	remaining := contexts
 	var lastFailure error
 	for attempt := 0; len(remaining) != 0; attempt++ {
 		if err := ctx.Err(); err != nil {
@@ -341,7 +400,7 @@ func (c *subscriptionPullConsumer) flushRedirectAcks(ctx context.Context, messag
 	type topicRegion struct { topic, region string }
 	targets := make(map[topicRegion]int32)
 	for _, message := range messages {
-		commitContext := message.CommitContext()
+		commitContext := record.ReadCommitContext(message)
 		if commitContext.Writer != nil && commitContext.RegionID != "" {
 			targets[topicRegion{commitContext.Topic, commitContext.RegionID}] = commitContext.DataNodeID
 		}
@@ -384,27 +443,56 @@ func (c *subscriptionPullConsumer) trackDelivered(messages []payload.Subscriptio
 		if message.Kind() != payload.RecordMessage {
 			continue
 		}
-		commitContext := message.CommitContext()
+		commitContext := record.ReadCommitContext(message)
 		if !record.Committable(commitContext) {
 			continue
 		}
 		key := subscriptionContextKey(commitContext)
 		if _, exists := c.uncommitted[key]; !exists {
-			c.uncommitted[key] = subscriptionPendingCommit{Context: record.CloneCommitContext(commitContext), DeliveredAt: now}
+			expiresAt := now.Add(c.config.AutoCommitInterval)
+			c.uncommitted[key] = subscriptionPendingCommit{Context: commitContext, ExpiresAt: expiresAt}
+			heap.Push(&c.uncommittedDeadlines, subscriptionCommitDeadline{key: key, ExpiresAt: expiresAt})
 		}
 	}
 }
 
 func (c *subscriptionPullConsumer) pendingCommitContexts(all bool, now time.Time) []payload.CommitContext {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	var contexts []payload.CommitContext
-	for _, pending := range c.uncommitted {
-		if all || !now.Before(pending.DeliveredAt.Add(c.config.AutoCommitInterval)) {
-			contexts = append(contexts, record.CloneCommitContext(pending.Context))
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if all {
+		contexts := make([]payload.CommitContext, 0, len(c.uncommitted))
+		for _, pending := range c.uncommitted {
+			contexts = append(contexts, pending.Context)
 		}
+		return contexts
+	}
+	var contexts []payload.CommitContext
+	for c.uncommittedDeadlines.Len() != 0 {
+		deadline := c.uncommittedDeadlines[0]
+		if now.Before(deadline.ExpiresAt) {
+			break
+		}
+		heap.Pop(&c.uncommittedDeadlines)
+		pending, exists := c.uncommitted[deadline.key]
+		if !exists || !pending.ExpiresAt.Equal(deadline.ExpiresAt) {
+			continue
+		}
+		contexts = append(contexts, pending.Context)
 	}
 	return contexts
+}
+
+func (c *subscriptionPullConsumer) requeuePendingCommitContexts(contexts []payload.CommitContext, now time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, commitContext := range contexts {
+		key := subscriptionContextKey(commitContext)
+		pending, exists := c.uncommitted[key]
+		if !exists || pending.ExpiresAt.After(now) {
+			continue
+		}
+		heap.Push(&c.uncommittedDeadlines, subscriptionCommitDeadline{key: key, ExpiresAt: pending.ExpiresAt})
+	}
 }
 
 func (c *subscriptionPullConsumer) autoCommit(ctx context.Context, now time.Time) {
@@ -417,7 +505,8 @@ func (c *subscriptionPullConsumer) autoCommit(ctx context.Context, now time.Time
 	defer func() { <-c.progressOperations }()
 	contexts := c.pendingCommitContexts(false, now)
 	if len(contexts) != 0 {
-		_ = c.commitContextsLocked(ctx, contexts, false)
+		_ = c.commitUniqueContextsLocked(ctx, contexts, false)
+		c.requeuePendingCommitContexts(contexts, now)
 	}
 }
 
@@ -425,7 +514,7 @@ func (c *subscriptionPullConsumer) advancePositions(messages []payload.Subscript
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for _, message := range messages {
-		commitContext := message.CommitContext()
+		commitContext := record.ReadCommitContext(message)
 		writer, progress, ok := subscriptionContextProgress(commitContext)
 		if ok {
 			mergeSubscriptionProgress(c.positions, commitContext.Topic, payload.TopicProgress{writer.RegionID: payload.RegionProgress{writer: progress}})

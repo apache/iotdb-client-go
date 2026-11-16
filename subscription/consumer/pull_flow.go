@@ -87,38 +87,53 @@ func (c *subscriptionPullConsumer) beginFlowPoll(ctx context.Context, timeout ti
 		operationCtx, finish, acquired, err = c.beginNonblockingOperation(ctx)
 		return operationCtx, operationCtx, finish, acquired, err
 	}
-	queueCtx, cancelQueue := context.WithTimeout(ctx, timeout)
-	operationCtx, release, err := c.beginQueuedOperation(ctx, queueCtx)
-	if err != nil {
-		cancelQueue()
-		if stateErr := c.checkOpen(); stateErr != nil {
-			return nil, nil, nil, false, stateErr
-		}
-		if callerErr := ctx.Err(); callerErr != nil {
-			return nil, nil, nil, false, callerErr
-		}
-		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, nil, nil, false, nil
-		}
+	if err := ctx.Err(); err != nil {
 		return nil, nil, nil, false, err
 	}
-	if queueCtx.Err() != nil {
-		release()
-		cancelQueue()
+	c.mu.RLock()
+	lifeCtx := c.lifeCtx
+	stateErr := c.stateErrorLocked(false)
+	c.mu.RUnlock()
+	if stateErr != nil {
+		return nil, nil, nil, false, stateErr
+	}
+	operationCtx, cancelOperation := context.WithCancel(ctx)
+	stop := context.AfterFunc(lifeCtx, cancelOperation)
+	pollCtx, cancelPoll := context.WithTimeout(operationCtx, timeout)
+	if err := c.acquireFlow(pollCtx); err != nil {
+		stop()
+		cancelPoll()
+		cancelOperation()
 		if stateErr := c.checkOpen(); stateErr != nil {
 			return nil, nil, nil, false, stateErr
 		}
 		if callerErr := ctx.Err(); callerErr != nil {
 			return nil, nil, nil, false, callerErr
+		}
+		if operationCtx.Err() != nil {
+			return nil, nil, nil, false, operationCtx.Err()
 		}
 		return nil, nil, nil, false, nil
 	}
-	deadline, _ := queueCtx.Deadline()
-	pollCtx, cancelPoll := context.WithDeadline(operationCtx, deadline)
-	return operationCtx, pollCtx, func() {
+	c.mu.Lock()
+	if stateErr := c.stateErrorLocked(false); stateErr != nil {
+		c.mu.Unlock()
+		c.releaseFlow()
+		stop()
 		cancelPoll()
-		cancelQueue()
-		release()
+		cancelOperation()
+		return nil, nil, nil, false, stateErr
+	}
+	c.flowCancel = cancelOperation
+	c.mu.Unlock()
+	return operationCtx, pollCtx, func() {
+		stop()
+		cancelPoll()
+		cancelOperation()
+		c.mu.Lock()
+		c.flowCancel = nil
+		c.mu.Unlock()
+		c.releaseFlow()
 	}, true, nil
 }
 
@@ -137,13 +152,13 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 	if len(selected) == 0 {
 		return nil, nil
 	}
-	networkReady := true
-	if !hasAvailableSubscriptionProvider(c.providerSnapshot()) {
+	providers := c.pollProviderSet()
+	networkReady := providers.Len() != 0
+	if !networkReady {
 		if immediate {
 			// A zero-wait poll can drive existing processor state, but must
 			// not turn into a synchronous connection-recovery attempt.
 			c.requestRecovery()
-			networkReady = false
 		} else if err := c.recoverProviders(pollCtx); err != nil {
 			if stateErr := c.checkOpen(); stateErr != nil {
 				return nil, stateErr
@@ -155,37 +170,36 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 			} else {
 				return nil, err
 			}
+		} else {
+			providers = c.pollProviderSet()
+			networkReady = providers.Len() != 0
 		}
 	}
-	var results []flowPollResult
+	result := flowPollResult{}
 	if networkReady {
-		results = c.pollFlowPartitions(pollCtx, selected, immediate)
+		cursor := c.pollCursor
+		c.pollCursor++
+		result = c.pollFlowPartition(pollCtx, selected, cursor, immediate, providers)
 	}
-	var messages []payload.SubscriptionMessage
-	var emptyContexts, failedContexts, allContexts []payload.CommitContext
-	var terminations []string
+	allContexts := make([]payload.CommitContext, 0, len(result.rollbackContexts)+len(result.nackContexts))
+	allContexts = append(allContexts, result.rollbackContexts...)
+	allContexts = append(allContexts, result.nackContexts...)
+	failedContexts := make([]payload.CommitContext, len(result.nackContexts))
+	copy(failedContexts, result.nackContexts)
 	var fatal, critical, ordinary error
-	for _, result := range results {
-		allContexts = append(allContexts, result.rollbackContexts...)
-		allContexts = append(allContexts, result.nackContexts...)
-		failedContexts = append(failedContexts, result.nackContexts...)
-		if result.err != nil {
-			failedContexts = append(failedContexts, result.rollbackContexts...)
-			if flowFatalPollError(result.err) {
-				if fatal == nil {
-					fatal = result.err
-				}
-			} else if flowCriticalPollError(result.err) {
-				critical = result.err
-			} else if !((errors.Is(result.err, context.DeadlineExceeded) || errors.Is(result.err, context.Canceled)) && pollCtx.Err() != nil) {
-				ordinary = result.err
-			}
-			continue
+	if result.err != nil {
+		failedContexts = append(failedContexts, result.rollbackContexts...)
+		if flowFatalPollError(result.err) {
+			fatal = result.err
+		} else if flowCriticalPollError(result.err) {
+			critical = result.err
+		} else if !((errors.Is(result.err, context.DeadlineExceeded) || errors.Is(result.err, context.Canceled)) && pollCtx.Err() != nil) {
+			ordinary = result.err
 		}
-		messages = append(messages, result.messages...)
-		emptyContexts = append(emptyContexts, result.emptyContexts...)
-		terminations = append(terminations, result.terminated...)
 	}
+	messages := result.messages
+	emptyContexts := result.emptyContexts
+	terminations := result.terminated
 	if err := c.checkOpen(); err != nil {
 		c.rollbackFlow(pollCtx, allContexts)
 		return nil, err
@@ -214,9 +228,8 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 		c.mu.Unlock()
 	}
 	// The caller/lifetime context aborts the entire round. Exhausting only the
-	// polling budget preserves complete healthy partitions, as Java does for
-	// completed sibling futures. Do not start cleanup RPCs after that budget has
-	// expired; undelivered events remain unconfirmed.
+	// polling budget leaves undelivered events unconfirmed; no cleanup RPC is
+	// started after that budget has expired.
 	c.rollbackFlow(pollCtx, failedContexts)
 	if pollCtx.Err() == nil && len(emptyContexts) != 0 {
 		if err := c.commitContexts(pollCtx, emptyContexts, false); err != nil {
@@ -252,7 +265,9 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 			return nil, err
 		}
 	}
-	c.refreshBufferedContexts()
+	if len(c.processors) != 0 || len(c.drained) != 0 {
+		c.refreshBufferedContexts()
+	}
 	if err := operationCtx.Err(); err != nil {
 		c.rollbackFlow(pollCtx, allContexts)
 		return nil, err
@@ -273,8 +288,11 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 	// Fetch progress can include records retained by a successful processor, but
 	// automatic commit only tracks the records actually handed to the caller.
 	c.advancePositions(messages)
-	// Observe raw watermark signals even if a processor consumed them.
-	_ = c.visibleFlowMessages(messages)
+	// Observe raw watermark signals even if a processor consumed them. Without
+	// processors, one pass over the same batch is sufficient.
+	if len(c.processors) != 0 {
+		_ = c.visibleFlowMessages(messages)
+	}
 	processed = c.visibleFlowMessages(processed)
 	c.trackDelivered(processed)
 	return processed, nil
@@ -320,39 +338,9 @@ func uniqueFlowTopics(topics []string) []string {
 	return names
 }
 
-func (c *subscriptionPullConsumer) pollFlowPartitions(ctx context.Context, topics []string, immediate bool) []flowPollResult {
-	parallelism := 1
-	partitions := make([][]string, parallelism)
-	for index, topic := range topics {
-		partitions[index%parallelism] = append(partitions[index%parallelism], topic)
-	}
-	cursor := c.pollCursor
-	c.pollCursor++
-	partitionCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	type partitionResult struct {
-		index int
-		result flowPollResult
-	}
-	completed := make(chan partitionResult, parallelism)
-	for index, partition := range partitions {
-		go func(index int, topics []string) {
-			completed <- partitionResult{index: index, result: c.pollFlowPartition(partitionCtx, topics, cursor+uint64(index), immediate)}
-		}(index, partition)
-	}
-	results := make([]flowPollResult, parallelism)
-	for range partitions {
-		result := <-completed
-		results[result.index] = result.result
-		if flowFatalPollError(result.result.err) {
-			cancel()
-		}
-	}
-	return results
-}
-
-func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics []string, cursor uint64, immediate bool) (result flowPollResult) {
+func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics []string, cursor uint64, immediate bool, providers subscriptionProviderSet) (result flowPollResult) {
 	var lastFailure error
+	refreshProviders := false
 	for {
 		if err := ctx.Err(); err != nil {
 			result.err = err
@@ -362,14 +350,11 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 			result.err = err
 			return result
 		}
-		providers := c.providerSnapshot()
-		available := providers[:0]
-		for _, provider := range providers {
-			if !provider.connection.Closed() {
-				available = append(available, provider)
-			}
+		if refreshProviders {
+			providers = c.pollProviderSet()
+			refreshProviders = false
 		}
-		if len(available) == 0 {
+		if providers.Len() == 0 {
 			c.requestRecovery()
 			if lastFailure == nil {
 				lastFailure = errors.New("subscription: no available provider for poll")
@@ -377,18 +362,27 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 			result.err = lastFailure
 			return result
 		}
-		progress := make(map[string]payload.TopicProgress, len(topics))
+		var progress map[string]payload.TopicProgress
 		c.mu.RLock()
 		for _, topic := range topics {
 			if position := c.positions[topic]; len(position) != 0 {
+				if progress == nil {
+					progress = make(map[string]payload.TopicProgress, len(topics))
+				}
 				progress[topic] = cloneTopicProgress(position)
 			}
 		}
 		c.mu.RUnlock()
 		healthy := false
-		for attempt := range available {
-			provider := available[(int(cursor%uint64(len(available)))+attempt)%len(available)]
-			responses, err := provider.poll(ctx, topics, flowRemainingMilliseconds(ctx, len(available)-attempt, immediate), int64(provider.bodyLimit), progress)
+		attempted := 0
+		for attempt := 0; attempt < providers.Len(); attempt++ {
+			provider := providers.Provider((int(cursor%uint64(providers.Len())) + attempt) % providers.Len())
+			if provider == nil || provider.connection.Closed() {
+				refreshProviders = true
+				continue
+			}
+			attempted++
+			responses, err := provider.poll(ctx, topics, flowRemainingMilliseconds(ctx, providers.Len()-attempt, immediate), int64(provider.bodyLimit), progress)
 			if err != nil {
 				err = c.handleProviderError(provider, err)
 				if flowFatalPollError(err) || flowCriticalPollError(err) || ctx.Err() != nil {
@@ -396,6 +390,7 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 					return result
 				}
 				lastFailure = err
+				refreshProviders = true
 				continue
 			}
 			healthy = true
@@ -453,6 +448,14 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 			if len(result.messages) != 0 || len(result.emptyContexts) != 0 || len(result.terminated) != 0 {
 				return result
 			}
+		}
+		if attempted == 0 {
+			c.requestRecovery()
+			if lastFailure == nil {
+				lastFailure = errors.New("subscription: no available provider for poll")
+			}
+			result.err = lastFailure
+			return result
 		}
 		if !healthy && lastFailure != nil {
 			result.err = lastFailure
@@ -562,10 +565,16 @@ func (c *subscriptionPullConsumer) drainForClose() ([]payload.SubscriptionMessag
 }
 
 func (c *subscriptionPullConsumer) refreshBufferedContexts() {
+	if len(c.drained) == 0 && len(c.processors) == 0 {
+		c.mu.Lock()
+		c.bufferedContexts = nil
+		c.mu.Unlock()
+		return
+	}
 	var contexts []payload.CommitContext
 	for _, message := range c.drained {
 		if message != nil {
-			commitContext := message.CommitContext()
+			commitContext := record.ReadCommitContext(message)
 			if record.Committable(commitContext) {
 				contexts = append(contexts, record.CloneCommitContext(commitContext))
 			}
@@ -620,7 +629,7 @@ func (c *subscriptionPullConsumer) resetProcessors(topic string) {
 	}
 	retained := c.drained[:0]
 	for _, message := range c.drained {
-		if message != nil && message.CommitContext().Topic == topic {
+		if message != nil && record.ReadCommitContext(message).Topic == topic {
 			message.Release()
 			continue
 		}
@@ -634,9 +643,10 @@ func (c *subscriptionPullConsumer) resetProcessors(topic string) {
 // visibleFlowMessages also observes watermarks consumed by a processor. Callers
 // pass the original successful poll messages separately when a stage removes them.
 func (c *subscriptionPullConsumer) visibleFlowMessages(messages []payload.SubscriptionMessage) []payload.SubscriptionMessage {
-	visible := make([]payload.SubscriptionMessage, 0, len(messages))
+	filter := false
 	for _, message := range messages {
 		if message == nil {
+			filter = true
 			continue
 		}
 		if timestamp, ok := message.Watermark(); ok {
@@ -645,9 +655,19 @@ func (c *subscriptionPullConsumer) visibleFlowMessages(messages []payload.Subscr
 				c.watermark, c.hasWatermark = timestamp, true
 			}
 			c.mu.Unlock()
+			filter = true
 			continue
 		}
-		if message.Kind() == payload.RecordMessage {
+		if message.Kind() != payload.RecordMessage {
+			filter = true
+		}
+	}
+	if !filter {
+		return messages
+	}
+	visible := make([]payload.SubscriptionMessage, 0, len(messages))
+	for _, message := range messages {
+		if message != nil && message.Kind() == payload.RecordMessage {
 			visible = append(visible, message)
 		}
 	}

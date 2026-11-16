@@ -112,7 +112,7 @@ func decodeSubscriptionTablet(reader *subscriptionWireReader) (record.Tablet, er
 	if reader.Err() != nil {
 		return record.Tablet{}, reader.Err()
 	}
-	tablet.Values = make([][]any, len(tablet.Columns))
+	tablet.Values = make([]record.TabletColumn, len(tablet.Columns))
 	if reader.ReadBool() {
 		for column, schema := range tablet.Columns {
 			if !reader.ReadBool() {
@@ -122,9 +122,9 @@ func decodeSubscriptionTablet(reader *subscriptionWireReader) (record.Tablet, er
 			if err != nil {
 				return record.Tablet{}, err
 			}
-			for row := range values {
+			for row := 0; row < tablet.RowCount; row++ {
 				if bitmap := bitmaps[column]; bitmap != nil && bitmap[row/8]&(1<<uint(row%8)) != 0 {
-					values[row] = nil
+					values.SetNull(row)
 				}
 			}
 			tablet.Values[column] = values
@@ -162,54 +162,59 @@ func requireSubscriptionTabletValues(reader *subscriptionWireReader, count, size
 	return nil
 }
 
-func decodeSubscriptionTabletColumn(reader *subscriptionWireReader, dataType client.TSDataType, rows int) ([]any, error) {
+func decodeSubscriptionTabletColumn(reader *subscriptionWireReader, dataType client.TSDataType, rows int) (record.TabletColumn, error) {
 	size, err := subscriptionTabletValueSize(dataType)
 	if err != nil {
-		return nil, err
+		return record.TabletColumn{}, err
 	}
 	if err := requireSubscriptionTabletValues(reader, rows, size); err != nil {
-		return nil, err
+		return record.TabletColumn{}, err
 	}
-	values := make([]any, rows)
-	for row := range values {
+	values := record.NewTabletColumn(dataType, rows)
+	for row := 0; row < rows; row++ {
 		switch dataType {
 		case client.BOOLEAN:
-			values[row] = reader.ReadBool()
+			values.Booleans[row] = reader.ReadBool()
 		case client.INT32:
-			values[row] = reader.ReadInt32()
+			values.Int32s[row] = reader.ReadInt32()
 		case client.INT64, client.TIMESTAMP:
-			values[row] = reader.ReadInt64()
+			values.Int64s[row] = reader.ReadInt64()
 		case client.FLOAT:
-			values[row] = math.Float32frombits(uint32(reader.ReadInt32()))
+			values.Float32s[row] = math.Float32frombits(uint32(reader.ReadInt32()))
 		case client.DOUBLE:
-			values[row] = math.Float64frombits(uint64(reader.ReadInt64()))
+			values.Float64s[row] = math.Float64frombits(uint64(reader.ReadInt64()))
 		case client.DATE:
 			date := reader.ReadInt32()
 			if reader.Err() != nil {
-				return nil, reader.Err()
+				return record.TabletColumn{}, reader.Err()
 			}
 			year, month, day := int(date/10000), time.Month((date/100)%100), int(date%100)
 			value := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 			if value.Year() != year || value.Month() != month || value.Day() != day {
-				return nil, fmt.Errorf("subscription: invalid Tablet DATE value %d", date)
+				return record.TabletColumn{}, fmt.Errorf("subscription: invalid Tablet DATE value %d", date)
 			}
-			values[row] = value
-		case client.TEXT, client.STRING, client.BLOB, client.OBJECT:
+			values.Dates[row] = date
+		case client.TEXT, client.STRING:
 			var binary []byte
 			if reader.ReadBool() {
 				length := reader.ReadCount(1, false)
 				binary = reader.Take(int(length))
 			}
-			if dataType == client.TEXT || dataType == client.STRING {
-				values[row] = string(binary)
-			} else {
-				// Type.deserializeArray uses Binary.EMPTY_VALUE for a missing
-				// Binary. SQL NULL is supplied separately by the Tablet bitmap.
-				values[row] = append([]byte{}, binary...)
+			values.Strings[row] = string(binary)
+			values.VariableBytes += int64(len(binary))
+		case client.BLOB, client.OBJECT:
+			var binary []byte
+			if reader.ReadBool() {
+				length := reader.ReadCount(1, false)
+				binary = reader.Take(int(length))
 			}
+			// Type.deserializeArray uses Binary.EMPTY_VALUE for a missing
+			// Binary. SQL NULL is supplied separately by the Tablet bitmap.
+			values.Binaries[row] = append([]byte{}, binary...)
+			values.VariableBytes += int64(len(binary))
 		}
 		if reader.Err() != nil {
-			return nil, reader.Err()
+			return record.TabletColumn{}, reader.Err()
 		}
 	}
 	return values, nil

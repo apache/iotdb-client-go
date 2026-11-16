@@ -23,6 +23,7 @@ import (
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
 	"github.com/apache/iotdb-client-go/subscription/internal/protocol"
+	"github.com/apache/iotdb-client-go/subscription/internal/record"
 	"github.com/apache/iotdb-client-go/subscription/internal/identifier"
 
 	"context"
@@ -275,7 +276,7 @@ func (c *subscriptionPushConsumer) pollDeliveries(ctx context.Context) ([]subscr
 	for _, message := range messages {
 		deliveries = append(deliveries, subscriptionPushDelivery{
 			message: message,
-			generation: c.generations[message.CommitContext().Topic],
+			generation: c.generations[record.ReadCommitContext(message).Topic],
 		})
 	}
 	return deliveries, nil
@@ -353,7 +354,7 @@ func (c *subscriptionPushConsumer) deliver(ctx context.Context, deliveries []sub
 }
 
 func (c *subscriptionPushConsumer) beginCallback(ctx context.Context, delivery subscriptionPushDelivery) (context.Context, func(), bool) {
-	topic := delivery.message.CommitContext().Topic
+	topic := record.ReadCommitContext(delivery.message).Topic
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.deliveryStateLocked() != nil || ctx.Err() != nil || c.generations[topic] != delivery.generation {
@@ -395,7 +396,7 @@ func (c *subscriptionPushConsumer) commitDeliveries(ctx context.Context, deliver
 	}
 	messages := make([]payload.SubscriptionMessage, 0, len(deliveries))
 	for _, delivery := range deliveries {
-		if c.generations[delivery.message.CommitContext().Topic] == delivery.generation {
+		if c.generations[record.ReadCommitContext(delivery.message).Topic] == delivery.generation {
 			messages = append(messages, delivery.message)
 		}
 	}

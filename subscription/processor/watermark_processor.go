@@ -137,24 +137,39 @@ func (p *WatermarkProcessor) Process(messages []payload.SubscriptionMessage) ([]
 			incoming = append(incoming, watermarkBufferedMessage{message: message, maximum: timestamp})
 			continue
 		}
-		batches, err := message.Records()
-		if err != nil {
-			return nil, err
-		}
 		maximum, found := int64(math.MinInt64), false
-		for _, batch := range batches {
-			if batch == nil {
-				return nil, errors.New("subscription: watermark processor received a nil batch")
-			}
-			for row := 0; row < batch.Len(); row++ {
-				timestamp, err := batch.Timestamp(row)
-				if err != nil {
-					return nil, err
-				}
+		owned, err := record.TryReadRecordMessage(message, func(_ payload.CommitContext, batch record.TabletReader) error {
+			for row := 0; row < batch.RowCount(); row++ {
+				timestamp := batch.Timestamp(row)
 				if !found || timestamp > maximum {
 					maximum = timestamp
 				}
 				found = true
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		if !owned {
+			batches, err := message.Records()
+			if err != nil {
+				return nil, err
+			}
+			for _, batch := range batches {
+				if batch == nil {
+					return nil, errors.New("subscription: watermark processor received a nil batch")
+				}
+				for row := 0; row < batch.Len(); row++ {
+					timestamp, err := batch.Timestamp(row)
+					if err != nil {
+						return nil, err
+					}
+					if !found || timestamp > maximum {
+						maximum = timestamp
+					}
+					found = true
+				}
 			}
 		}
 		// As in Java, an empty message falls back to the wall clock in ms.
@@ -168,7 +183,7 @@ func (p *WatermarkProcessor) Process(messages []payload.SubscriptionMessage) ([]
 		incoming = append(incoming, watermarkBufferedMessage{message: message, maximum: maximum, size: size})
 	}
 	for _, entry := range incoming {
-		context := entry.message.CommitContext()
+		context := record.ReadCommitContext(entry.message)
 		key := watermarkRegion{topic: context.Topic, node: context.DataNodeID, region: context.RegionID}
 		previous, ok := p.regions[key]
 		if !ok || entry.maximum > previous.timestamp {
@@ -222,9 +237,9 @@ func (p *WatermarkProcessor) Buffered() ProcessorBuffer {
 	defer p.mu.Unlock()
 	result := ProcessorBuffer{Count: len(p.buffer)}
 	for _, entry := range p.buffer {
-		context := entry.message.CommitContext()
+		context := record.ReadCommitContext(entry.message)
 		if record.Committable(context) {
-			result.Contexts = append(result.Contexts, context)
+			result.Contexts = append(result.Contexts, record.CloneCommitContext(context))
 		}
 	}
 	return result
@@ -259,7 +274,7 @@ func (p *WatermarkProcessor) ResetTopic(topic string) {
 	defer p.mu.Unlock()
 	retained := p.buffer[:0]
 	for _, entry := range p.buffer {
-		if entry.message.CommitContext().Topic == topic {
+		if record.ReadCommitContext(entry.message).Topic == topic {
 			p.bufferedBytes -= entry.size
 			entry.message.Release()
 		} else {

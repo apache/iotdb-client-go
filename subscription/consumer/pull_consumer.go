@@ -84,6 +84,7 @@ func newSubscriptionPullConsumer(resolved SubscriptionPullConsumerConfig) (*subs
 		positions: make(map[string]payload.TopicProgress),
 		committed: make(map[string]payload.TopicProgress),
 		uncommitted: make(map[subscriptionCommitKey]subscriptionPendingCommit),
+		uncommittedDeadlines: make(subscriptionCommitDeadlineHeap, 0),
 		redirectAcks: make(map[subscriptionCommitKey]payload.CommitContext),
 		identity: SubscriptionConsumerInfo{
 			ConsumerID: resolved.Consumer.ConsumerID,
@@ -125,6 +126,7 @@ type subscriptionPullConsumer struct {
 	positions map[string]payload.TopicProgress
 	committed map[string]payload.TopicProgress
 	uncommitted map[subscriptionCommitKey]subscriptionPendingCommit
+	uncommittedDeadlines subscriptionCommitDeadlineHeap
 	redirectAcks map[subscriptionCommitKey]payload.CommitContext
 	watermark int64
 	hasWatermark bool
@@ -357,7 +359,7 @@ func (c *subscriptionPullConsumer) Close() error {
 	defer cancel()
 	var failures []error
 	if opened && fenced == nil && *c.config.AutoCommit {
-		if err := c.commitContexts(ctx, c.pendingCommitContexts(true, time.Now()), false); err != nil {
+		if err := c.commitUniqueContexts(ctx, c.pendingCommitContexts(true, time.Now()), false); err != nil {
 			failures = append(failures, err)
 		}
 	}
@@ -501,6 +503,59 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 	return errors.Join(failures...)
 }
 
+type subscriptionProviderSet struct {
+	single   *subscriptionProvider
+	multiple []*subscriptionProvider
+}
+
+func (p subscriptionProviderSet) Len() int {
+	if p.single != nil {
+		return 1
+	}
+	return len(p.multiple)
+}
+
+func (p subscriptionProviderSet) Provider(index int) *subscriptionProvider {
+	if p.single != nil {
+		if index == 0 {
+			return p.single
+		}
+		return nil
+	}
+	if index < 0 || index >= len(p.multiple) {
+		return nil
+	}
+	return p.multiple[index]
+}
+
+func (c *subscriptionPullConsumer) pollProviderSet() subscriptionProviderSet {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	var single *subscriptionProvider
+	count := 0
+	for _, provider := range c.providers {
+		if provider.connection.Closed() {
+			continue
+		}
+		single = provider
+		count++
+	}
+	if count == 1 {
+		return subscriptionProviderSet{single: single}
+	}
+	if count == 0 {
+		return subscriptionProviderSet{}
+	}
+	providers := make([]*subscriptionProvider, 0, count)
+	for _, provider := range c.providers {
+		if !provider.connection.Closed() {
+			providers = append(providers, provider)
+		}
+	}
+	sort.Slice(providers, func(i, j int) bool { return providers[i].dataNodeID < providers[j].dataNodeID })
+	return subscriptionProviderSet{multiple: providers}
+}
+
 func (c *subscriptionPullConsumer) providerSnapshot() []*subscriptionProvider {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
@@ -508,7 +563,9 @@ func (c *subscriptionPullConsumer) providerSnapshot() []*subscriptionProvider {
 	for _, provider := range c.providers {
 		providers = append(providers, provider)
 	}
-	sort.Slice(providers, func(i, j int) bool { return providers[i].dataNodeID < providers[j].dataNodeID })
+	if len(providers) > 1 {
+		sort.Slice(providers, func(i, j int) bool { return providers[i].dataNodeID < providers[j].dataNodeID })
+	}
 	return providers
 }
 
