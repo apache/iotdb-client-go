@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -214,8 +215,8 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 	}
 	// The caller/lifetime context aborts the entire round. Exhausting only the
 	// polling budget preserves complete healthy partitions, as Java does for
-	// completed sibling futures. Keep rollback and empty-delivery ACKs tied to
-	// the poll budget; a received termination is handled using operationCtx below.
+	// completed sibling futures. Do not start cleanup RPCs after that budget has
+	// expired; undelivered events remain unconfirmed.
 	c.rollbackFlow(pollCtx, failedContexts)
 	if pollCtx.Err() == nil && len(emptyContexts) != 0 {
 		if err := c.commitContexts(pollCtx, emptyContexts, false); err != nil {
@@ -225,11 +226,13 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 			}
 		}
 	}
-	if operationCtx.Err() == nil && len(terminations) != 0 {
+	if pollCtx.Err() == nil && len(terminations) != 0 {
 		names := uniqueFlowTopics(terminations)
-		if err := c.changeSubscriptions(operationCtx, names, true); err != nil {
-			c.rollbackFlow(operationCtx, allContexts)
-			return nil, err
+		if err := c.changeSubscriptions(pollCtx, names, true); err != nil {
+			if !(operationCtx.Err() == nil && pollCtx.Err() != nil && errors.Is(err, context.DeadlineExceeded)) {
+				c.rollbackFlow(pollCtx, allContexts)
+				return nil, err
+			}
 		}
 	}
 	processed := messages
@@ -318,10 +321,7 @@ func uniqueFlowTopics(topics []string) []string {
 }
 
 func (c *subscriptionPullConsumer) pollFlowPartitions(ctx context.Context, topics []string, immediate bool) []flowPollResult {
-	parallelism := min(c.config.Consumer.MaxPollParallelism, len(topics))
-	if parallelism < 1 {
-		parallelism = 1
-	}
+	parallelism := 1
 	partitions := make([][]string, parallelism)
 	for index, topic := range topics {
 		partitions[index%parallelism] = append(partitions[index%parallelism], topic)
@@ -436,7 +436,7 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 					if isOutdatedFlowResponse(response) {
 						continue
 					}
-					failure := &protocol.PollError{Message: response.ErrorMessage, Critical: response.Critical}
+					failure := newSubscriptionPollError(response.ErrorMessage, response.Critical)
 					if response.Critical {
 						result.err = failure
 						return result
@@ -660,12 +660,19 @@ func isOutdatedFlowResponse(response protocol.PollResponse) bool {
 }
 
 func flowCriticalPollError(err error) bool {
-	var status *subscriptionStatusError
-	if errors.As(err, &status) {
-		return status.Critical
+	var status *subscription.SubscriptionError
+	return errors.As(err, &status) && status.Critical
+}
+
+func newSubscriptionPollError(message string, critical bool) *subscription.SubscriptionError {
+	kind := subscription.ErrorKindRuntimeNonCritical
+	if critical {
+		kind = subscription.ErrorKindRuntimeCritical
 	}
-	var payload *protocol.PollError
-	return errors.As(err, &payload) && payload.Critical
+	if strings.Contains(message, "SUBSCRIPTION_OVERSIZED_ENTRY") {
+		kind = subscription.ErrorKindPayloadExceed
+	}
+	return &subscription.SubscriptionError{Kind: kind, Message: message, Critical: critical}
 }
 
 func flowFatalPollError(err error) bool {
@@ -704,7 +711,7 @@ func (c *subscriptionPullConsumer) completeFlowRecord(ctx context.Context, provi
 			return nil, true, nil
 		}
 		if next.Type == protocol.ResponseError {
-			return nil, false, &protocol.PollError{Message: next.ErrorMessage, Critical: next.Critical}
+			return nil, false, newSubscriptionPollError(next.ErrorMessage, next.Critical)
 		}
 		if next.NextOffset > 0 && next.NextOffset <= response.NextOffset {
 			return nil, false, errors.New("subscription: tablet continuation offset did not advance")

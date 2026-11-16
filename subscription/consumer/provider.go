@@ -28,7 +28,6 @@ import (
 
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -64,6 +63,12 @@ func openSubscriptionProvider(ctx context.Context, config SubscriptionConsumerCo
 	if instanceID == "" {
 		return nil, errors.New("subscription: consumer instance ID must not be empty")
 	}
+	defer func() {
+		if err == nil {
+			return
+		}
+		err = classifyAndRedactConnectionError(err, config.Connection.Password, config.Connection.EncryptedPassword)
+	}()
 	openingCtx, cancel := context.WithTimeout(ctx, config.Connection.ConnectTimeout)
 	defer cancel()
 	connectionConfig := config.Connection
@@ -232,7 +237,7 @@ func (p *subscriptionProvider) sendOne(ctx context.Context, request *rpc.TPipeSu
 	}
 	if err := verifySubscriptionProviderStatus(response.Status); err != nil {
 		var statusErr *subscriptionStatusError
-		if errors.As(err, &statusErr) && statusErr.Code == 1920 {
+		if errors.As(err, &statusErr) && statusErr.Code == client.SubscriptionOversizedEntry {
 			_ = p.connection.Abort()
 		}
 		return nil, err
@@ -363,7 +368,7 @@ func (p *subscriptionProvider) pollPayloads(ctx context.Context, request *rpc.TP
 	response, err := p.call(ctx, request)
 	if err != nil {
 		var statusErr *subscriptionStatusError
-		if errors.As(err, &statusErr) && statusErr.Code == 1904 {
+		if errors.As(err, &statusErr) && statusErr.Code == client.SubscriptionPollError {
 			// Broker loss is a server-reported connection failure. Rebuilding the
 			// provider and handshaking again is required before another poll.
 			group := "[" + p.groupID + "]"
@@ -419,22 +424,7 @@ func partitionSubscriptionContexts(contexts []payload.CommitContext, limit, fixe
 	return append(batches, contexts[start:]), nil
 }
 
-// subscriptionStatusError retains server status and its retry classification
-// without expanding the public error API before Consumer error handling exists.
-type subscriptionStatusError struct {
-	Code int32
-	Message string
-	Critical bool
-	cause error
-}
-
-func (e *subscriptionStatusError) Error() string {
-	return fmt.Sprintf("subscription: server status %d: %s", e.Code, e.Message)
-}
-
-func (e *subscriptionStatusError) Unwrap() error {
-	return e.cause
-}
+type subscriptionStatusError = subscription.SubscriptionError
 
 func verifySubscriptionProviderStatus(status *common.TSStatus) error {
 	if status == nil {
@@ -443,16 +433,58 @@ func verifySubscriptionProviderStatus(status *common.TSStatus) error {
 	if status.Code == client.SuccessStatus {
 		return nil
 	}
-	failure := &subscriptionStatusError{Code: status.Code, Message: status.GetMessage()}
+	failure := &subscription.SubscriptionError{Code: status.Code, Message: status.GetMessage()}
 	switch status.Code {
-	case 1902, 1903, 1904, 1905, 1906, 1907, 1908, 1911, 1913, 1920:
-	case 1914, 1915, 1916, 1917, 1918:
-		failure.cause = subscription.ErrOwnerFenced
-	case 1919:
-		failure.cause = subscription.ErrConsumerFenced
+	case client.SubscriptionHandshakeError,
+		client.SubscriptionHeartbeatError,
+		client.SubscriptionPollError,
+		client.SubscriptionCommitError,
+		client.SubscriptionCloseError,
+		client.SubscriptionSubscribeError,
+		client.SubscriptionUnsubscribeError,
+		client.SubscriptionSeekError:
+		failure.Kind = subscription.ErrorKindRuntimeNonCritical
+	case client.SubscriptionPipeTimeoutError:
+		failure.Kind = subscription.ErrorKindPipeTimeout
+	case client.SubscriptionOwnerFenced,
+		client.SubscriptionOwnerRequired,
+		client.SubscriptionOwnerEpochRequired,
+		client.SubscriptionOwnerLeaseExpired,
+		client.SubscriptionOwnerEpochConflict:
+		failure.Kind = subscription.ErrorKindOwnerFenced
+		failure.Cause = subscription.ErrOwnerFenced
+	case client.SubscriptionConsumerFenced:
+		failure.Kind = subscription.ErrorKindConsumerFenced
+		failure.Cause = subscription.ErrConsumerFenced
 		failure.Critical = true
+	case client.SubscriptionOversizedEntry:
+		failure.Kind = subscription.ErrorKindPayloadExceed
 	default:
+		failure.Kind = subscription.ErrorKindRuntimeCritical
 		failure.Critical = true
 	}
 	return failure
+}
+
+func classifyAndRedactConnectionError(err error, secrets ...string) error {
+	var status *subscription.SubscriptionError
+	if errors.As(err, &status) {
+		copy := *status
+		copy.Message = redactSubscriptionSecrets(copy.Message, secrets)
+		return &copy
+	}
+	return &subscription.SubscriptionError{
+		Kind: subscription.ErrorKindConnection,
+		Message: redactSubscriptionSecrets(err.Error(), secrets),
+		Cause: err,
+	}
+}
+
+func redactSubscriptionSecrets(message string, secrets []string) string {
+	for _, secret := range secrets {
+		if secret != "" {
+			message = strings.ReplaceAll(message, secret, "[REDACTED]")
+		}
+	}
+	return message
 }

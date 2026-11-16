@@ -19,7 +19,51 @@
 
 package subscription
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
+
+// ErrorKind identifies the Java subscription exception category represented by
+// an operation error. Transport errors remain compatible with errors.Is and
+// errors.As through SubscriptionError.Unwrap.
+type ErrorKind uint8
+
+const (
+	ErrorKindUnknown ErrorKind = iota
+	ErrorKindConnection
+	ErrorKindPipeTimeout
+	ErrorKindRuntimeNonCritical
+	ErrorKindRuntimeCritical
+	ErrorKindParameterNotValid
+	ErrorKindPayloadExceed
+	ErrorKindOwnerFenced
+	ErrorKindConsumerFenced
+)
+
+// SubscriptionError preserves a server status and its Java-compatible error
+// category. Code is zero for transport or locally classified errors.
+type SubscriptionError struct {
+	Kind ErrorKind
+	Code int32
+	Message string
+	Critical bool
+	Cause error
+}
+
+func (e *SubscriptionError) Error() string {
+	if e.Code != 0 {
+		return fmt.Sprintf("subscription: server status %d: %s", e.Code, e.Message)
+	}
+	if e.Message != "" {
+		return "subscription: " + e.Message
+	}
+	return "subscription: operation failed"
+}
+
+func (e *SubscriptionError) Unwrap() error {
+	return e.Cause
+}
 
 // Sentinel errors can be matched through wrapped operation errors with errors.Is.
 var (

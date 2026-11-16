@@ -20,6 +20,7 @@
 package consumer
 
 import (
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
 	messageprocessor "github.com/apache/iotdb-client-go/subscription/processor"
@@ -454,6 +455,21 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 		providers = c.providerSnapshot()
 	}
 	var failures []error
+	clearRedirectAcks := func() {
+		if !unsubscribe {
+			return
+		}
+		c.mu.Lock()
+		for key, commitContext := range c.redirectAcks {
+			for _, topic := range topics {
+				if commitContext.Topic == topic {
+					delete(c.redirectAcks, key)
+					break
+				}
+			}
+		}
+		c.mu.Unlock()
+	}
 	for _, provider := range providers {
 		if provider.connection.Closed() {
 			continue
@@ -462,16 +478,8 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 		if err == nil {
 			c.mu.Lock()
 			c.topics = current
-			if unsubscribe {
-				for key, commitContext := range c.redirectAcks {
-					for _, topic := range topics {
-						if commitContext.Topic == topic {
-							delete(c.redirectAcks, key)
-						}
-					}
-				}
-			}
 			c.mu.Unlock()
+			clearRedirectAcks()
 			return nil
 		}
 		err = c.handleProviderError(provider, err)
@@ -479,9 +487,10 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 			return err
 		}
 		var status *subscriptionStatusError
-		if errors.As(err, &status) && status.Code == 1911 {
+		if errors.As(err, &status) && status.Code == client.SubscriptionPipeTimeoutError {
 			// As in Java, a pipe procedure can finish after its timeout. A later
 			// heartbeat reconciles the server's subscription configuration.
+			clearRedirectAcks()
 			return nil
 		}
 		failures = append(failures, err)

@@ -49,9 +49,9 @@ type SubscriptionConsumerConfig struct {
 	// endpoints. Java consumers default to two minutes and enforce a five-second
 	// minimum.
 	EndpointsSyncInterval time.Duration
-	// MaxPollParallelism limits parallel polling work. The Java default and
-	// minimum are both one, allowing polling to use a separate worker when
-	// resources are available so its timeout can be enforced.
+	// MaxPollParallelism is retained for Java configuration compatibility. The
+	// current Java client executes poll work serially even when this is greater
+	// than one, so Go also polls serially.
 	MaxPollParallelism int
 }
 

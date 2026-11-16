@@ -249,7 +249,7 @@ func (c *subscriptionPullConsumer) commitNode(ctx context.Context, node int32, c
 				return failure
 			}
 			var status *subscriptionStatusError
-			if errors.As(failure, &status) && status.Code != 1920 {
+			if errors.As(failure, &status) && status.Code != client.SubscriptionOversizedEntry {
 				return failure
 			}
 		}
@@ -533,14 +533,21 @@ func (c *subscriptionPullConsumer) seekProgress(ctx context.Context, topic strin
 		providers = c.providerSnapshot()
 	}
 	available := 0
+	type seekFailure struct {
+		provider *subscriptionProvider
+		err error
+	}
+	var providerFailures []seekFailure
 	for _, provider := range providers {
 		if provider.connection.Closed() {
 			continue
 		}
 		available++
 		if err := provider.seek(operationCtx, name, kind, progress); err != nil {
-			err = c.handleProviderError(provider, err)
-			return err
+			if operationCtx.Err() != nil {
+				return operationCtx.Err()
+			}
+			providerFailures = append(providerFailures, seekFailure{provider: provider, err: err})
 		}
 	}
 	if available == 0 {
@@ -548,6 +555,14 @@ func (c *subscriptionPullConsumer) seekProgress(ctx context.Context, topic strin
 	}
 	if err := operationCtx.Err(); err != nil {
 		return err
+	}
+	var failures []error
+	for _, failure := range providerFailures {
+		err := c.handleProviderError(failure.provider, failure.err)
+		failures = append(failures, fmt.Errorf("subscription: seek provider %s: %w", failure.provider.endpoint, err))
+	}
+	if len(failures) != 0 {
+		return errors.Join(failures...)
 	}
 	c.mu.Lock()
 	if err := c.stateErrorLocked(false); err != nil {
