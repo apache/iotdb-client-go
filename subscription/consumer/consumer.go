@@ -87,11 +87,11 @@ type SubscriptionConsumerInfo struct {
 // network polling, subject to an earlier context deadline. Processor callbacks
 // run serially and must return promptly. No topics means all subscribed topics.
 //
-// A TsFile decoding error returns no messages for that poll round, including
-// records from parallel requests. That round is not acknowledged, added to the
-// processor or auto-commit buffers, or used to advance positions. Previously
-// delivered records and confirmed progress are unaffected. The caller can
-// unsubscribe the offending topic and poll again; no automatic retry is made.
+// A TsFile decoding error returns no messages for that poll round. That round is
+// not acknowledged, added to the processor or auto-commit buffers, or used to
+// advance positions. Previously delivered records and confirmed progress are
+// unaffected. The caller can unsubscribe the offending topic and poll again; no
+// automatic retry is made.
 type SubscriptionPullConsumer interface {
 	SubscriptionConsumer
 
@@ -101,9 +101,10 @@ type SubscriptionPullConsumer interface {
 	// A negative timeout is invalid. Zero skips waiting for a busy consumer or
 	// connection recovery and attempts one round of server polls with no server
 	// wait; network I/O remains bounded by ctx. Caller cancellation is an error.
-	// Only expiration of the poll's own budget may return complete records from
-	// healthy parallel requests while discarding incomplete sibling results.
-	// It returns an error when polling, context cancellation, or decoding fails.
+	// Requests are issued serially. Each response is either fully decoded and
+	// returned or discarded with the round; no partial sibling results are
+	// exposed. It returns an error when polling, context cancellation, or decoding
+	// fails.
 	Poll(ctx context.Context, timeout time.Duration, topics ...string) ([]payload.SubscriptionMessage, error)
 	// PollWithInfo polls with the same topic, timeout, and error semantics as
 	// Poll and also reports processor buffering and ordering-watermark state.

@@ -889,8 +889,11 @@ func TestSubscriptionTreeSeekAfterIgnoresStaleCommitContext(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 	for _, message := range stale {
-		_ = consumer.Commit(ctx, message)
+		commitErr := consumer.Commit(ctx, message)
 		message.Release()
+		if commitErr != nil {
+			t.Fatalf("commit stale message after seek: %v", commitErr)
+		}
 	}
 	subscriptionTreeRequireRows(t, subscriptionTreeCollect(t, ctx, consumer, 1, true, false), tail)
 }
