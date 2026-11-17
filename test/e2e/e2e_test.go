@@ -24,7 +24,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"strings"
 	"testing"
 	"time"
 
@@ -43,11 +42,7 @@ func TestE2ETestSuite(t *testing.T) {
 }
 
 func (s *e2eTestSuite) SetupSuite() {
-	clusterConfig := client.ClusterConfig{
-		NodeUrls: strings.Split("iotdb:6668,iotdb:6667,iotdb:6669", ","),
-		UserName: "root",
-		Password: "root",
-	}
+	clusterConfig := e2eClusterConfig()
 	session, err := client.NewClusterSession(&clusterConfig)
 	s.Require().NoError(err)
 	s.session = session
@@ -74,11 +69,8 @@ func (s *e2eTestSuite) checkError(err error) {
 }
 
 func (s *e2eTestSuite) Test_WrongURL() {
-	clusterConfig := client.ClusterConfig{
-		NodeUrls: strings.Split("iotdb1:6667", ","),
-		UserName: "root",
-		Password: "root",
-	}
+	clusterConfig := e2eClusterConfig()
+	clusterConfig.NodeUrls = []string{"iotdb1:6667"}
 	_, err := client.NewClusterSession(&clusterConfig)
 	s.Require().Error(err)
 }

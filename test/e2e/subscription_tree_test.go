@@ -23,7 +23,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -37,50 +36,9 @@ import (
 	"github.com/apache/iotdb-client-go/v2/client"
 )
 
-// Subscription tests require explicit opt-in and a subscription-capable server.
-// Set IOTDB_SUBSCRIPTION_E2E=1 and optionally IOTDB_SUBSCRIPTION_NODE_URLS to a
-// comma-separated seed list. Incremental cases require WAL subscriptions with a
-// compatible DataRegion consensus protocol; Ratis is not supported. Opting in
-// makes unavailable server features fail rather than silently skip these cases.
-// Java topic/path/time/snapshot ITs provide design references, but some are
-// @Ignore in that checkout; their presence is not evidence these Go tests ran.
-func subscriptionE2EConnection(t *testing.T) subscription.ConnectionConfig {
-	t.Helper()
-	if os.Getenv("IOTDB_SUBSCRIPTION_E2E") != "1" {
-		t.Skip("set IOTDB_SUBSCRIPTION_E2E=1 to enable subscription server tests")
-	}
-	nodes := os.Getenv("IOTDB_SUBSCRIPTION_NODE_URLS")
-	if nodes == "" {
-		nodes = nodeUrls
-	}
-	var addresses []string
-	for _, address := range strings.Split(nodes, ",") {
-		if address = strings.TrimSpace(address); address != "" {
-			addresses = append(addresses, address)
-		}
-	}
-	if len(addresses) == 0 {
-		t.Fatal("subscription endpoint list is empty")
-	}
-	user := os.Getenv("IOTDB_SUBSCRIPTION_USERNAME")
-	if user == "" {
-		user = "root"
-	}
-	secret, supplied := os.LookupEnv("IOTDB_SUBSCRIPTION_PASSWORD")
-	if !supplied {
-		secret, supplied = os.LookupEnv("IOTDB_PASSWORD")
-	}
-	if !supplied {
-		secret = "root"
-	}
-	config := subsession.DefaultSubscriptionSessionConfig().Connection
-	config.NodeURLs, config.Username, config.Password = addresses, user, secret
-	return config
-}
-
 func subscriptionE2EContext(t *testing.T) context.Context {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), subscriptionE2ETestTimeout)
 	t.Cleanup(cancel)
 	return ctx
 }
@@ -104,7 +62,7 @@ func subscriptionE2EManager(t *testing.T, connection subscription.ConnectionConf
 			t.Errorf("close subscription manager: %v", err)
 		}
 	})
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), subscriptionE2EOpenTimeout)
 	defer cancel()
 	if err := manager.Open(ctx); err != nil {
 		t.Fatal(err)
@@ -118,10 +76,19 @@ func subscriptionE2ETopic(t *testing.T, ctx context.Context, manager subsession.
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), subscriptionE2ECleanupTimeout)
 		defer cancel()
-		if err := manager.DropTopic(cleanupCtx, name, subsession.DropOptions{IfExists: true}); err != nil {
-			t.Errorf("drop topic %s: %v", name, err)
+		for {
+			err := manager.DropTopic(cleanupCtx, name, subsession.DropOptions{IfExists: true})
+			if err == nil {
+				return
+			}
+			select {
+			case <-cleanupCtx.Done():
+				t.Errorf("drop topic %s: %v", name, err)
+				return
+			case <-time.After(100 * time.Millisecond):
+			}
 		}
 	})
 }
@@ -130,9 +97,9 @@ func subscriptionE2EPull(t *testing.T, ctx context.Context, connection subscript
 	t.Helper()
 	config := subconsumer.DefaultSubscriptionPullConsumerConfig()
 	config.Consumer.Connection, config.Consumer.Dialect = connection, dialect
-	config.Consumer.HeartbeatInterval = time.Second
-	config.Consumer.EndpointsSyncInterval = 5 * time.Second
-	config.AutoCommit, config.AutoCommitInterval = &autoCommit, 500*time.Millisecond
+	config.Consumer.HeartbeatInterval = subscriptionE2EHeartbeatInterval
+	config.Consumer.EndpointsSyncInterval = subscriptionE2EEndpointsSyncInterval
+	config.AutoCommit, config.AutoCommitInterval = &autoCommit, subscriptionE2EAutoCommitInterval
 	consumer, err := subconsumer.NewSubscriptionPullConsumer(config)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +129,7 @@ func subscriptionTreeWriter(t *testing.T, connection subscription.ConnectionConf
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := session.Open(false, 10000); err != nil {
+	if err := session.Open(false, subscriptionE2EWriterTimeoutMs); err != nil {
 		_ = session.Close()
 		t.Fatal(err)
 	}
@@ -176,9 +143,9 @@ func subscriptionTreeWriter(t *testing.T, connection subscription.ConnectionConf
 			t.Errorf("close tree writer: %v", err)
 		}
 	})
-	subscriptionTreeSQL(t, &session, "CREATE DATABASE " + database)
+	subscriptionTreeSQL(t, &session, "CREATE DATABASE "+database)
 	for _, series := range []string{".d1.s1", ".d1.s2", ".d2.s1"} {
-		subscriptionTreeSQL(t, &session, "CREATE TIMESERIES " + database + series + " WITH DATATYPE=INT64, ENCODING=RLE")
+		subscriptionTreeSQL(t, &session, "CREATE TIMESERIES "+database+series+" WITH DATATYPE=INT64, ENCODING=RLE")
 	}
 	return &session, database
 }
@@ -191,10 +158,10 @@ func subscriptionTreeSQL(t *testing.T, writer *client.Session, sql string) {
 }
 
 type subscriptionTreeRow struct {
-	target string
-	column string
+	target    string
+	column    string
 	timestamp int64
-	value int64
+	value     int64
 }
 
 func subscriptionTreeInsert(t *testing.T, writer *client.Session, database, device, column string, timestamp, value int64) subscriptionTreeRow {
@@ -244,8 +211,8 @@ func subscriptionTreeCollect(t *testing.T, ctx context.Context, consumer subcons
 	t.Helper()
 	seen := make(map[subscriptionTreeRow]int)
 	empty := 0
-	for round := 0; round < 40; round++ {
-		messages, err := consumer.Poll(ctx, time.Second)
+	for round := 0; round < subscriptionE2EMaxPollRounds; round++ {
+		messages, err := consumer.Poll(ctx, subscriptionE2EPollTimeout)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -265,7 +232,7 @@ func subscriptionTreeCollect(t *testing.T, ctx context.Context, consumer subcons
 			if consumer.AllConsumed() {
 				return seen
 			}
-		} else if len(seen) >= expected && empty >= 3 {
+		} else if len(seen) >= expected && empty >= subscriptionE2EQuietPollRounds {
 			return seen
 		}
 	}
@@ -462,10 +429,10 @@ func TestSubscriptionTreeIncrementalSeekAfterReplaysExactTail(t *testing.T) {
 }
 
 type subscriptionTreePushResult struct {
-	rows []subscriptionTreeRow
+	rows    []subscriptionTreeRow
 	context subpayload.CommitContext
-	failed bool
-	err error
+	failed  bool
+	err     error
 }
 
 // This supplements Java's local/IoTDBSubscriptionBasicIT record Push scenarios
@@ -485,8 +452,8 @@ func TestSubscriptionTreePushAfterConsumeRedeliversOneFailure(t *testing.T) {
 	results := make(chan subscriptionTreePushResult, 8)
 	config := subconsumer.DefaultSubscriptionPushConsumerConfig()
 	config.Consumer.Connection = connection
-	config.Consumer.HeartbeatInterval = time.Second
-	config.PollTimeout, config.PollInterval = time.Second, 100*time.Millisecond
+	config.Consumer.HeartbeatInterval = subscriptionE2EHeartbeatInterval
+	config.PollTimeout, config.PollInterval = subscriptionE2EPollTimeout, subscriptionE2EPushPollInterval
 	config.AckStrategy = subconsumer.AckAfterConsume
 	config.Handler = func(callbackCtx context.Context, message subpayload.SubscriptionMessage) error {
 		rows, err := subscriptionTreeRows(callbackCtx, message)
@@ -513,7 +480,7 @@ func TestSubscriptionTreePushAfterConsumeRedeliversOneFailure(t *testing.T) {
 		if err := consumer.Close(); err != nil {
 			t.Errorf("close push consumer: %v", err)
 		}
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), subscriptionE2ECleanupTimeout)
 		defer cancel()
 		for {
 			select {
@@ -558,7 +525,7 @@ func TestSubscriptionTreePushAfterConsumeRedeliversOneFailure(t *testing.T) {
 	if confirmed.Writer == nil {
 		t.Fatal("incremental delivery did not expose writer progress")
 	}
-	ticker := time.NewTicker(20 * time.Millisecond)
+	ticker := time.NewTicker(subscriptionTreeE2EProgressPollInterval)
 	defer ticker.Stop()
 	for {
 		progress, err := consumer.CommittedPositions(topic)
@@ -594,8 +561,8 @@ func TestSubscriptionTreeTsFilePollIsExplicitlyUnsupported(t *testing.T) {
 	topic := subscriptionE2EName("tree_tsfile")
 	subscriptionE2ETopic(t, ctx, manager, topic, map[string]string{"format": "SubscriptionTsFileHandler", "mode": "initial", "path": database + ".d1.s1"})
 	consumer := subscriptionE2EPull(t, ctx, connection, subscription.TreeDialect, topic, false)
-	for round := 0; round < 40; round++ {
-		messages, err := consumer.Poll(ctx, time.Second)
+	for round := 0; round < subscriptionE2EMaxPollRounds; round++ {
+		messages, err := consumer.Poll(ctx, subscriptionE2EPollTimeout)
 		if len(messages) != 0 {
 			for _, message := range messages {
 				message.Release()

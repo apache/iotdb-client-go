@@ -72,10 +72,15 @@ generate:
 	fi
 	@rm -rf rpc/i_client_r_p_c_service-remote
 
-.PHONY: generate all test e2e_test e2e_test_clean
+.PHONY: generate all test test_client test_subscription e2e_test e2e_test_clean
 
-test:
+test: test_client test_subscription
+
+test_client:
 	go test -v ./client/...
+
+test_subscription:
+	cd subscription && go test -v ./...
 
 e2e_test:
 	sh -c "cd /tmp/ && rm -rf iotdb && git clone https://github.com/apache/iotdb.git && cd iotdb && mvn clean package -pl distribution -am -DskipTests"

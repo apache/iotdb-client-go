@@ -86,6 +86,8 @@ func newSubscriptionPullConsumer(resolved SubscriptionPullConsumerConfig) (*subs
 		uncommitted: make(map[subscriptionCommitKey]subscriptionPendingCommit),
 		uncommittedDeadlines: make(subscriptionCommitDeadlineHeap, 0),
 		redirectAcks: make(map[subscriptionCommitKey]payload.CommitContext),
+		pendingTerminations: make(map[string]struct{}),
+		pendingUnsubscribes: make(map[string]struct{}),
 		identity: SubscriptionConsumerInfo{
 			ConsumerID: resolved.Consumer.ConsumerID,
 			GroupID: resolved.Consumer.GroupID,
@@ -128,6 +130,9 @@ type subscriptionPullConsumer struct {
 	uncommitted map[subscriptionCommitKey]subscriptionPendingCommit
 	uncommittedDeadlines subscriptionCommitDeadlineHeap
 	redirectAcks map[subscriptionCommitKey]payload.CommitContext
+	pendingTerminations map[string]struct{}
+	pendingUnsubscribes map[string]struct{}
+	lastAutoCommitError error
 	watermark int64
 	hasWatermark bool
 	pendingCritical error
@@ -404,7 +409,61 @@ func (c *subscriptionPullConsumer) LatestWatermark() (int64, bool) {
 func (c *subscriptionPullConsumer) AllConsumed() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return len(c.topics) == 0
+	for topic := range c.topics {
+		if _, completed := c.pendingTerminations[topic]; !completed {
+			return false
+		}
+	}
+	return true
+}
+
+func (c *subscriptionPullConsumer) LastAutoCommitError() error {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.lastAutoCommitError
+}
+
+func (c *subscriptionPullConsumer) stagePendingTerminations(topics []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, topic := range topics {
+		if topic != "" {
+			c.pendingTerminations[topic] = struct{}{}
+			c.pendingUnsubscribes[topic] = struct{}{}
+		}
+	}
+}
+
+func (c *subscriptionPullConsumer) pendingTerminationTopics() []string {
+	c.mu.RLock()
+	topics := make([]string, 0, len(c.pendingTerminations))
+	for topic := range c.pendingTerminations {
+		topics = append(topics, topic)
+	}
+	c.mu.RUnlock()
+	sort.Strings(topics)
+	return topics
+}
+
+func (c *subscriptionPullConsumer) reconcileTopicStateLocked() {
+	for topic := range c.pendingTerminations {
+		if _, exists := c.topics[topic]; !exists {
+			delete(c.pendingTerminations, topic)
+		}
+	}
+	for topic := range c.pendingUnsubscribes {
+		if _, exists := c.topics[topic]; !exists {
+			delete(c.pendingUnsubscribes, topic)
+		}
+	}
+}
+
+func (c *subscriptionPullConsumer) flushPendingTerminations(ctx context.Context) error {
+	topics := c.pendingTerminationTopics()
+	if len(topics) == 0 {
+		return nil
+	}
+	return c.changeSubscriptions(ctx, topics, true)
 }
 
 func (c *subscriptionPullConsumer) Subscribe(ctx context.Context, topics ...string) error {
@@ -443,6 +502,11 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 	}
 	c.mu.Lock()
 	c.topicRevision++
+	if unsubscribe {
+		for _, topic := range topics {
+			c.pendingUnsubscribes[topic] = struct{}{}
+		}
+	}
 	c.mu.Unlock()
 	defer func() {
 		c.mu.Lock()
@@ -480,6 +544,13 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 		if err == nil {
 			c.mu.Lock()
 			c.topics = current
+			if !unsubscribe {
+				for _, topic := range topics {
+					delete(c.pendingTerminations, topic)
+					delete(c.pendingUnsubscribes, topic)
+				}
+			}
+			c.reconcileTopicStateLocked()
 			c.mu.Unlock()
 			clearRedirectAcks()
 			return nil

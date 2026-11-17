@@ -59,10 +59,11 @@ type SubscriptionConsumer interface {
 	// LatestWatermark reports the latest received server watermark. The boolean
 	// is false until a watermark is observed. This is not a processor watermark.
 	LatestWatermark() (timestamp int64, ok bool)
-	// AllConsumed reports whether all subscribed topics have completed and been
-	// automatically unsubscribed. An active unbounded topic prevents completion;
-	// no subscriptions means true. This does not assert that delivered messages
-	// were committed or that client-side processor buffers have been drained.
+	// AllConsumed reports whether every currently subscribed topic has emitted a
+	// server completion termination. A bounded unsubscribe may still be pending
+	// cleanup after this becomes true. An active unbounded topic prevents
+	// completion; no subscriptions means true. This does not assert that delivered
+	// messages were committed or that client-side processor buffers were drained.
 	AllConsumed() bool
 }
 
@@ -122,6 +123,9 @@ type SubscriptionPullConsumer interface {
 	// never blocks cleanup. Context cancellation does not undo accepted commits.
 	CommitAsync(ctx context.Context, messages ...payload.SubscriptionMessage) <-chan error
 
+	// LastAutoCommitError returns the most recent background auto-commit error.
+	// It is cleared after a later due auto-commit batch succeeds completely.
+	LastAutoCommitError() error
 	// AddProcessor appends a processor to the pipeline. Each poll passes messages
 	// through processors in their addition order before making records visible.
 	AddProcessor(processor messageprocessor.SubscriptionMessageProcessor) error

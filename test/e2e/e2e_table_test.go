@@ -23,7 +23,6 @@ import (
 	"bytes"
 	"log"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -34,14 +33,7 @@ import (
 	"github.com/apache/iotdb-client-go/v2/client"
 )
 
-var (
-	nodeUrls = "iotdb:6668,iotdb:6667,iotdb:6669"
-	host     = "iotdb"
-	port     = "6667"
-	username = "root"
-	password = "root"
-	database = "test_db"
-)
+var database = "test_db"
 
 type e2eTableTestSuite struct {
 	suite.Suite
@@ -53,11 +45,7 @@ func TestE2ETableTestSuite(t *testing.T) {
 }
 
 func (s *e2eTableTestSuite) SetupSuite() {
-	clusterConfig := client.ClusterConfig{
-		NodeUrls: strings.Split(nodeUrls, ","),
-		UserName: username,
-		Password: password,
-	}
+	clusterConfig := e2eClusterConfig()
 	session, err := client.NewClusterTableSession(&clusterConfig, false)
 	s.Require().NoError(err)
 	s.session = session
@@ -84,12 +72,7 @@ func (s *e2eTableTestSuite) TearDownTest() {
 
 func (s *e2eTableTestSuite) Test_CreateTableSession() {
 	assert := s.Require()
-	config := &client.Config{
-		Host:     host,
-		Port:     port,
-		UserName: username,
-		Password: password,
-	}
+	config := e2eTableConfig("")
 	session, err := client.NewTableSession(config, false, 3000)
 	assert.NoError(err)
 	defer session.Close()
@@ -98,13 +81,7 @@ func (s *e2eTableTestSuite) Test_CreateTableSession() {
 
 func (s *e2eTableTestSuite) Test_CreateTableSessionWithDatabase() {
 	assert := s.Require()
-	config := &client.Config{
-		Host:     host,
-		Port:     port,
-		UserName: username,
-		Password: password,
-		Database: database,
-	}
+	config := e2eTableConfig(database)
 	session, err := client.NewTableSession(config, false, 3000)
 	defer session.Close()
 	assert.NoError(err)
@@ -115,12 +92,7 @@ func (s *e2eTableTestSuite) Test_CreateTableSessionWithDatabase() {
 
 func (s *e2eTableTestSuite) Test_GetSessionFromTableSessionPool() {
 	assert := s.Require()
-	poolConfig := &client.PoolConfig{
-		Host:     host,
-		Port:     port,
-		UserName: username,
-		Password: password,
-	}
+	poolConfig := e2eTablePoolConfig("")
 	sessionPool := client.NewTableSessionPool(poolConfig, 3, 10000, 3000, false)
 	defer sessionPool.Close()
 
@@ -174,13 +146,7 @@ func (s *e2eTableTestSuite) Test_GetSessionFromTableSessionPool() {
 
 func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase() {
 	assert := s.Require()
-	poolConfig := &client.PoolConfig{
-		Host:     host,
-		Port:     port,
-		UserName: username,
-		Password: password,
-		Database: database,
-	}
+	poolConfig := e2eTablePoolConfig(database)
 	sessionPool := client.NewTableSessionPool(poolConfig, 3, 10000, 3000, false)
 	defer sessionPool.Close()
 
@@ -248,13 +214,7 @@ func (s *e2eTableTestSuite) Test_GetSessionFromSessionPoolWithSpecificDatabase()
 
 func (s *e2eTableTestSuite) Test_ErrInTableSessionPool() {
 	assert := s.Require()
-	poolConfig := &client.PoolConfig{
-		Host:     host,
-		Port:     port,
-		UserName: username,
-		Password: password,
-		Database: database,
-	}
+	poolConfig := e2eTablePoolConfig(database)
 	sessionPool := client.NewTableSessionPool(poolConfig, 3, 10000, 3000, false)
 	defer sessionPool.Close()
 

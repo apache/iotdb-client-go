@@ -20,6 +20,7 @@
 package consumer
 
 import (
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
 	"github.com/apache/iotdb-client-go/subscription/internal/protocol"
@@ -505,7 +506,10 @@ func (c *subscriptionPullConsumer) autoCommit(ctx context.Context, now time.Time
 	defer func() { <-c.progressOperations }()
 	contexts := c.pendingCommitContexts(false, now)
 	if len(contexts) != 0 {
-		_ = c.commitUniqueContextsLocked(ctx, contexts, false)
+		err := c.commitUniqueContextsLocked(ctx, contexts, false)
+		c.mu.Lock()
+		c.lastAutoCommitError = err
+		c.mu.Unlock()
 		c.requeuePendingCommitContexts(contexts, now)
 	}
 }
@@ -675,6 +679,8 @@ func (c *subscriptionPullConsumer) seekProgress(ctx context.Context, topic strin
 			delete(c.redirectAcks, key)
 		}
 	}
+	delete(c.pendingTerminations, name)
+	delete(c.pendingUnsubscribes, name)
 	c.mu.Unlock()
 	c.resetProcessors(name)
 	return nil

@@ -297,6 +297,7 @@ func (c *subscriptionPullConsumer) providerHeartbeat(ctx context.Context, provid
 		// snapshot, even if no second revision increment has happened yet.
 		if c.topicRevision == revision && revision%2 == 0 {
 			c.topics = response.Topics
+			c.reconcileTopicStateLocked()
 		} else {
 			response.Unsubscribe = nil
 		}
@@ -347,6 +348,7 @@ func (c *subscriptionPullConsumer) runProviderHeartbeat(provider *subscriptionPr
 		return
 	}
 	if len(response.Unsubscribe) != 0 {
+		c.stagePendingTerminations(response.Unsubscribe)
 		ctx, cancel := context.WithTimeout(c.lifeCtx, c.config.Consumer.Connection.ConnectTimeout)
 		defer cancel()
 		operationCtx, finish, err := c.beginOperation(ctx)
@@ -358,7 +360,7 @@ func (c *subscriptionPullConsumer) runProviderHeartbeat(provider *subscriptionPr
 		current := c.providers[provider.dataNodeID] == provider && c.topicRevision == revision
 		c.mu.RUnlock()
 		if current {
-			_ = c.changeSubscriptions(operationCtx, response.Unsubscribe, true)
+			_ = c.flushPendingTerminations(operationCtx)
 		}
 	}
 }

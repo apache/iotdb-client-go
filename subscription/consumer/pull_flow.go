@@ -138,6 +138,11 @@ func (c *subscriptionPullConsumer) beginFlowPoll(ctx context.Context, timeout ti
 }
 
 func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Context, immediate bool, topics []string) ([]payload.SubscriptionMessage, error) {
+	if !immediate {
+		if err := c.flushPendingTerminations(pollCtx); err != nil {
+			return nil, err
+		}
+	}
 	selected, err := c.flowTopics(topics)
 	if err != nil {
 		return nil, err
@@ -239,12 +244,14 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 			}
 		}
 	}
-	if pollCtx.Err() == nil && len(terminations) != 0 {
-		names := uniqueFlowTopics(terminations)
-		if err := c.changeSubscriptions(pollCtx, names, true); err != nil {
-			if !(operationCtx.Err() == nil && pollCtx.Err() != nil && errors.Is(err, context.DeadlineExceeded)) {
-				c.rollbackFlow(pollCtx, allContexts)
-				return nil, err
+	if len(terminations) != 0 {
+		c.stagePendingTerminations(terminations)
+		if pollCtx.Err() == nil {
+			if err := c.flushPendingTerminations(pollCtx); err != nil {
+				if !(operationCtx.Err() == nil && pollCtx.Err() != nil && errors.Is(err, context.DeadlineExceeded)) {
+					c.rollbackFlow(pollCtx, allContexts)
+					return nil, err
+				}
 			}
 		}
 	}

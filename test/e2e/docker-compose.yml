@@ -36,6 +36,11 @@ services:
     build:
       context: ../..
       dockerfile: test/e2e/Dockerfile.iotdb-client-go
+    environment:
+      IOTDB_E2E_NODE_URLS:
+      IOTDB_E2E_USERNAME:
+      IOTDB_E2E_PASSWORD:
+      IOTDB_SUBSCRIPTION_E2E:
     depends_on:
       iotdb:
         condition: service_healthy

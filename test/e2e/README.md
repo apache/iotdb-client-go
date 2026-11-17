@@ -35,11 +35,15 @@ cd test/e2e
 go test -v ./...
 ```
 
-The existing Session suites use the Docker hostname `iotdb` and their existing fixed connection settings. For a locally managed server, select only the subscription cases:
+The existing Session suites use the Docker hostname `iotdb` and their existing fixed connection settings. A normal `go test -v ./...` discovers subscription cases as well; without the opt-in environment variable, every subscription case reports `SKIP`. For a locally managed server, enable only the subscription cases with explicit connection credentials:
 
 ```sh
 cd test/e2e
-IOTDB_SUBSCRIPTION_E2E=1 IOTDB_SUBSCRIPTION_NODE_URLS=127.0.0.1:6667 go test -v -run '^TestSubscription' ./...
+IOTDB_SUBSCRIPTION_E2E=1 \
+IOTDB_E2E_NODE_URLS=iotdb:6668,iotdb:6667,iotdb:6669 \
+IOTDB_E2E_USERNAME=root \
+IOTDB_E2E_PASSWORD=root \
+go test -v -run '^TestSubscription' ./...
 ```
 
 The commands above are instructions for the user; they were not executed during this change.
@@ -52,17 +56,18 @@ The subscription module's existing 19 unit-test cases were moved with the implem
 
 ## Subscription server requirements
 
-Use a server with subscription support enabled. Incremental cases additionally require WAL subscriptions and a compatible non-Ratis DataRegion consensus protocol, such as the supported IoTConsensus configuration of the target server. Merely exposing the normal Session RPC endpoint does not establish that these subscription features are available.
+Use a server with subscription support enabled. Incremental cases additionally require WAL subscriptions and a compatible non-Ratis DataRegion consensus protocol, such as the supported IoTConsensus configuration of the target server. The E2E Docker startup enables `subscription_enabled` and gives the Subscription component a nonzero ninth share in `chunk_timeseriesmeta_free_memory_proportion`; both settings take effect after DataNode restart. A locally managed server needs equivalent settings, sized for its memory and active subscription queues. Merely exposing the normal Session RPC endpoint does not establish that these subscription features are available.
 
-Subscription cases skip unless `IOTDB_SUBSCRIPTION_E2E=1` is set. Once selected, connection errors, disabled subscription support, unsupported topic modes, and unavailable WAL features fail the tests; an empty poll does not count as successful delivery.
+Session and subscription cases share one [config_test.go](config_test.go) containing both connection settings and subscription runtime settings. Subscription cases are disabled by default: exactly `IOTDB_SUBSCRIPTION_E2E=1` enables them, while an unset, empty, or different value skips them. Once selected, connection errors, disabled subscription support, unsupported topic modes, and unavailable WAL features fail the tests; an empty poll does not count as successful delivery.
 
 | Environment variable | Behavior |
 | --- | --- |
-| `IOTDB_SUBSCRIPTION_E2E` | Set exactly to `1` to enable subscription tests. |
-| `IOTDB_SUBSCRIPTION_NODE_URLS` | Comma-separated `host:port` seeds; defaults to the existing E2E `nodeUrls` value (`iotdb:6668,iotdb:6667,iotdb:6669`). Whitespace around seeds is removed. |
-| `IOTDB_SUBSCRIPTION_USERNAME` | Subscription and data-writer username; defaults to `root` when unset or empty. |
-| `IOTDB_SUBSCRIPTION_PASSWORD` | Password when present, including an explicitly empty value. Otherwise falls back to `IOTDB_PASSWORD`, then `root`. |
-| `IOTDB_PASSWORD` | Password fallback when `IOTDB_SUBSCRIPTION_PASSWORD` is absent; an explicitly empty value is preserved. |
+| `IOTDB_SUBSCRIPTION_E2E` | Required opt-in: exactly `1` enables subscription tests; unset, empty, or any other value skips them. |
+| `IOTDB_E2E_NODE_URLS` | Comma-separated `host:port` seeds shared by Session and subscription E2E tests; defaults to `iotdb:6668,iotdb:6667,iotdb:6669`. Whitespace around seeds is removed. |
+| `IOTDB_E2E_USERNAME` | Shared Session and subscription username; defaults to `root`. `IOTDB_USERNAME` is used as a fallback. |
+| `IOTDB_E2E_PASSWORD` | Shared Session and subscription password; defaults to `root` and preserves an explicitly empty value. `IOTDB_PASSWORD` is used as a fallback. |
+| `IOTDB_USERNAME` | Username fallback when `IOTDB_E2E_USERNAME` is absent. |
+| `IOTDB_PASSWORD` | Password fallback when `IOTDB_E2E_PASSWORD` is absent. |
 
 Each test uses unique resource names and closes consumers before dropping topics and data. Subscription operations have bounded contexts, with independent contexts for topic cleanup. The existing Session and `ITableSession` data preparation/cleanup APIs do not accept per-statement contexts, so those calls do not inherit the subscription test deadline.
 
@@ -78,6 +83,6 @@ Comments next to each case identify the relevant Java IT file and method under `
 
 The existing `make e2e_test` and `make e2e_test_for_parent_git_repo` workflows still prepare the IoTDB distribution and start `test/e2e/docker-compose.yml`. The client container runs tests from this independent module using Go 1.25.
 
-The current Compose file does not forward subscription environment variables or configure the server for subscription/WAL support. Its default execution therefore runs the legacy Session suites and skips subscription cases. To run subscription cases in containers, supply your own compatible server configuration and a Compose override that explicitly forwards `IOTDB_SUBSCRIPTION_E2E=1`, the seed list, and any credentials to the client service. Setting these variables only in the host shell does not forward them through the existing Compose file.
+The Compose client passes through `IOTDB_E2E_*` and `IOTDB_SUBSCRIPTION_E2E` when they are set in the host environment. Unset variables stay unset, so the in-container tests use the defaults from `config_test.go`; subscription remains disabled by default. The server image still needs subscription/WAL support for those cases. To enable subscription cases in containers, provide a compatible server configuration and set `IOTDB_SUBSCRIPTION_E2E=1` when invoking Compose.
 
 No compilation, tests, examples, formatting tools, or compiler/syntax checks were run during this package migration. Runtime results remain unverified.

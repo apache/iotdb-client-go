@@ -6,3 +6,5 @@ require (
 	github.com/apache/iotdb-client-go/v2 v2.0.0-20260914074454-a25f68aa9681
 	github.com/apache/thrift v0.24.0
 )
+
+replace github.com/apache/iotdb-client-go/v2 => ..

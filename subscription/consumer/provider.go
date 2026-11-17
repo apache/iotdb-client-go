@@ -392,11 +392,14 @@ func (p *subscriptionProvider) close(ctx context.Context, preserveSubscriptions 
 	if p.connection.Closed() {
 		return nil
 	}
+	if err := ctx.Err(); err != nil {
+		return errors.Join(err, p.connection.Abort())
+	}
 	select {
 	case p.operations <- struct{}{}:
 		defer func() { <-p.operations }()
-	default:
-		return p.connection.Abort()
+	case <-ctx.Done():
+		return errors.Join(ctx.Err(), p.connection.Abort())
 	}
 	_, requestErr := p.sendLocked(ctx, protocol.EncodeClose())
 	return errors.Join(requestErr, p.connection.Close(ctx))
