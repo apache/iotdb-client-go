@@ -986,7 +986,7 @@ func TestSubscriptionTreeAckBeforeConsumeCallbackFailureIsNotRedelivered(t *test
 	}
 }
 
-func subscriptionTreeRequireWriterProgress(t *testing.T, ctx context.Context, consumer subconsumer.SubscriptionPullConsumer, topic string, writer subpayload.WriterPosition) {
+func subscriptionTreeRequireWriterProgress(t *testing.T, ctx context.Context, consumer subconsumer.SubscriptionPushConsumer, topic string, writer subpayload.WriterPosition) {
 	t.Helper()
 	ticker := time.NewTicker(subscriptionTreeE2EProgressPollInterval)
 	defer ticker.Stop()
