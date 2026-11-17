@@ -46,7 +46,5 @@ jobs:
           ${{ runner.os }}-maven-
 
     - name: Integration test
-      env:
-        IOTDB_SUBSCRIPTION_E2E: "1"
       run: |
         make e2e_test e2e_test_clean

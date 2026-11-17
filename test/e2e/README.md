@@ -83,7 +83,7 @@ Comments next to each case identify the relevant Java IT file and method under `
 
 ## Docker entry point
 
-The existing `make e2e_test` and `make e2e_test_for_parent_git_repo` workflows still prepare the IoTDB distribution and start `test/e2e/docker-compose.yml`. The client container runs tests from this independent module using Go 1.25. The GitHub E2E workflow sets `IOTDB_SUBSCRIPTION_E2E=1`, while the server image enables subscription support in its startup script.
+The existing `make e2e_test` and `make e2e_test_for_parent_git_repo` workflows still prepare the IoTDB distribution and start `test/e2e/docker-compose.yml`. The client container runs tests from this independent module using Go 1.25.
 
 The Compose client passes through `IOTDB_E2E_*` and `IOTDB_SUBSCRIPTION_E2E` when they are set in the host environment. Unset variables stay unset, so the in-container tests use the defaults from `config_test.go`; subscription remains disabled by default. The server image still needs subscription/WAL support for those cases. To enable subscription cases in containers, provide a compatible server configuration and set `IOTDB_SUBSCRIPTION_E2E=1` when invoking Compose.
 
