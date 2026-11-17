@@ -169,9 +169,10 @@ func NewRecordBatch(dialect subscription.Dialect, database string, tablet Tablet
 		timestamps: tablet.Timestamps,
 		values: tablet.Values,
 	}
-	// A missing timestamp array represents zero for every row. Its ordering is
-	// already stable, so keep that representation sparse and iterate lazily.
-	if tablet.Timestamps != nil {
+	// A missing timestamp array represents zero for every row. Sorted timestamps
+	// already have the required stable order, so only retain a permutation when
+	// the decoded Tablet is actually out of order.
+	if tablet.Timestamps != nil && !sort.IntsAreSorted(tablet.Timestamps) {
 		batch.rowOrder = make([]int, tablet.RowCount)
 		for index := range batch.rowOrder {
 			batch.rowOrder[index] = index

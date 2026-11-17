@@ -61,6 +61,8 @@ type subscriptionCommitDeadline struct {
 
 type subscriptionCommitDeadlineHeap []subscriptionCommitDeadline
 
+const subscriptionDeadlineCompactionSlack = 64
+
 func (h subscriptionCommitDeadlineHeap) Len() int { return len(h) }
 func (h subscriptionCommitDeadlineHeap) Less(i, j int) bool {
 	if h[i].ExpiresAt.Equal(h[j].ExpiresAt) {
@@ -97,6 +99,21 @@ func subscriptionContextKey(value payload.CommitContext) subscriptionCommitKey {
 		key.Writer = *value.Writer
 	}
 	return key
+}
+
+// compactUncommittedDeadlinesLocked bounds stale heap entries left by early
+// acknowledgments and seeks. It runs only at safe commit/seek boundaries, so
+// deadlines already popped for an in-progress auto-commit are not duplicated.
+func (c *subscriptionPullConsumer) compactUncommittedDeadlinesLocked() {
+	if len(c.uncommittedDeadlines) <= 2*len(c.uncommitted)+subscriptionDeadlineCompactionSlack {
+		return
+	}
+	deadlines := make(subscriptionCommitDeadlineHeap, 0, len(c.uncommitted))
+	for key, pending := range c.uncommitted {
+		deadlines = append(deadlines, subscriptionCommitDeadline{key: key, ExpiresAt: pending.ExpiresAt})
+	}
+	heap.Init(&deadlines)
+	c.uncommittedDeadlines = deadlines
 }
 
 func cloneTopicProgress(progress payload.TopicProgress) payload.TopicProgress {
@@ -202,7 +219,11 @@ func (c *subscriptionPullConsumer) commitContexts(ctx context.Context, contexts 
 		return err
 	}
 	defer func() { <-c.progressOperations }()
-	return c.commitUniqueContextsLocked(ctx, normalizeCommitContexts(contexts), nack)
+	err := c.commitUniqueContextsLocked(ctx, normalizeCommitContexts(contexts), nack)
+	c.mu.Lock()
+	c.compactUncommittedDeadlinesLocked()
+	c.mu.Unlock()
+	return err
 }
 
 func (c *subscriptionPullConsumer) commitUniqueContexts(ctx context.Context, contexts []payload.CommitContext, nack bool) error {
@@ -210,7 +231,11 @@ func (c *subscriptionPullConsumer) commitUniqueContexts(ctx context.Context, con
 		return err
 	}
 	defer func() { <-c.progressOperations }()
-	return c.commitUniqueContextsLocked(ctx, contexts, nack)
+	err := c.commitUniqueContextsLocked(ctx, contexts, nack)
+	c.mu.Lock()
+	c.compactUncommittedDeadlinesLocked()
+	c.mu.Unlock()
+	return err
 }
 
 func normalizeCommitContexts(contexts []payload.CommitContext) []payload.CommitContext {
@@ -510,6 +535,9 @@ func (c *subscriptionPullConsumer) autoCommit(ctx context.Context, now time.Time
 		c.lastAutoCommitError = err
 		c.mu.Unlock()
 		c.requeuePendingCommitContexts(contexts, now)
+		c.mu.Lock()
+		c.compactUncommittedDeadlinesLocked()
+		c.mu.Unlock()
 	}
 }
 
@@ -673,6 +701,7 @@ func (c *subscriptionPullConsumer) seekProgress(ctx context.Context, topic strin
 			delete(c.uncommitted, key)
 		}
 	}
+	c.compactUncommittedDeadlinesLocked()
 	for key := range c.redirectAcks {
 		if key.Topic == name {
 			delete(c.redirectAcks, key)
