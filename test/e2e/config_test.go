@@ -20,7 +20,6 @@
 package e2e
 
 import (
-	"net"
 	"os"
 	"strings"
 	"testing"
@@ -32,9 +31,11 @@ import (
 )
 
 const (
-	e2eDefaultNodeURLs = "iotdb:6668,iotdb:6667,iotdb:6669"
-	e2eDefaultUsername = "root"
-	e2eDefaultPassword = "root"
+	e2eDefaultNodeURLs  = "iotdb:6668,iotdb:6667,iotdb:6669"
+	e2eDefaultTableHost = "iotdb"
+	e2eDefaultTablePort = "6667"
+	e2eDefaultUsername  = "root"
+	e2eDefaultPassword  = "root"
 )
 
 var (
@@ -131,15 +132,7 @@ func e2eClusterConfig() client.ClusterConfig {
 }
 
 func e2eTableEndpoint() (host, port string) {
-	addresses := e2eAddresses()
-	if len(addresses) == 0 {
-		return "", ""
-	}
-	host, port, _ = net.SplitHostPort(addresses[0])
-	if host == "" {
-		host = addresses[0]
-	}
-	return host, port
+	return e2eDefaultTableHost, e2eDefaultTablePort
 }
 
 func e2eTableConfig(database string) *client.Config {
