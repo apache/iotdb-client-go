@@ -20,7 +20,6 @@
 package consumer
 
 import (
-	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
 	"github.com/apache/iotdb-client-go/subscription/internal/protocol"
@@ -309,7 +308,7 @@ func (c *subscriptionPullConsumer) commitNode(ctx context.Context, node int32, c
 				return failure
 			}
 			var status *subscriptionStatusError
-			if errors.As(failure, &status) && status.Code != client.SubscriptionOversizedEntry {
+			if errors.As(failure, &status) && status.Code != subscriptionOversizedEntryStatus {
 				return failure
 			}
 		}

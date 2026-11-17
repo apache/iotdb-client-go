@@ -39,7 +39,12 @@ import (
 	"github.com/apache/iotdb-client-go/v2/rpc"
 )
 
-const subscriptionFrameReserve = 1024
+const (
+	subscriptionFrameReserve = 1024
+	// Oversized-entry status is returned by servers that enforce subscription
+	// materialization limits. Keep the compatibility value local to the consumer.
+	subscriptionOversizedEntryStatus int32 = 1920
+)
 
 var subscriptionSliceOrder atomic.Int32
 
@@ -237,7 +242,7 @@ func (p *subscriptionProvider) sendOne(ctx context.Context, request *rpc.TPipeSu
 	}
 	if err := verifySubscriptionProviderStatus(response.Status); err != nil {
 		var statusErr *subscriptionStatusError
-		if errors.As(err, &statusErr) && statusErr.Code == client.SubscriptionOversizedEntry {
+		if errors.As(err, &statusErr) && statusErr.Code == subscriptionOversizedEntryStatus {
 			_ = p.connection.Abort()
 		}
 		return nil, err
@@ -460,7 +465,7 @@ func verifySubscriptionProviderStatus(status *common.TSStatus) error {
 		failure.Kind = subscription.ErrorKindConsumerFenced
 		failure.Cause = subscription.ErrConsumerFenced
 		failure.Critical = true
-	case client.SubscriptionOversizedEntry:
+	case subscriptionOversizedEntryStatus:
 		failure.Kind = subscription.ErrorKindPayloadExceed
 	default:
 		failure.Kind = subscription.ErrorKindRuntimeCritical

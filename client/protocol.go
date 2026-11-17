@@ -408,9 +408,6 @@ const (
 	PipePushMetaNotEnoughMemory                 int32 = 1814
 	PipeReceiverParallelOrUserConflictException int32 = 1815
 
-	// Timecho Pipe
-	PipeTransferTabletObjectBatchSequenceReset int32 = -1
-
 	// Subscription
 	SubscriptionVersionError       int32 = 1900
 	SubscriptionTypeError          int32 = 1901
@@ -432,7 +429,6 @@ const (
 	SubscriptionOwnerLeaseExpired  int32 = 1917
 	SubscriptionOwnerEpochConflict int32 = 1918
 	SubscriptionConsumerFenced     int32 = 1919
-	SubscriptionOversizedEntry     int32 = 1920
 
 	// Topic
 	CreateTopicError   int32 = 2000
