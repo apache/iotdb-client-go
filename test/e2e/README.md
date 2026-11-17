@@ -73,9 +73,11 @@ Each test uses unique resource names and closes consumers before dropping topics
 
 ## Coverage and Java references
 
-`subscription_tree_test.go` covers topic DDL, path/time filtering, snapshot completion with automatic commits, incremental checkpoint replay, Push callback failure/redelivery with confirmed writer progress, and explicit TsFile rejection during Pull.
+`subscription_tree_test.go` covers topic DDL, path/time filtering, snapshot completion with automatic commits, incremental checkpoint replay, Push callback failure/redelivery with confirmed writer progress, and explicit TsFile rejection during Pull. `subscription_behavior_test.go` adds independent consumer groups, same-group non-duplication, one consumer with multiple topics, SeekToBeginning replay, checkpoint reuse after consumer recreation, and AckBeforeConsume callback-failure behavior.
 
-`subscription_table_test.go` covers same-named tree/table topic isolation, database/table/time filtering with snapshot completion, incremental column projection that excludes time, exact checkpoint-tail replay, Push callback failure/redelivery with confirmed writer progress, and explicit TsFile rejection during Push. Projected table records check both the visible absence of time and the public raw timestamp/value access.
+`subscription_table_test.go` covers same-named tree/table topic isolation, database/table/time filtering with snapshot completion, incremental column projection that excludes time, exact checkpoint-tail replay, Push callback failure/redelivery with confirmed writer progress, and explicit TsFile rejection during Push. Projected table records check both the visible absence of time and the public raw timestamp/value access. `subscription_table_filter_behavior_test.go` adds zero-match column filters, AlterTopic column-filter rebinding, and TAG-filter selection.
+
+The single-node Compose fixture cannot exercise DataNode or Broker restart, provider replacement, a deliberately failed ACK, or heartbeat reconciliation after an unsubscribe pipe timeout. Those cases need multi-node or host-side fault orchestration and remain outside the current E2E harness rather than being approximated with timing-dependent tests.
 
 Comments next to each case identify the relevant Java IT file and method under `integration-test/src/test/java/org/apache/iotdb/subscription/it` in the reference IoTDB checkout. Table checkpoint replay extends the Java tree seek scenario. Callback failure recovery and the Go TsFile rejection contract are additional Go coverage. Java source references describe the intended behavior; some reference cases are ignored and do not prove runtime compatibility.
 
