@@ -22,6 +22,7 @@ package record
 import (
 	"fmt"
 	"iter"
+	"slices"
 	"sort"
 	"sync"
 
@@ -172,7 +173,7 @@ func NewRecordBatch(dialect subscription.Dialect, database string, tablet Tablet
 	// A missing timestamp array represents zero for every row. Sorted timestamps
 	// already have the required stable order, so only retain a permutation when
 	// the decoded Tablet is actually out of order.
-	if tablet.Timestamps != nil && !sort.IntsAreSorted(tablet.Timestamps) {
+	if tablet.Timestamps != nil && !slices.IsSorted(tablet.Timestamps) {
 		batch.rowOrder = make([]int, tablet.RowCount)
 		for index := range batch.rowOrder {
 			batch.rowOrder[index] = index

@@ -451,6 +451,9 @@ func (c *subscriptionPullConsumer) flushRedirectAcks(ctx context.Context, messag
 		}
 		completed, err := provider.commit(ctx, contexts, false)
 		c.applyCommitResult(contexts, completed, false)
+		c.mu.Lock()
+		c.compactUncommittedDeadlinesLocked()
+		c.mu.Unlock()
 		if err != nil {
 			c.handleProviderError(provider, err)
 		}
