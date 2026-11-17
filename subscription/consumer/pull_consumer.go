@@ -409,12 +409,7 @@ func (c *subscriptionPullConsumer) LatestWatermark() (int64, bool) {
 func (c *subscriptionPullConsumer) AllConsumed() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	for topic := range c.topics {
-		if _, completed := c.pendingTerminations[topic]; !completed {
-			return false
-		}
-	}
-	return true
+	return len(c.topics) == 0
 }
 
 func (c *subscriptionPullConsumer) LastAutoCommitError() error {

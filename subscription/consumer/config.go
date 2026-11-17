@@ -49,9 +49,11 @@ type SubscriptionConsumerConfig struct {
 	// endpoints. Java consumers default to two minutes and enforce a five-second
 	// minimum.
 	EndpointsSyncInterval time.Duration
-	// MaxPollParallelism is retained for Java configuration compatibility. The
-	// current Java client executes poll work serially even when this is greater
-	// than one, so Go also polls serially.
+	// MaxPollParallelism is retained for Java configuration compatibility. Java
+	// partitions poll work only when its poll executor reports available threads,
+	// but SubscriptionExecutorServiceManager currently disables that path by
+	// returning zero. Go therefore polls serially even when this is greater than
+	// one.
 	MaxPollParallelism int
 }
 

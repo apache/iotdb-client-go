@@ -270,7 +270,7 @@ Consumer interfaces, configurations, defaults, constructors, acknowledgment type
 | `Subscribe(ctx, topics...)`, `Unsubscribe(ctx, topics...)` | Single-topic, array, and collection overloads | Variadic topic names |
 | `Info()`, `SubscriptionConsumerInfo` | `getConsumerId/getConsumerGroupId/getOwnerId/getOwnerEpoch` | Returns a credential-free identity snapshot, including server-assigned IDs |
 | `LatestWatermark()` | `getLatestWatermarkTimestamp()` | An additional `ok` distinguishes an unavailable watermark from a valid timestamp |
-| `AllConsumed()` | `allTopicMessagesHaveBeenConsumed()` | True without subscriptions or after every subscribed topic emits termination; unsubscribe cleanup may still be pending |
+| `AllConsumed()` | `allTopicMessagesHaveBeenConsumed()` | True only when the consumer has no remaining subscriptions; a termination with pending, timed-out, or failed unsubscribe cleanup remains incomplete |
 | `SubscriptionPullConsumer.Poll(ctx, timeout, topics...)` | Four `poll` overloads | `time.Duration` replaces millisecond and Java Duration overloads; omitted topics mean all current subscriptions |
 | `PollWithInfo(ctx, timeout, topics...)`, `PollResult` | Concrete Pull classes' `pollWithInfo`, `payload.PollResult` | Returns messages, buffered count, and processor watermark together |
 | `DrainBufferedMessages(ctx)` | `drainBufferedMessages()` | Explicitly drains processors or pending delivery buffers |
@@ -375,7 +375,7 @@ Decoded subscription records use typed column storage and are aligned in place u
 | `ErrConsumerFenced`, `ErrOwnerFenced` | `SubscriptionConsumerFencedException`, `SubscriptionOwnerFencedException` |
 | `*SubscriptionError` with `Kind` and `Code` | Server status categories: connection setup, pipe timeout, non-critical/critical runtime, payload limit, or fencing |
 
-Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for a failed round. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again. A termination received from the server is persisted even if the Poll budget expires; `AllConsumed` treats it as completed while a bounded unsubscribe remains pending.
+Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for a failed round. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again. A termination received from the server is persisted even if the Poll budget expires, but `AllConsumed` remains false until unsubscription or heartbeat reconciliation removes the topic.
 
 `SubscriptionError` is exposed for `errors.As`. Its `Kind`, `Code`, `Critical`, and `Message` fields retain the server classification; wrapped transport causes remain available through `errors.Is` and `errors.As`. Connection setup errors redact configured plaintext and encrypted passwords before returning. `MaxPollParallelism` remains accepted for Java configuration compatibility, while poll work currently runs serially to match Java behavior.
 

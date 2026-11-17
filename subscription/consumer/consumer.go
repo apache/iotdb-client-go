@@ -59,11 +59,12 @@ type SubscriptionConsumer interface {
 	// LatestWatermark reports the latest received server watermark. The boolean
 	// is false until a watermark is observed. This is not a processor watermark.
 	LatestWatermark() (timestamp int64, ok bool)
-	// AllConsumed reports whether every currently subscribed topic has emitted a
-	// server completion termination. A bounded unsubscribe may still be pending
-	// cleanup after this becomes true. An active unbounded topic prevents
-	// completion; no subscriptions means true. This does not assert that delivered
-	// messages were committed or that client-side processor buffers were drained.
+	// AllConsumed reports whether the server has removed every subscription owned
+	// by this consumer. A completion termination alone is not sufficient: an
+	// automatic unsubscribe that is pending, timed out, or failed keeps this false
+	// until reconciliation confirms that the topic is no longer subscribed. No
+	// subscriptions means true. This does not assert that delivered messages were
+	// committed or that client-side processor buffers were drained.
 	AllConsumed() bool
 }
 
