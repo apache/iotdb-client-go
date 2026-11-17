@@ -570,6 +570,11 @@ func TestSubscriptionTreeTsFilePollIsExplicitlyUnsupported(t *testing.T) {
 			t.Fatal("unsupported TsFile poll delivered records")
 		}
 		if errors.Is(err, subscription.ErrUnsupportedTsFile) {
+			cleanupCtx, cancel := context.WithTimeout(context.Background(), subscriptionE2ECleanupTimeout)
+			defer cancel()
+			if unsubscribeErr := consumer.Unsubscribe(cleanupCtx, topic); unsubscribeErr != nil {
+				t.Fatalf("unsubscribe after unsupported TsFile: %v", unsubscribeErr)
+			}
 			return
 		}
 		if err != nil {
