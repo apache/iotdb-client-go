@@ -25,6 +25,7 @@ import (
 	"github.com/apache/iotdb-client-go/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/subscription/internal/record"
 	"github.com/apache/iotdb-client-go/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/client"
 
 	"container/heap"
 	"context"
@@ -333,7 +334,7 @@ func (c *subscriptionPullConsumer) commitNode(ctx context.Context, node int32, c
 				return failure
 			}
 			var status *subscriptionStatusError
-			if errors.As(failure, &status) && status.Code != subscriptionOversizedEntryStatus {
+			if errors.As(failure, &status) && status.Code != client.SubscriptionConnectionReplaced {
 				return failure
 			}
 		}

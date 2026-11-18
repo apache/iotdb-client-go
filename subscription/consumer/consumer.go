@@ -167,8 +167,9 @@ type SubscriptionPushConsumer interface {
 	// The channel has capacity at least one; the error is sent once even if the
 	// caller is not receiving. The polling loop closes it when that loop exits.
 	// A Close during an active callback may return before this
-	// channel closes. An ordinary callback error or panic is not terminal;
-	// TsFile decoding, fencing, and critical background errors stop delivery.
+	// channel closes. Callback and acknowledgment errors do not stop polling;
+	// message redelivery depends on the ACK strategy. Retryable Poll errors
+	// continue on a later round. TsFile decoding and fencing errors stop delivery.
 	Errors() <-chan error
 }
 

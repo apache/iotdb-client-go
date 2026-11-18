@@ -168,7 +168,9 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 			if stateErr := c.checkOpen(); stateErr != nil {
 				return nil, stateErr
 			}
-			if operationCtx.Err() == nil && errors.Is(err, context.DeadlineExceeded) && pollCtx.Err() != nil {
+			if isRetryableConnectionPollError(err) {
+				networkReady = false
+			} else if operationCtx.Err() == nil && errors.Is(err, context.DeadlineExceeded) && pollCtx.Err() != nil {
 				// Still let processors advance or flush their retained records on
 				// an empty input when only the network budget was exhausted.
 				networkReady = false
@@ -198,7 +200,8 @@ func (c *subscriptionPullConsumer) pollLocked(operationCtx, pollCtx context.Cont
 			fatal = result.err
 		} else if flowCriticalPollError(result.err) {
 			critical = result.err
-		} else if !((errors.Is(result.err, context.DeadlineExceeded) || errors.Is(result.err, context.Canceled)) && pollCtx.Err() != nil) {
+		} else if !isRetryableConnectionPollError(result.err) &&
+			!((errors.Is(result.err, context.DeadlineExceeded) || errors.Is(result.err, context.Canceled)) && pollCtx.Err() != nil) {
 			ordinary = result.err
 		}
 	}
@@ -689,6 +692,31 @@ func isOutdatedFlowResponse(response protocol.PollResponse) bool {
 func flowCriticalPollError(err error) bool {
 	var status *subscription.SubscriptionError
 	return errors.As(err, &status) && status.Critical
+}
+
+func isRetryableConnectionPollError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if status, ok := err.(*subscription.SubscriptionError); ok {
+		return status.Kind == subscription.ErrorKindConnection
+	}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		children := joined.Unwrap()
+		if len(children) == 0 {
+			return false
+		}
+		for _, child := range children {
+			if !isRetryableConnectionPollError(child) {
+				return false
+			}
+		}
+		return true
+	}
+	if wrapped := errors.Unwrap(err); wrapped != nil {
+		return isRetryableConnectionPollError(wrapped)
+	}
+	return false
 }
 
 func newSubscriptionPollError(message string, critical bool) *subscription.SubscriptionError {

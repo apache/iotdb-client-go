@@ -428,7 +428,7 @@ func (c *subscriptionPushConsumer) terminalDeliveryError(failure error) error {
 	if err := c.consumer.checkOpen(); err != nil {
 		return err
 	}
-	if flowFatalPollError(failure) || flowCriticalPollError(failure) {
+	if flowFatalPollError(failure) {
 		return failure
 	}
 	return nil

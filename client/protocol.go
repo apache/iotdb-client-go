@@ -429,6 +429,7 @@ const (
 	SubscriptionOwnerLeaseExpired  int32 = 1917
 	SubscriptionOwnerEpochConflict int32 = 1918
 	SubscriptionConsumerFenced     int32 = 1919
+	SubscriptionConnectionReplaced int32 = 1920
 
 	// Topic
 	CreateTopicError   int32 = 2000

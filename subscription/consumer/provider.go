@@ -41,9 +41,6 @@ import (
 
 const (
 	subscriptionFrameReserve = 1024
-	// Oversized-entry status is returned by servers that enforce subscription
-	// materialization limits. Keep the compatibility value local to the consumer.
-	subscriptionOversizedEntryStatus int32 = 1920
 )
 
 var subscriptionSliceOrder atomic.Int32
@@ -242,7 +239,7 @@ func (p *subscriptionProvider) sendOne(ctx context.Context, request *rpc.TPipeSu
 	}
 	if err := verifySubscriptionProviderStatus(response.Status); err != nil {
 		var statusErr *subscriptionStatusError
-		if errors.As(err, &statusErr) && statusErr.Code == subscriptionOversizedEntryStatus {
+		if errors.As(err, &statusErr) && statusErr.Code == client.SubscriptionConnectionReplaced {
 			_ = p.connection.Abort()
 		}
 		return nil, err
@@ -454,6 +451,8 @@ func verifySubscriptionProviderStatus(status *common.TSStatus) error {
 		failure.Kind = subscription.ErrorKindRuntimeNonCritical
 	case client.SubscriptionPipeTimeoutError:
 		failure.Kind = subscription.ErrorKindPipeTimeout
+	case client.SubscriptionConnectionReplaced:
+		failure.Kind = subscription.ErrorKindConnection
 	case client.SubscriptionOwnerFenced,
 		client.SubscriptionOwnerRequired,
 		client.SubscriptionOwnerEpochRequired,
@@ -465,8 +464,6 @@ func verifySubscriptionProviderStatus(status *common.TSStatus) error {
 		failure.Kind = subscription.ErrorKindConsumerFenced
 		failure.Cause = subscription.ErrConsumerFenced
 		failure.Critical = true
-	case subscriptionOversizedEntryStatus:
-		failure.Kind = subscription.ErrorKindPayloadExceed
 	default:
 		failure.Kind = subscription.ErrorKindRuntimeCritical
 		failure.Critical = true

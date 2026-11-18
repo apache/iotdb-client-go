@@ -479,6 +479,7 @@ Connection errors redact plaintext and encrypted passwords.
 - `LastAutoCommitError()` exposes the latest automatic commit failure.
 - `Close()` stops new work and cancels active contexts.
 - In manual-commit mode, `Close()` can return an error while processors still hold messages. Drain, process, and commit those messages before calling `Close()` again.
+- Push delivery continues after transient Poll and acknowledgment errors; `Errors()` reports only terminal failures. Redelivery follows the configured `AckStrategy`.
 - Push `Close()` does not wait for a still-running handler to return.
 
 ## Examples
