@@ -70,18 +70,6 @@ type SubscriptionMessage interface {
 	Release()
 }
 
-// Column describes a data column. Time is represented separately by Row.Timestamp
-// and is not included in this schema. Existing Session data types and column
-// categories are reused without adding a second enum mapping.
-type Column struct {
-	// Name is the data column name exposed by the record handler.
-	Name string
-	// DataType determines the Go representation of a non-null column value.
-	DataType client.TSDataType
-	// Category identifies a table column as TAG, FIELD, or ATTRIBUTE.
-	Category client.ColumnCategory
-}
-
 // RecordBatch is the record-handler view of one decoded Tablet. Returned data is
 // borrowed, read-only, and valid until its message is released. Copy row values
 // and byte slices before retaining them beyond that lifetime. All indexes are
@@ -97,9 +85,18 @@ type RecordBatch interface {
 	// Target returns the tree-model device path or table-model table name
 	// associated with this decoded Tablet.
 	Target() string
-	// Columns returns the ordered data-column metadata used by Value and
-	// Row.Values. The time column is represented separately, even when selected.
-	Columns() []Column
+	// ColumnCount returns the number of data columns. The time column is
+	// represented separately, even when selected.
+	ColumnCount() int
+	// ColumnName returns the measurement name at column. An out-of-range index
+	// returns an error.
+	ColumnName(column int) (string, error)
+	// ColumnDataType returns the data type at column. An out-of-range index
+	// returns an error.
+	ColumnDataType(column int) (client.TSDataType, error)
+	// ColumnCategory returns the table category at column. An out-of-range index
+	// returns an error.
+	ColumnCategory(column int) (client.ColumnCategory, error)
 	// TimeSelected reports whether timestamps are exposed in the batch's
 	// user-visible rows. This is resolved per batch, including any table-specific
 	// projection, rather than assumed to be uniform across the whole message.
@@ -123,16 +120,16 @@ type RecordBatch interface {
 	Rows() iter.Seq2[Row, error]
 }
 
-// Row contains data columns in RecordBatch.Columns order. A nil Timestamp means
+// Row contains data columns in RecordBatch column order. A nil Timestamp means
 // that the time column was not selected; a nil value is SQL NULL. Values use
-// bool, int32, int64, float32, float64, string (TEXT/STRING), time.Time (DATE), or
-// []byte (BLOB/OBJECT). TIMESTAMP values remain int64 in server precision.
+// bool, int32, int64, float32, float64, string (TEXT/STRING), time.Time (DATE),
+// or []byte (BLOB/OBJECT). TIMESTAMP values remain int64 in server precision.
 // Rows are borrowed views with the same lifetime as their message.
 type Row struct {
 	// Timestamp is the selected timestamp in server precision, or nil when the
 	// time column was not selected. It is not an entry in Values.
 	Timestamp *int64
-	// Values follows RecordBatch.Columns and preserves null entries as nil.
+	// Values follows RecordBatch column order and preserves null entries as nil.
 	// The slice and any byte values are borrowed from the owning message.
 	Values []any
 }

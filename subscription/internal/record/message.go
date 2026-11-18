@@ -22,15 +22,13 @@ package record
 import (
 	"fmt"
 	"iter"
-	"slices"
 	"sort"
 	"sync"
 
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/client"
 )
-
-const tabletColumnStorageEstimate = int64(240)
 
 // subscriptionMessage keeps immutable delivery metadata separate from releasable
 // record buffers. Its factories take ownership of decoded batches.
@@ -139,7 +137,7 @@ func (m *subscriptionMessage) Release() {
 
 // subscriptionRecordBatch preserves the decoded Tablet's indexed order and uses
 // a separate stable permutation for user-visible iteration. Immutable target
-// metadata remains available after release; Columns and Len return empty values.
+// metadata remains available after release; column accessors and Len return zero.
 type subscriptionRecordBatch struct {
 	mu sync.RWMutex
 	dialect subscription.Dialect
@@ -147,39 +145,45 @@ type subscriptionRecordBatch struct {
 	target string
 	timeSelected bool
 	rowCount int
-	columns []payload.Column
-	timestamps []int64
-	values []TabletColumn
+	tablet *client.Tablet
 	rowOrder []int
 	released bool
 }
 
 // NewRecordBatch takes ownership of decoded arrays and preserves indexed order.
-func NewRecordBatch(dialect subscription.Dialect, database string, tablet Tablet, timeSelected bool) payload.RecordBatch {
+func NewRecordBatch(dialect subscription.Dialect, database string, tablet *client.Tablet, timeSelected bool) payload.RecordBatch {
 	if dialect == subscription.TreeDialect {
 		database = ""
 		timeSelected = true
 	}
+	rowCount := tablet.Len()
 	batch := &subscriptionRecordBatch{
 		dialect: dialect,
 		database: database,
-		target: tablet.Target,
+		target: tablet.GetTargetName(),
 		timeSelected: timeSelected,
-		rowCount: tablet.RowCount,
-		columns: tablet.Columns,
-		timestamps: tablet.Timestamps,
-		values: tablet.Values,
+		rowCount: rowCount,
+		tablet: tablet,
 	}
 	// A missing timestamp array represents zero for every row. Sorted timestamps
 	// already have the required stable order, so only retain a permutation when
 	// the decoded Tablet is actually out of order.
-	if tablet.Timestamps != nil && !slices.IsSorted(tablet.Timestamps) {
-		batch.rowOrder = make([]int, tablet.RowCount)
+	ordered := true
+	if tablet.HasTimestamps() {
+		for index := 1; index < rowCount; index++ {
+			if tablet.GetTimestampAt(index) < tablet.GetTimestampAt(index-1) {
+				ordered = false
+				break
+			}
+		}
+	}
+	if !ordered {
+		batch.rowOrder = make([]int, rowCount)
 		for index := range batch.rowOrder {
 			batch.rowOrder[index] = index
 		}
 		sort.SliceStable(batch.rowOrder, func(left, right int) bool {
-			return batch.timestamps[batch.rowOrder[left]] < batch.timestamps[batch.rowOrder[right]]
+			return batch.tablet.GetTimestampAt(batch.rowOrder[left]) < batch.tablet.GetTimestampAt(batch.rowOrder[right])
 		})
 	}
 	return batch
@@ -197,10 +201,49 @@ func (b *subscriptionRecordBatch) Target() string {
 	return b.target
 }
 
-func (b *subscriptionRecordBatch) Columns() []payload.Column {
+func (b *subscriptionRecordBatch) ColumnCount() int {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
-	return b.columns
+	if b.released || b.tablet == nil {
+		return 0
+	}
+	return b.tablet.ColumnCount()
+}
+
+func (b *subscriptionRecordBatch) ColumnName(column int) (string, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.released {
+		return "", subscription.ErrDataReleased
+	}
+	if column < 0 || column >= b.tablet.ColumnCount() {
+		return "", fmt.Errorf("subscription: column index %d out of range", column)
+	}
+	return b.tablet.ColumnName(column), nil
+}
+
+func (b *subscriptionRecordBatch) ColumnDataType(column int) (client.TSDataType, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.released {
+		return client.UNKNOWN, subscription.ErrDataReleased
+	}
+	if column < 0 || column >= b.tablet.ColumnCount() {
+		return client.UNKNOWN, fmt.Errorf("subscription: column index %d out of range", column)
+	}
+	return b.tablet.ColumnDataType(column), nil
+}
+
+func (b *subscriptionRecordBatch) ColumnCategory(column int) (client.ColumnCategory, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.released {
+		return client.FIELD, subscription.ErrDataReleased
+	}
+	if column < 0 || column >= b.tablet.ColumnCount() {
+		return client.FIELD, fmt.Errorf("subscription: column index %d out of range", column)
+	}
+	return b.tablet.ColumnCategory(column), nil
 }
 
 func (b *subscriptionRecordBatch) TimeSelected() bool {
@@ -222,10 +265,10 @@ func (b *subscriptionRecordBatch) Timestamp(row int) (int64, error) {
 	if row < 0 || row >= b.rowCount {
 		return 0, fmt.Errorf("subscription: row index %d out of range", row)
 	}
-	if b.timestamps == nil {
+	if !b.tablet.HasTimestamps() {
 		return 0, nil
 	}
-	return b.timestamps[row], nil
+	return b.tablet.GetTimestampAt(row), nil
 }
 
 func (b *subscriptionRecordBatch) Value(row, column int) (any, error) {
@@ -237,24 +280,14 @@ func (b *subscriptionRecordBatch) Value(row, column int) (any, error) {
 	if row < 0 || row >= b.rowCount {
 		return nil, fmt.Errorf("subscription: row index %d out of range", row)
 	}
-	if column < 0 || column >= len(b.columns) {
+	if column < 0 || column >= b.tablet.ColumnCount() {
 		return nil, fmt.Errorf("subscription: column index %d out of range", column)
 	}
 	return b.valueLocked(row, column)
 }
 
 func (b *subscriptionRecordBatch) valueLocked(row, column int) (any, error) {
-	if b.values == nil {
-		return nil, nil
-	}
-	if column >= len(b.values) {
-		return nil, fmt.Errorf("subscription: record column %d has no value storage", column)
-	}
-	value, ok := b.values[column].Value(row)
-	if !ok {
-		return nil, fmt.Errorf("subscription: record column %d has no value for row %d", column, row)
-	}
-	return value, nil
+	return b.tablet.GetValueAt(column, row)
 }
 
 func (b *subscriptionRecordBatch) Rows() iter.Seq2[payload.Row, error] {
@@ -274,11 +307,11 @@ func (b *subscriptionRecordBatch) Rows() iter.Seq2[payload.Row, error] {
 			if b.rowOrder != nil {
 				index = b.rowOrder[position]
 			}
-			row := payload.Row{Values: make([]any, len(b.columns))}
+			row := payload.Row{Values: make([]any, b.tablet.ColumnCount())}
 			if b.timeSelected {
 				var timestamp int64
-				if b.timestamps != nil {
-					timestamp = b.timestamps[index]
+				if b.tablet.HasTimestamps() {
+					timestamp = b.tablet.GetTimestampAt(index)
 				}
 				row.Timestamp = &timestamp
 			}
@@ -311,9 +344,7 @@ func (b *subscriptionRecordBatch) release() {
 	}
 	b.released = true
 	b.rowCount = 0
-	b.columns = nil
-	b.timestamps = nil
-	b.values = nil
+	b.tablet = nil
 	b.rowOrder = nil
 }
 
@@ -325,13 +356,9 @@ func (b *subscriptionRecordBatch) estimatedSize() int64 {
 
 func (b *subscriptionRecordBatch) estimatedSizeLocked() int64 {
 	size := int64(128) + int64(len(b.dialect)) + int64(len(b.database)) +
-		int64(len(b.target)) + int64(len(b.timestamps))*8 + int64(len(b.rowOrder))*8
-	size += int64(len(b.columns))*32 + int64(len(b.values))*tabletColumnStorageEstimate
-	for _, column := range b.columns {
-		size += int64(len(column.Name))
-	}
-	for column := range b.values {
-		size += b.values[column].estimatedSize()
+		int64(len(b.target)) + int64(len(b.rowOrder))*8
+	if b.tablet != nil {
+		size += b.tablet.EstimatedSize()
 	}
 	return size
 }

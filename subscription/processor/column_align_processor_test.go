@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/apache/iotdb-client-go/subscription"
+	"github.com/apache/iotdb-client-go/subscription/internal/record"
 	"github.com/apache/iotdb-client-go/v2/client"
 )
 
@@ -69,21 +70,111 @@ func TestColumnAlignNeverFillsFromEqualOrFutureTimestamps(t *testing.T) {
 	}
 }
 
+func TestColumnAlignMutatesReusedSessionTablet(t *testing.T) {
+	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
+	context := payload.CommitContext{CommitID: 1, Topic: "topic", GroupID: "group"}
+	seedTablet := client.NewDecodedTablet(
+		"root.db.device",
+		[]*client.MeasurementSchema{{Measurement: "value", DataType: client.INT64}},
+		[]client.ColumnCategory{client.FIELD},
+		1,
+		[]int64{1},
+		[]interface{}{[]int64{101}},
+		nil,
+	)
+	seed := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		seedTablet,
+		true,
+	)})
+	processAlignment(t, processor, seed)
+
+	inputTablet := client.NewDecodedTablet(
+		"root.db.device",
+		[]*client.MeasurementSchema{{Measurement: "value", DataType: client.INT64}},
+		[]client.ColumnCategory{client.FIELD},
+		2,
+		[]int64{2, 3},
+		[]interface{}{[]int64{0, 0}},
+		[][]byte{{1}},
+	)
+	input := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		inputTablet,
+		true,
+	)})
+	messages := processAlignment(t, processor, input)
+	if value := processorOutputValue(t, messages, 0, 0); value != int64(101) {
+		t.Fatalf("aligned value = %v, want 101", value)
+	}
+	if _, err := input.Records(); !errors.Is(err, subscription.ErrDataReleased) {
+		t.Fatalf("in-place input was not released: %v", err)
+	}
+}
+
+func TestColumnAlignMutatesDecodedObject(t *testing.T) {
+	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
+	context := payload.CommitContext{CommitID: 1, Topic: "topic", GroupID: "group"}
+	categories := []client.ColumnCategory{client.FIELD}
+	schemas := []*client.MeasurementSchema{{Measurement: "value", DataType: client.OBJECT}}
+
+	seedData, err := client.NewRelationalTablet("root.db.device", schemas, categories, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := seedData.SetObjectBytesAt([]byte{1, 2}, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	seedData.SetTimestampAt(1, 0)
+	seedData.RowSize = 1
+	seed := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		seedData,
+		true,
+	)})
+	processAlignment(t, processor, seed)
+
+	inputData, err := client.NewRelationalTablet("root.db.device", schemas, categories, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := inputData.SetValueAt(nil, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := inputData.SetValueAt(nil, 0, 1); err != nil {
+		t.Fatal(err)
+	}
+	inputData.SetTimestampAt(2, 0)
+	inputData.SetTimestampAt(3, 1)
+	inputData.RowSize = 2
+	input := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		inputData,
+		true,
+	)})
+	messages := processAlignment(t, processor, input)
+	value, ok := processorOutputValue(t, messages, 0, 0).([]byte)
+	if !ok || !bytes.Equal(value, []byte{1, 2}) {
+		t.Fatalf("aligned OBJECT value = %v", value)
+	}
+}
+
 func TestColumnAlignMatchesColumnNamesAfterSchemaReordering(t *testing.T) {
 	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
 	seed := processorTreeBatch([]int64{1})
-	seed.columns = []payload.Column{
-		{Name: "left", DataType: client.INT64, Category: client.FIELD},
-		{Name: "right", DataType: client.INT64, Category: client.FIELD},
-	}
+	seed.columnNames = []string{"left", "right"}
+	seed.columnTypes = []client.TSDataType{client.INT64, client.INT64}
+	seed.columnCategories = []client.ColumnCategory{client.FIELD, client.FIELD}
 	seed.values = [][]any{{int64(11), int64(22)}}
 	processAlignment(t, processor, processorRecord("topic", "region", 1, seed))
 	input := processorTreeBatch([]int64{2})
-	input.columns = []payload.Column{
-		{Name: "right", DataType: client.INT64, Category: client.FIELD},
-		{Name: "left", DataType: client.INT64, Category: client.FIELD},
-		{Name: "new", DataType: client.INT64, Category: client.FIELD},
-	}
+	input.columnNames = []string{"right", "left", "new"}
+	input.columnTypes = []client.TSDataType{client.INT64, client.INT64, client.INT64}
+	input.columnCategories = []client.ColumnCategory{client.FIELD, client.FIELD, client.FIELD}
 	input.values = [][]any{{nil, nil, nil}}
 	messages := processAlignment(t, processor, processorRecord("topic", "region", 2, input))
 	for column, expected := range []any{int64(22), int64(11), nil} {
@@ -164,7 +255,7 @@ func TestColumnAlignResetTopicDoesNotDiscardOtherTopicValues(t *testing.T) {
 func TestColumnAlignCopiedBytesSurviveInputAndOutputRelease(t *testing.T) {
 	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
 	seedBatch := processorTreeBatch([]int64{1}, []byte{1, 2, 3})
-	seedBatch.columns[0].DataType = client.BLOB
+	seedBatch.columnTypes[0] = client.BLOB
 	seed := processorRecord("topic", "region", 1, seedBatch)
 	messages := processAlignment(t, processor, seed)
 	if _, err := seed.Records(); !errors.Is(err, subscription.ErrDataReleased) {
@@ -176,7 +267,7 @@ func TestColumnAlignCopiedBytesSurviveInputAndOutputRelease(t *testing.T) {
 	releaseProcessorMessages(messages)
 	for timestamp := int64(2); timestamp <= 3; timestamp++ {
 		batch := processorTreeBatch([]int64{timestamp})
-		batch.columns[0].DataType = client.BLOB
+		batch.columnTypes[0] = client.BLOB
 		messages = processAlignment(t, processor, processorRecord("topic", "region", timestamp, batch))
 		if value, ok := processorOutputValue(t, messages, 0, 0).([]byte); !ok || !bytes.Equal(value, []byte{1, 2, 3}) {
 			t.Fatalf("cached bytes failed after earlier Release: %v", value)

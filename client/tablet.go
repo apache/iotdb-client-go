@@ -49,6 +49,7 @@ type Tablet struct {
 	values             []interface{}
 	bitMaps            []*BitMap
 	maxRowNumber       int
+	variableBytes      int64
 	RowSize            int
 }
 
@@ -131,6 +132,12 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
 	}
 
+	if value != nil && t.values[columnIndex] == nil {
+		if t.measurementSchemas[columnIndex].DataType == OBJECT {
+			return fmt.Errorf("OBJECT values must be set with SetObjectBytesAt")
+		}
+		t.ensureColumnValues(columnIndex)
+	}
 	if value == nil {
 		// Init the bitMap to mark nil value
 		if t.bitMaps == nil {
@@ -199,8 +206,10 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		values := t.values[columnIndex].([][]byte)
 		switch v := value.(type) {
 		case string:
+			t.variableBytes += int64(len(v) - len(values[rowIndex]))
 			values[rowIndex] = []byte(v)
 		case []byte:
+			t.variableBytes += int64(len(v) - len(values[rowIndex]))
 			values[rowIndex] = v
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
@@ -209,6 +218,7 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 		values := t.values[columnIndex].([][]byte)
 		switch v := value.(type) {
 		case []byte:
+			t.variableBytes += int64(len(v) - len(values[rowIndex]))
 			values[rowIndex] = v
 		default:
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
@@ -271,9 +281,60 @@ func (t *Tablet) SetObjectValueAt(isEOF bool, offset int64, content []byte, colu
 	}
 	binary.BigEndian.PutUint64(value[1:9], uint64(offset))
 	copy(value[9:], content)
+	t.variableBytes += int64(len(value) - len(t.values[columnIndex].([][]byte)[rowIndex]))
 	t.values[columnIndex].([][]byte)[rowIndex] = value
 	t.unmarkNullValueAt(columnIndex, rowIndex)
 	return nil
+}
+
+// SetObjectBytesAt writes raw OBJECT bytes without adding a segmented header.
+// It is intended for Tablets produced by DecodeTablet. The caller must provide
+// valid column and row indexes.
+func (t *Tablet) SetObjectBytesAt(content []byte, columnIndex, rowIndex int) error {
+	if columnIndex < 0 || columnIndex >= len(t.measurementSchemas) {
+		return fmt.Errorf("illegal argument columnIndex %d", columnIndex)
+	}
+	if rowIndex < 0 || rowIndex >= t.maxRowNumber {
+		return fmt.Errorf("illegal argument rowIndex %d", rowIndex)
+	}
+	if t.measurementSchemas[columnIndex].DataType != OBJECT {
+		return fmt.Errorf("column %d must be of type OBJECT", columnIndex)
+	}
+	t.ensureColumnValues(columnIndex)
+	values := t.values[columnIndex].([][]byte)
+	t.variableBytes += int64(len(content) - len(values[rowIndex]))
+	values[rowIndex] = content
+	t.unmarkNullValueAt(columnIndex, rowIndex)
+	return nil
+}
+
+func (t *Tablet) ensureColumnValues(columnIndex int) {
+	if t.values[columnIndex] != nil {
+		return
+	}
+	switch t.measurementSchemas[columnIndex].DataType {
+	case BOOLEAN:
+		t.values[columnIndex] = make([]bool, t.maxRowNumber)
+	case INT32, DATE:
+		t.values[columnIndex] = make([]int32, t.maxRowNumber)
+	case INT64, TIMESTAMP:
+		t.values[columnIndex] = make([]int64, t.maxRowNumber)
+	case FLOAT:
+		t.values[columnIndex] = make([]float32, t.maxRowNumber)
+	case DOUBLE:
+		t.values[columnIndex] = make([]float64, t.maxRowNumber)
+	case TEXT, STRING, BLOB, OBJECT:
+		t.values[columnIndex] = make([][]byte, t.maxRowNumber)
+	}
+	if t.bitMaps == nil {
+		t.bitMaps = make([]*BitMap, len(t.values))
+	}
+	if t.bitMaps[columnIndex] == nil {
+		t.bitMaps[columnIndex] = NewBitMap(t.maxRowNumber)
+	}
+	for row := 0; row < t.maxRowNumber; row++ {
+		t.bitMaps[columnIndex].Mark(row)
+	}
 }
 
 func (t *Tablet) GetMaxRowNumber() int {
@@ -292,6 +353,9 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 	schema := t.measurementSchemas[columnIndex]
 
 	if t.bitMaps != nil && t.bitMaps[columnIndex] != nil && t.bitMaps[columnIndex].IsMarked(rowIndex) {
+		return nil, nil
+	}
+	if t.values[columnIndex] == nil {
 		return nil, nil
 	}
 	switch schema.DataType {
@@ -314,6 +378,82 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("illegal datatype %v", schema.DataType)
 	}
+}
+
+// GetTimestampAt returns the timestamp at rowIndex. A nil timestamp slice is
+// used by decoded subscriptions when the time column was not projected and
+// returns zero. The caller must provide an index within RowSize.
+func (t *Tablet) GetTimestampAt(rowIndex int) int64 {
+	if t.timestamps == nil {
+		return 0
+	}
+	return t.timestamps[rowIndex]
+}
+
+// GetTargetName returns the tree device path or table name for this Tablet.
+func (t *Tablet) GetTargetName() string {
+	return t.insertTargetName
+}
+
+// ColumnCount returns the number of data columns.
+func (t *Tablet) ColumnCount() int {
+	return len(t.measurementSchemas)
+}
+
+// ColumnName returns the measurement name at index. The caller must provide a
+// valid column index.
+func (t *Tablet) ColumnName(index int) string {
+	return t.measurementSchemas[index].Measurement
+}
+
+// ColumnDataType returns the data type at index. The caller must provide a valid
+// column index.
+func (t *Tablet) ColumnDataType(index int) TSDataType {
+	return t.measurementSchemas[index].DataType
+}
+
+// ColumnCategory returns the table column category at index. Tree Tablets
+// without an explicit category list use FIELD. The caller must provide a valid
+// column index.
+func (t *Tablet) ColumnCategory(index int) ColumnCategory {
+	if index >= len(t.columnCategories) {
+		return FIELD
+	}
+	return t.columnCategories[index]
+}
+
+// HasTimestamps reports whether the serialized Tablet contained timestamps.
+func (t *Tablet) HasTimestamps() bool {
+	return t.timestamps != nil
+}
+
+// EstimatedSize returns an approximate retained heap size for the Tablet.
+func (t *Tablet) EstimatedSize() int64 {
+	size := int64(160) + int64(len(t.insertTargetName)) + int64(len(t.timestamps))*8 +
+		int64(len(t.measurementSchemas))*64 + int64(len(t.columnCategories))*8 + t.variableBytes
+	rows := int64(t.maxRowNumber)
+	for column, schema := range t.measurementSchemas {
+		size += int64(len(schema.Measurement))
+		if t.values[column] == nil {
+			continue
+		}
+		switch schema.DataType {
+		case BOOLEAN:
+			size += rows
+		case INT32, FLOAT, DATE:
+			size += rows * 4
+		case INT64, TIMESTAMP, DOUBLE:
+			size += rows * 8
+		case TEXT, STRING, BLOB, OBJECT:
+			size += rows * 24
+		}
+	}
+	for _, bitmap := range t.bitMaps {
+		if bitmap != nil {
+			size += int64(len(bitmap.bits))
+		}
+	}
+	return size
 }
 
 func (t *Tablet) GetTimestampBytes() []byte {
@@ -428,4 +568,50 @@ func NewRelationalTablet(tableName string, measurementSchemas []*MeasurementSche
 	}
 	tablet.columnCategories = columnCategories
 	return tablet, nil
+}
+
+// NewDecodedTablet constructs a Tablet from data already validated by a wire
+// decoder. It takes ownership of the supplied slices and does not copy typed
+// values or NULL bitmaps. The caller must ensure that schemas, categories,
+// values, and nullBitmaps have matching lengths, that each non-nil value slice
+// uses the storage type required by its schema, and that every bitmap can
+// represent rowCount rows. A nil values entry represents a column absent from
+// the decoded payload. No defensive validation is performed.
+func NewDecodedTablet(
+	insertTargetName string,
+	measurementSchemas []*MeasurementSchema,
+	columnCategories []ColumnCategory,
+	rowCount int,
+	timestamps []int64,
+	values []interface{},
+	nullBitmaps [][]byte,
+) *Tablet {
+	tablet := &Tablet{
+		insertTargetName:   insertTargetName,
+		measurementSchemas: measurementSchemas,
+		columnCategories:   columnCategories,
+		timestamps:         timestamps,
+		values:             values,
+		maxRowNumber:       rowCount,
+		RowSize:            rowCount,
+	}
+	for column, schema := range measurementSchemas {
+		switch schema.DataType {
+		case TEXT, STRING, BLOB, OBJECT:
+			if columnValues, ok := values[column].([][]byte); ok {
+				for _, value := range columnValues {
+					tablet.variableBytes += int64(len(value))
+				}
+			}
+		}
+	}
+	if nullBitmaps != nil {
+		tablet.bitMaps = make([]*BitMap, len(nullBitmaps))
+		for column, bits := range nullBitmaps {
+			if bits != nil {
+				tablet.bitMaps[column] = &BitMap{size: rowCount, bits: bits}
+			}
+		}
+	}
+	return tablet
 }

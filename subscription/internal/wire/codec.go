@@ -17,9 +17,9 @@
  * under the License.
  */
 
-// Package wire implements Java-compatible big-endian subscription primitives.
-// It owns payload bounds and sticky errors without depending on subscription
-// message types or RPC transport.
+// Package wire implements Java-compatible big-endian IoTDB wire primitives. It
+// owns payload bounds and sticky errors without depending on message types or
+// RPC transport.
 package wire
 
 import (
@@ -81,7 +81,7 @@ func (w *Writer) WriteString(value string) {
 		return
 	}
 	if len(value) > maxLength {
-		w.err = fmt.Errorf("subscription: string length %d exceeds int32", len(value))
+		w.err = fmt.Errorf("wire: string length %d exceeds int32", len(value))
 		return
 	}
 	w.WriteInt32(int32(len(value)))
@@ -98,7 +98,7 @@ func (w *Writer) WriteStringMap(values map[string]string) {
 		return
 	}
 	if len(values) > maxLength {
-		w.err = fmt.Errorf("subscription: map size %d exceeds int32", len(values))
+		w.err = fmt.Errorf("wire: map size %d exceeds int32", len(values))
 		return
 	}
 	keys := make([]string, 0, len(values))
@@ -124,7 +124,7 @@ func (w *Writer) WriteStrings(values []string) {
 		return
 	}
 	if len(values) > maxLength {
-		w.err = fmt.Errorf("subscription: string list size %d exceeds int32", len(values))
+		w.err = fmt.Errorf("wire: string list size %d exceeds int32", len(values))
 		return
 	}
 	w.WriteInt32(int32(len(values)))
@@ -162,13 +162,34 @@ func (r *Reader) Remaining() int {
 	return len(r.data) - r.offset
 }
 
+// RemainingBytes returns the unread payload without copying. The caller must
+// not modify the returned slice.
+func (r *Reader) RemainingBytes() []byte {
+	if r.err != nil || r.offset < 0 || r.offset > len(r.data) {
+		return nil
+	}
+	return r.data[r.offset:]
+}
+
+// Advance consumes count bytes after an external decoder has processed them.
+func (r *Reader) Advance(count int) {
+	if r.err != nil {
+		return
+	}
+	if count < 0 || r.offset < 0 || r.offset > len(r.data) || count > len(r.data)-r.offset {
+		r.err = fmt.Errorf("wire: invalid payload advance of %d bytes at offset %d", count, r.offset)
+		return
+	}
+	r.offset += count
+}
+
 // Take borrows count bytes and advances only when the full read succeeds.
 func (r *Reader) Take(count int) []byte {
 	if r.err != nil {
 		return nil
 	}
 	if count < 0 || r.offset < 0 || r.offset > len(r.data) {
-		r.err = fmt.Errorf("subscription: invalid payload read of %d bytes at offset %d", count, r.offset)
+		r.err = fmt.Errorf("wire: invalid payload read of %d bytes at offset %d", count, r.offset)
 		return nil
 	}
 	if count > len(r.data)-r.offset {
@@ -229,7 +250,7 @@ func (r *Reader) ReadString() string {
 		return ""
 	}
 	if length < -1 {
-		r.err = fmt.Errorf("subscription: invalid string length %d", length)
+		r.err = fmt.Errorf("wire: invalid string length %d", length)
 		return ""
 	}
 	return string(r.Take(int(length)))
@@ -244,11 +265,11 @@ func (r *Reader) ReadCount(minimumEntryBytes int, allowNull bool) int32 {
 		return count
 	}
 	if count < 0 {
-		r.err = fmt.Errorf("subscription: invalid collection size %d", count)
+		r.err = fmt.Errorf("wire: invalid collection size %d", count)
 		return 0
 	}
 	if int64(count) > int64(r.Remaining()/minimumEntryBytes) {
-		r.err = fmt.Errorf("subscription: collection size %d exceeds remaining payload: %w", count, io.ErrUnexpectedEOF)
+		r.err = fmt.Errorf("wire: collection size %d exceeds remaining payload: %w", count, io.ErrUnexpectedEOF)
 		return 0
 	}
 	return count

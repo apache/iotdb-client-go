@@ -24,6 +24,7 @@ import (
 
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // TabletMutator provides one exclusive lock across an in-place Tablet mutation.
@@ -38,38 +39,42 @@ func (m TabletMutator) Database() string { return m.batch.database }
 func (m TabletMutator) Target() string { return m.batch.target }
 func (m TabletMutator) TimeSelected() bool { return m.batch.timeSelected }
 func (m TabletMutator) RowCount() int { return m.batch.rowCount }
-func (m TabletMutator) Columns() []payload.Column { return m.batch.columns }
+func (m TabletMutator) ColumnCount() int { return m.batch.tablet.ColumnCount() }
+func (m TabletMutator) ColumnName(column int) string { return m.batch.tablet.ColumnName(column) }
+func (m TabletMutator) ColumnDataType(column int) client.TSDataType {
+	return m.batch.tablet.ColumnDataType(column)
+}
+func (m TabletMutator) ColumnCategory(column int) client.ColumnCategory {
+	return m.batch.tablet.ColumnCategory(column)
+}
 
 func (m TabletMutator) Timestamp(row int) int64 {
-	if m.batch.timestamps == nil {
-		return 0
-	}
-	return m.batch.timestamps[row]
+	return m.batch.tablet.GetTimestampAt(row)
 }
 
 func (m TabletMutator) Value(row, column int) (any, bool) {
-	if column < 0 || column >= len(m.batch.columns) {
+	if column < 0 || column >= m.batch.tablet.ColumnCount() {
 		return nil, false
 	}
-	if column >= len(m.batch.values) {
-		return nil, true
-	}
-	return m.batch.values[column].Value(row)
+	value, err := m.batch.tablet.GetValueAt(column, row)
+	return value, err == nil
 }
 
 func (m TabletMutator) SetValue(row, column int, value any) bool {
-	if column < 0 || column >= len(m.batch.columns) {
+	if column < 0 || column >= m.batch.tablet.ColumnCount() {
 		return false
 	}
-	if column >= len(m.batch.values) {
-		values := make([]TabletColumn, len(m.batch.columns))
-		copy(values, m.batch.values)
-		m.batch.values = values
+	var err error
+	if value != nil && m.batch.tablet.ColumnDataType(column) == client.OBJECT {
+		typed, ok := value.([]byte)
+		if !ok {
+			return false
+		}
+		err = m.batch.tablet.SetObjectBytesAt(typed, column, row)
+	} else {
+		err = m.batch.tablet.SetValueAt(value, column, row)
 	}
-	if !m.batch.values[column].present() {
-		m.batch.values[column] = NewTabletColumn(m.batch.columns[column].DataType, m.batch.rowCount)
-	}
-	return m.batch.values[column].Set(row, value)
+	return err == nil
 }
 
 // TryMutateRecordMessages mutates decoded record buffers in place and transfers
@@ -127,21 +132,6 @@ func TryMutateRecordMessages(messages []payload.SubscriptionMessage, mutate func
 			batch.mu.RUnlock()
 			return nil, true, subscription.ErrDataReleased
 		}
-		if batch.timestamps != nil && len(batch.timestamps) != batch.rowCount {
-			batch.mu.RUnlock()
-			return nil, true, errors.New("subscription: Tablet timestamp count does not match row count")
-		}
-		for column := 0; column < len(batch.columns) && column < len(batch.values); column++ {
-			values := &batch.values[column]
-			if values.present() && values.DataType != batch.columns[column].DataType {
-				batch.mu.RUnlock()
-				return nil, true, errors.New("subscription: Tablet column type does not match schema")
-			}
-			if values.present() && values.Rows() != batch.rowCount {
-				batch.mu.RUnlock()
-				return nil, true, errors.New("subscription: Tablet column row count does not match Tablet")
-			}
-		}
 		batch.mu.RUnlock()
 	}
 	for _, owned := range batches {
@@ -186,21 +176,23 @@ type TabletReader struct {
 func (r TabletReader) Database() string { return r.batch.database }
 func (r TabletReader) Target() string { return r.batch.target }
 func (r TabletReader) RowCount() int { return r.batch.rowCount }
-func (r TabletReader) Columns() []payload.Column { return r.batch.columns }
+func (r TabletReader) ColumnCount() int { return r.batch.tablet.ColumnCount() }
+func (r TabletReader) ColumnName(column int) string { return r.batch.tablet.ColumnName(column) }
+func (r TabletReader) ColumnDataType(column int) client.TSDataType {
+	return r.batch.tablet.ColumnDataType(column)
+}
+func (r TabletReader) ColumnCategory(column int) client.ColumnCategory {
+	return r.batch.tablet.ColumnCategory(column)
+}
 func (r TabletReader) Timestamp(row int) int64 {
-	if r.batch.timestamps == nil {
-		return 0
-	}
-	return r.batch.timestamps[row]
+	return r.batch.tablet.GetTimestampAt(row)
 }
 func (r TabletReader) Value(row, column int) (any, bool) {
-	if column < 0 || column >= len(r.batch.columns) {
+	if column < 0 || column >= r.batch.tablet.ColumnCount() {
 		return nil, false
 	}
-	if column >= len(r.batch.values) {
-		return nil, true
-	}
-	return r.batch.values[column].Value(row)
+	value, err := r.batch.tablet.GetValueAt(column, row)
+	return value, err == nil
 }
 func (r TabletReader) EstimatedSize() int64 { return r.batch.estimatedSizeLocked() }
 

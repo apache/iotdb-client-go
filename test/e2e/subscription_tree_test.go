@@ -181,7 +181,7 @@ func subscriptionTreeRows(ctx context.Context, message subpayload.SubscriptionMe
 		if batch.Dialect() != subscription.TreeDialect {
 			return nil, fmt.Errorf("unexpected batch dialect %s", batch.Dialect())
 		}
-		columns := batch.Columns()
+		columnCount := batch.ColumnCount()
 		for row, err := range batch.Rows() {
 			if err != nil {
 				return nil, err
@@ -189,7 +189,7 @@ func subscriptionTreeRows(ctx context.Context, message subpayload.SubscriptionMe
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			if row.Timestamp == nil || len(row.Values) != len(columns) {
+			if row.Timestamp == nil || len(row.Values) != columnCount {
 				return nil, errors.New("tree row lost timestamp or column mapping")
 			}
 			for index, value := range row.Values {
@@ -200,7 +200,11 @@ func subscriptionTreeRows(ctx context.Context, message subpayload.SubscriptionMe
 				if !ok {
 					return nil, fmt.Errorf("unexpected tree value %T", value)
 				}
-				records = append(records, subscriptionTreeRow{target: batch.Target(), column: columns[index].Name, timestamp: *row.Timestamp, value: integer})
+				column, err := batch.ColumnName(index)
+				if err != nil {
+					return nil, err
+				}
+				records = append(records, subscriptionTreeRow{target: batch.Target(), column: column, timestamp: *row.Timestamp, value: integer})
 			}
 		}
 	}

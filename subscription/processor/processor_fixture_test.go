@@ -118,7 +118,9 @@ type processorInputBatch struct {
 	dialect subscription.Dialect
 	database string
 	target string
-	columns []payload.Column
+	columnNames []string
+	columnTypes []client.TSDataType
+	columnCategories []client.ColumnCategory
 	timestamps []int64
 	values [][]any
 	timestampErr error
@@ -138,25 +140,35 @@ func processorTreeBatch(timestamps []int64, values ...any) *processorInputBatch 
 	return &processorInputBatch{
 		dialect: subscription.TreeDialect,
 		target: "root.db.device",
-		columns: []payload.Column{{Name: "value", DataType: client.INT64, Category: client.FIELD}},
+		columnNames: []string{"value"},
+		columnTypes: []client.TSDataType{client.INT64},
+		columnCategories: []client.ColumnCategory{client.FIELD},
 		timestamps: timestamps,
 		values: rows,
 	}
 }
 
 func processorTableRecord(topic, database, table string, tags []any, timestamp int64, value any) *processorInputMessage {
-	columns := make([]payload.Column, 0, len(tags)+1)
+	columnNames := make([]string, 0, len(tags)+1)
+	columnTypes := make([]client.TSDataType, 0, len(tags)+1)
+	columnCategories := make([]client.ColumnCategory, 0, len(tags)+1)
 	for index := range tags {
-		columns = append(columns, payload.Column{Name: fmt.Sprintf("tag%d", index), DataType: client.STRING, Category: client.TAG})
+		columnNames = append(columnNames, fmt.Sprintf("tag%d", index))
+		columnTypes = append(columnTypes, client.STRING)
+		columnCategories = append(columnCategories, client.TAG)
 	}
-	columns = append(columns, payload.Column{Name: "value", DataType: client.INT64, Category: client.FIELD})
+	columnNames = append(columnNames, "value")
+	columnTypes = append(columnTypes, client.INT64)
+	columnCategories = append(columnCategories, client.FIELD)
 	row := append([]any(nil), tags...)
 	row = append(row, value)
 	return processorRecord(topic, "region", timestamp, &processorInputBatch{
 		dialect: subscription.TableDialect,
 		database: database,
 		target: table,
-		columns: columns,
+		columnNames: columnNames,
+		columnTypes: columnTypes,
+		columnCategories: columnCategories,
 		timestamps: []int64{timestamp},
 		values: [][]any{row},
 	})
@@ -165,7 +177,34 @@ func processorTableRecord(topic, database, table string, tags []any, timestamp i
 func (b *processorInputBatch) Dialect() subscription.Dialect { return b.dialect }
 func (b *processorInputBatch) Database() string { return b.database }
 func (b *processorInputBatch) Target() string { return b.target }
-func (b *processorInputBatch) Columns() []payload.Column { return b.columns }
+func (b *processorInputBatch) ColumnCount() int { return len(b.columnNames) }
+func (b *processorInputBatch) ColumnName(column int) (string, error) {
+	if b.released {
+		return "", subscription.ErrDataReleased
+	}
+	if column < 0 || column >= len(b.columnNames) {
+		return "", fmt.Errorf("input column %d out of range", column)
+	}
+	return b.columnNames[column], nil
+}
+func (b *processorInputBatch) ColumnDataType(column int) (client.TSDataType, error) {
+	if b.released {
+		return client.UNKNOWN, subscription.ErrDataReleased
+	}
+	if column < 0 || column >= len(b.columnTypes) {
+		return client.UNKNOWN, fmt.Errorf("input column %d out of range", column)
+	}
+	return b.columnTypes[column], nil
+}
+func (b *processorInputBatch) ColumnCategory(column int) (client.ColumnCategory, error) {
+	if b.released {
+		return client.FIELD, subscription.ErrDataReleased
+	}
+	if column < 0 || column >= len(b.columnCategories) {
+		return client.FIELD, fmt.Errorf("input column %d out of range", column)
+	}
+	return b.columnCategories[column], nil
+}
 func (b *processorInputBatch) TimeSelected() bool { return true }
 func (b *processorInputBatch) Len() int { return len(b.timestamps) }
 
@@ -189,7 +228,7 @@ func (b *processorInputBatch) Value(row, column int) (any, error) {
 	if b.valueErr != nil {
 		return nil, b.valueErr
 	}
-	if row < 0 || row >= len(b.values) || column < 0 || column >= len(b.columns) {
+	if row < 0 || row >= len(b.values) || column < 0 || column >= len(b.columnNames) {
 		return nil, fmt.Errorf("input cell (%d,%d) out of range", row, column)
 	}
 	return b.values[row][column], nil
@@ -212,7 +251,7 @@ func (b *processorInputBatch) Rows() iter.Seq2[payload.Row, error] {
 				yield(payload.Row{}, err)
 				return
 			}
-			values := make([]any, len(b.columns))
+			values := make([]any, len(b.columnNames))
 			for column := range values {
 				values[column], err = b.Value(index, column)
 				if err != nil {

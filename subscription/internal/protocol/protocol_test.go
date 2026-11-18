@@ -30,6 +30,7 @@ import (
 
 	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // This fixture is transcribed independently from Java SubscriptionPollResponse,
@@ -57,6 +58,19 @@ func javaSubscriptionTabletFrame(t *testing.T) []byte {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return body
+}
+
+func javaSubscriptionTabletFrameWithoutValues(t *testing.T) []byte {
+	t.Helper()
+	frame := javaSubscriptionTabletFrame(t)
+	// Keep everything through the no-bitmap flag, mark the values section as
+	// absent, then append the final offset and commit context unchanged.
+	const valuesFlagOffset = 76
+	const finalOffset = 102
+	body := append([]byte{}, frame[:valuesFlagOffset]...)
+	body = append(body, 0)
+	body = append(body, frame[finalOffset:]...)
 	return body
 }
 
@@ -163,6 +177,18 @@ func TestSubscriptionDecodedRowsKeepStableOrderAndReleaseBorrowedData(t *testing
 		t.Fatalf("record batches: %v, %v", batches, err)
 	}
 	batch := batches[0]
+	if batch.ColumnCount() != 1 {
+		t.Fatalf("column count = %d, want 1", batch.ColumnCount())
+	}
+	if name, err := batch.ColumnName(0); err != nil || name != "s1" {
+		t.Fatalf("column name = %q, %v", name, err)
+	}
+	if dataType, err := batch.ColumnDataType(0); err != nil || dataType != client.INT64 {
+		t.Fatalf("column data type = %v, %v", dataType, err)
+	}
+	if category, err := batch.ColumnCategory(0); err != nil || category != client.FIELD {
+		t.Fatalf("column category = %v, %v", category, err)
+	}
 	var timestamps, values []int64
 	for row, err := range batch.Rows() {
 		if err != nil || row.Timestamp == nil || len(row.Values) != 1 {
@@ -200,6 +226,9 @@ func TestSubscriptionDecodedRowsKeepStableOrderAndReleaseBorrowedData(t *testing
 	if _, err := batch.Value(0, 0); !errors.Is(err, subscription.ErrDataReleased) {
 		t.Fatalf("borrowed value after release: %v", err)
 	}
+	if _, err := batch.ColumnName(0); !errors.Is(err, subscription.ErrDataReleased) {
+		t.Fatalf("column metadata after release: %v", err)
+	}
 	yields := 0
 	for _, err := range batch.Rows() {
 		yields++
@@ -212,6 +241,22 @@ func TestSubscriptionDecodedRowsKeepStableOrderAndReleaseBorrowedData(t *testing
 	}
 	if message.Kind() != payload.RecordMessage || message.CommitContext() != context || context.CommitID != 42 || context.SeekGeneration != 3 {
 		t.Fatal("release discarded the delivery identity required for later acknowledgment")
+	}
+}
+
+func TestSubscriptionMissingValuesColumnMaterializesAsNull(t *testing.T) {
+	frame := javaSubscriptionTabletFrameWithoutValues(t)
+	message := decodedJavaSubscriptionMessage(t, frame, subscription.TableDialect)
+	defer message.Release()
+	batches, err := message.Records()
+	if err != nil || len(batches) != 1 {
+		t.Fatalf("record batches: %v, %v", batches, err)
+	}
+	for row := 0; row < batches[0].Len(); row++ {
+		value, err := batches[0].Value(row, 0)
+		if err != nil || value != nil {
+			t.Fatalf("row %d missing value = %v, %v", row, value, err)
+		}
 	}
 }
 

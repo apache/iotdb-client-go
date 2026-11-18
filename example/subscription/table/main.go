@@ -295,7 +295,7 @@ func printMessage(ctx context.Context, message subpayload.SubscriptionMessage) (
 	}
 	rows := 0
 	for _, batch := range batches {
-		if _, err := fmt.Printf("database=%s table=%s timeSelected=%t columns=%+v\n", batch.Database(), batch.Target(), batch.TimeSelected(), batch.Columns()); err != nil {
+		if _, err := fmt.Printf("database=%s table=%s timeSelected=%t columnCount=%d\n", batch.Database(), batch.Target(), batch.TimeSelected(), batch.ColumnCount()); err != nil {
 			return rows, err
 		}
 		for row, err := range batch.Rows() {

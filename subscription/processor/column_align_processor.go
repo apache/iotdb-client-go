@@ -67,41 +67,54 @@ type columnAlignValue struct {
 type columnAlignTablet interface {
 	target() string
 	rowCount() int
-	columns() []payload.Column
+	columnCount() int
+	columnName(int) string
+	columnDataType(int) client.TSDataType
+	columnCategory(int) client.ColumnCategory
 	timestampAt(int) int64
 	valueAt(int, int) (any, bool)
 	setValueAt(int, int, any) bool
 }
 
-type tabletReader struct{ tablet *record.Tablet }
+type tabletReader struct{ tablet *client.Tablet }
 
-func (r tabletReader) target() string { return r.tablet.Target }
-func (r tabletReader) rowCount() int { return r.tablet.RowCount }
-func (r tabletReader) columns() []payload.Column { return r.tablet.Columns }
+func (r tabletReader) target() string { return r.tablet.GetTargetName() }
+func (r tabletReader) rowCount() int { return r.tablet.Len() }
+func (r tabletReader) columnCount() int { return r.tablet.ColumnCount() }
+func (r tabletReader) columnName(column int) string { return r.tablet.ColumnName(column) }
+func (r tabletReader) columnDataType(column int) client.TSDataType {
+	return r.tablet.ColumnDataType(column)
+}
+func (r tabletReader) columnCategory(column int) client.ColumnCategory {
+	return r.tablet.ColumnCategory(column)
+}
 func (r tabletReader) timestampAt(row int) int64 {
-	if r.tablet.Timestamps == nil {
-		return 0
-	}
-	return r.tablet.Timestamps[row]
+	return r.tablet.GetTimestampAt(row)
 }
 func (r tabletReader) valueAt(row, column int) (any, bool) {
-	if column < 0 || column >= len(r.tablet.Values) {
-		return nil, false
-	}
-	return r.tablet.Values[column].Value(row)
+	value, err := r.tablet.GetValueAt(column, row)
+	return value, err == nil
 }
 func (r tabletReader) setValueAt(row, column int, value any) bool {
-	if column < 0 || column >= len(r.tablet.Values) {
-		return false
+	if value != nil && r.tablet.ColumnDataType(column) == client.OBJECT {
+		typed, ok := value.([]byte)
+		return ok && r.tablet.SetObjectBytesAt(typed, column, row) == nil
 	}
-	return r.tablet.Values[column].Set(row, value)
+	return r.tablet.SetValueAt(value, column, row) == nil
 }
 
 type tabletMutator struct{ tablet record.TabletMutator }
 
 func (m tabletMutator) target() string { return m.tablet.Target() }
 func (m tabletMutator) rowCount() int { return m.tablet.RowCount() }
-func (m tabletMutator) columns() []payload.Column { return m.tablet.Columns() }
+func (m tabletMutator) columnCount() int { return m.tablet.ColumnCount() }
+func (m tabletMutator) columnName(column int) string { return m.tablet.ColumnName(column) }
+func (m tabletMutator) columnDataType(column int) client.TSDataType {
+	return m.tablet.ColumnDataType(column)
+}
+func (m tabletMutator) columnCategory(column int) client.ColumnCategory {
+	return m.tablet.ColumnCategory(column)
+}
 func (m tabletMutator) timestampAt(row int) int64 { return m.tablet.Timestamp(row) }
 func (m tabletMutator) valueAt(row, column int) (any, bool) { return m.tablet.Value(row, column) }
 func (m tabletMutator) setValueAt(row, column int, value any) bool {
@@ -188,27 +201,42 @@ func (p *ColumnAlignProcessor) copyAndAlign(messages []payload.SubscriptionMessa
 			if batch.Dialect() != p.dialect {
 				return nil, fmt.Errorf("subscription: column alignment dialect %q does not match batch dialect %q", p.dialect, batch.Dialect())
 			}
-			tablet := record.Tablet{
-				Target:   batch.Target(),
-				Columns:  append([]payload.Column(nil), batch.Columns()...),
-				RowCount: batch.Len(),
-			}
-			tablet.Timestamps = make([]int64, tablet.RowCount)
-			tablet.Values = make([]record.TabletColumn, len(tablet.Columns))
-			for column, schema := range tablet.Columns {
-				tablet.Values[column] = record.NewTabletColumn(schema.DataType, tablet.RowCount)
-			}
-			for row := 0; row < tablet.RowCount; row++ {
-				tablet.Timestamps[row], err = batch.Timestamp(row)
+			rowCount := batch.Len()
+			timestamps := make([]int64, rowCount)
+			columnCount := batch.ColumnCount()
+			values := make([]interface{}, columnCount)
+			schemas := make([]*client.MeasurementSchema, columnCount)
+			categories := make([]client.ColumnCategory, columnCount)
+			for column := 0; column < columnCount; column++ {
+				name, err := batch.ColumnName(column)
 				if err != nil {
 					return nil, err
 				}
-				for column := range tablet.Columns {
+				dataType, err := batch.ColumnDataType(column)
+				if err != nil {
+					return nil, err
+				}
+				category, err := batch.ColumnCategory(column)
+				if err != nil {
+					return nil, err
+				}
+				schemas[column] = &client.MeasurementSchema{Measurement: name, DataType: dataType}
+				categories[column] = category
+				values[column] = newColumnAlignValues(dataType, rowCount)
+			}
+			data := client.NewDecodedTablet(batch.Target(), schemas, categories, rowCount, timestamps, values, nil)
+			reader := tabletReader{tablet: data}
+			for row := 0; row < rowCount; row++ {
+				timestamps[row], err = batch.Timestamp(row)
+				if err != nil {
+					return nil, err
+				}
+				for column := 0; column < columnCount; column++ {
 					value, err := batch.Value(row, column)
 					if err != nil {
 						return nil, err
 					}
-					if !tablet.Values[column].Set(row, cloneColumnAlignValue(value)) {
+					if !reader.setValueAt(row, column, cloneColumnAlignValue(value)) {
 						return nil, fmt.Errorf("subscription: column alignment cannot store value for column %d", column)
 					}
 				}
@@ -216,7 +244,7 @@ func (p *ColumnAlignProcessor) copyAndAlign(messages []payload.SubscriptionMessa
 			entry.batches = append(entry.batches, columnAlignCopiedBatch{
 				database:     batch.Database(),
 				timeSelected: batch.TimeSelected(),
-				tablet:       tablet,
+				tablet:       data,
 			})
 		}
 		incoming = append(incoming, entry)
@@ -230,7 +258,7 @@ func (p *ColumnAlignProcessor) copyAndAlign(messages []payload.SubscriptionMessa
 		context := record.ReadCommitContext(entry.message)
 		var batches []payload.RecordBatch
 		for _, batch := range entry.batches {
-			if err := p.fillTablet(context.Topic, batch.database, tabletReader{tablet: &batch.tablet}); err != nil {
+			if err := p.fillTablet(context.Topic, batch.database, tabletReader{tablet: batch.tablet}); err != nil {
 				return nil, err
 			}
 			batches = append(batches, record.NewRecordBatch(p.dialect, batch.database, batch.tablet, batch.timeSelected))
@@ -245,6 +273,25 @@ func (p *ColumnAlignProcessor) copyAndAlign(messages []payload.SubscriptionMessa
 	return result, nil
 }
 
+func newColumnAlignValues(dataType client.TSDataType, rows int) interface{} {
+	switch dataType {
+	case client.BOOLEAN:
+		return make([]bool, rows)
+	case client.INT32:
+		return make([]int32, rows)
+	case client.INT64, client.TIMESTAMP:
+		return make([]int64, rows)
+	case client.FLOAT:
+		return make([]float32, rows)
+	case client.DOUBLE:
+		return make([]float64, rows)
+	case client.DATE:
+		return make([]int32, rows)
+	default:
+		return make([][]byte, rows)
+	}
+}
+
 type columnAlignCopiedMessage struct {
 	message payload.SubscriptionMessage
 	batches []columnAlignCopiedBatch
@@ -253,7 +300,7 @@ type columnAlignCopiedMessage struct {
 type columnAlignCopiedBatch struct {
 	database     string
 	timeSelected bool
-	tablet       record.Tablet
+	tablet       *client.Tablet
 }
 
 func (p *ColumnAlignProcessor) fillTablet(topic, database string, tablet columnAlignTablet) error {
@@ -276,8 +323,8 @@ func (p *ColumnAlignProcessor) fillTablet(topic, database string, tablet columnA
 			topicCache[key] = append(bucket, entry)
 		}
 		timestamp := tablet.timestampAt(row)
-		for column, schema := range tablet.columns() {
-			cellKey := columnAlignColumn{name: schema.Name, dataType: schema.DataType}
+		for column := 0; column < tablet.columnCount(); column++ {
+			cellKey := columnAlignColumn{name: tablet.columnName(column), dataType: tablet.columnDataType(column)}
 			cached, ok := cache[cellKey]
 			value, valid := tablet.valueAt(row, column)
 			if !valid {
@@ -318,21 +365,21 @@ const (
 
 func columnAlignTagHash(tablet columnAlignTablet, row int) uint64 {
 	lastNonNull := -1
-	for index, schema := range tablet.columns() {
-		if schema.Category != client.TAG {
+	for column := 0; column < tablet.columnCount(); column++ {
+		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
-		value, _ := tablet.valueAt(row, index)
+		value, _ := tablet.valueAt(row, column)
 		if value != nil {
-			lastNonNull = index
+			lastNonNull = column
 		}
 	}
 	hash := columnAlignHashOffset
-	for column, schema := range tablet.columns() {
+	for column := 0; column < tablet.columnCount(); column++ {
 		if column > lastNonNull {
 			break
 		}
-		if schema.Category != client.TAG {
+		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
 		value, _ := tablet.valueAt(row, column)
@@ -344,8 +391,8 @@ func columnAlignTagHash(tablet columnAlignTablet, row int) uint64 {
 func columnAlignTags(tablet columnAlignTablet, row int) []any {
 	tags := make([]any, 0)
 	lastNonNull := 0
-	for column, schema := range tablet.columns() {
-		if schema.Category != client.TAG {
+	for column := 0; column < tablet.columnCount(); column++ {
+		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
 		value, _ := tablet.valueAt(row, column)
@@ -360,8 +407,8 @@ func columnAlignTags(tablet columnAlignTablet, row int) []any {
 func columnAlignTagsEqual(tablet columnAlignTablet, row int, tags []any) bool {
 	index := 0
 	lastNonNull := 0
-	for column, schema := range tablet.columns() {
-		if schema.Category != client.TAG {
+	for column := 0; column < tablet.columnCount(); column++ {
+		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
 		value, _ := tablet.valueAt(row, column)

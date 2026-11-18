@@ -181,13 +181,13 @@ func subscriptionTableRead(message subpayload.SubscriptionMessage, timeSelected 
 		if batch.TimeSelected() != timeSelected {
 			return nil, fmt.Errorf("table time projection: got=%t, want=%t", batch.TimeSelected(), timeSelected)
 		}
-		columns := batch.Columns()
+		columnCount := batch.ColumnCount()
 		visibleRows := 0
 		for row, err := range batch.Rows() {
 			if err != nil {
 				return nil, err
 			}
-			if (row.Timestamp != nil) != timeSelected || len(row.Values) != len(columns) {
+			if (row.Timestamp != nil) != timeSelected || len(row.Values) != columnCount {
 				return nil, fmt.Errorf("invalid table row: %+v", row)
 			}
 			visibleRows++
@@ -205,17 +205,21 @@ func subscriptionTableRead(message subpayload.SubscriptionMessage, timeSelected 
 			}
 			record := subscriptionTableRecord{
 				Database: batch.Database(), Table: batch.Target(), Timestamp: timestamp,
-				Values: make(map[string]any, len(columns)),
+				Values: make(map[string]any, columnCount),
 			}
-			for index, column := range columns {
-				if _, duplicate := record.Values[column.Name]; duplicate {
-					return nil, fmt.Errorf("duplicate column %s", column.Name)
+			for index := 0; index < columnCount; index++ {
+				column, err := batch.ColumnName(index)
+				if err != nil {
+					return nil, err
+				}
+				if _, duplicate := record.Values[column]; duplicate {
+					return nil, fmt.Errorf("duplicate column %s", column)
 				}
 				value, err := batch.Value(row, index)
 				if err != nil {
 					return nil, err
 				}
-				record.Values[column.Name] = value
+				record.Values[column] = value
 			}
 			records = append(records, record)
 		}

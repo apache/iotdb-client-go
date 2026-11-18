@@ -28,6 +28,7 @@ import (
 	"github.com/apache/iotdb-client-go/subscription/internal/record"
 	internalwire "github.com/apache/iotdb-client-go/subscription/internal/wire"
 	"github.com/apache/iotdb-client-go/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // Poll response tags retain their Java protocol numbers.
@@ -44,7 +45,19 @@ const (
 // PollBatch associates one decoded Tablet with its source database.
 type PollBatch struct {
 	Database string
-	Tablet record.Tablet
+	Tablet   *client.Tablet
+}
+
+func decodeSubscriptionTablet(reader *subscriptionWireReader) (*client.Tablet, error) {
+	tablet, bytesRead, err := client.DecodeTablet(reader.RemainingBytes())
+	if err != nil {
+		return nil, err
+	}
+	reader.Advance(bytesRead)
+	if err := reader.Err(); err != nil {
+		return nil, err
+	}
+	return tablet, nil
 }
 
 // PollResponse retains transport events separately from deliverable
@@ -238,7 +251,7 @@ func (response *PollResponse) ToMessage(dialect subscription.Dialect) (payload.S
 		for _, batch := range response.Records {
 			selected := response.TimeSelected
 			if tables := response.TimeSelectedByTable[strings.ToLower(strings.TrimSpace(batch.Database))]; tables != nil {
-				if value, ok := tables[strings.ToLower(strings.TrimSpace(batch.Tablet.Target))]; ok {
+				if value, ok := tables[strings.ToLower(strings.TrimSpace(batch.Tablet.GetTargetName()))]; ok {
 					selected = value
 				}
 			}
