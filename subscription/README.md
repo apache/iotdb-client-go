@@ -17,29 +17,35 @@ specific language governing permissions and limitations
 under the License.
 -->
 
-# Go Subscription API
+# Go Subscription Client
 
-The module implements `SubscriptionSession` management, Pull consumption with record polling, commits, progress, seek, processor pipelines, and background connection coordination, and Push consumption with sequential callbacks and acknowledgment strategies. Poll response decoding, record decoding, and message release are also connected. Built-in Watermark and ColumnAlign processors are available for the Pull pipeline. These implementations have not been compiled or exercised at runtime; this document describes the code and its contracts.
+The `github.com/apache/iotdb-client-go/subscription` module provides native Go APIs for topic management, subscription management, Pull and Push record consumption, automatic and manual commit, progress tracking, Seek, and message processors.
 
-The module path is `github.com/apache/iotdb-client-go/subscription`. It uses Go 1.25 and maintains dependencies and versions separately from the existing `github.com/apache/iotdb-client-go/v2` Session module. Its direct dependencies are `github.com/apache/iotdb-client-go/v2` at `v2.0.0-20260914074454-a25f68aa9681`, which provides existing types such as `TSDataType` and `ColumnCategory`, and `github.com/apache/thrift` at `v0.24.0`, which provides the RPC transport and protocol. It adds no TsFile, cgo, or TLS dependency and does not change the existing Session interfaces.
+The module is independent from the existing `github.com/apache/iotdb-client-go/v2` Session module.
 
-The Java reference is `iotdb-client/subscription` at IoTDB commit `d9122d837610`. The supported payload format is records: this module defines no TsFile handler, download, file-management, or Reader API. Topic management and `Subscribe` do not reject TsFile topics in advance. Dispatching a file payload during decoding returns `ErrUnsupportedTsFile`; that payload must not be delivered or acknowledged.
+## Requirements
 
-Standalone [tree and table examples](../example/subscription/README.md) cover ordinary record Pull/Push consumption and incremental subscriptions with progress, checkpoint resume, and optional processors. They belong to the independent example module, alongside the existing Session and database/sql examples, and use the Session client to prepare sample data.
+- Go 1.25 or later
+- An IoTDB server with subscription support enabled
+- A `SubscriptionRecordHandler` topic for record consumption
 
-## Package Responsibilities and Import Migration
+Install the module from a Go project:
 
-Public business APIs now live in packages within this subscription module. The root package contains only shared `Dialect`, `TreeDialect`, `TableDialect`, `ConnectionConfig`, and sentinel errors. Previous root business imports must move to the owning package; there are no root compatibility aliases or forwarding constructors. Public type and method names retain their original meanings.
+```sh
+go get github.com/apache/iotdb-client-go/subscription@latest
+```
 
-| Package under `github.com/apache/iotdb-client-go/subscription` | Public responsibility |
+## Packages
+
+| Package | Contents |
 | --- | --- |
-| Root `subscription` | Model selection, shared connection settings, and error identities used with `errors.Is` |
-| `session` | `SubscriptionSession`, its configuration/default/constructor, topic and subscription management DTOs, and SQL management operations |
-| `consumer` | Pull/Push lifecycle and configuration/defaults/constructors, `AckStrategy`, `ConsumeFunc`, consumer identity, `PollResult`, and `Positioner` |
-| `payload` | Messages, kinds, batches, rows, columns, commit contexts, topic/region progress, and Writer identity/progress types |
-| `processor` | Processing capability interfaces, buffering metadata, Watermark and ColumnAlign implementations/configuration/constructors |
+| `subscription` | Data-model constants, connection configuration, and public errors |
+| `subscription/session` | Subscription management session and Topic/Subscription types |
+| `subscription/consumer` | Pull/Push consumers, configuration, commit, progress, Seek, and processors attachment |
+| `subscription/payload` | Messages, record batches, rows, commit contexts, and progress types |
+| `subscription/processor` | Processor interfaces and built-in Watermark and ColumnAlign processors |
 
-The snippets below use explicit aliases so local variables named `consumer`, `session`, or `processor` do not hide package constructors:
+Use aliases when local variables are named `session`, `consumer`, or `processor`:
 
 ```go
 import (
@@ -51,97 +57,85 @@ import (
 )
 ```
 
-Import only the packages used by your program. For example, migrate `subscription.NewSubscriptionSession` to `subsession.NewSubscriptionSession`, consumer constructors to `subconsumer`, `SubscriptionMessage` and `TopicProgress` to `subpayload`, and processor constructors/interfaces to `subprocessor`. Shared settings, model constants, and sentinel errors continue to use `subscription`.
+## Data Models
 
-Seven internal packages implement the lower-level boundaries:
+Each Session or Consumer instance uses one data model:
 
-| Internal package | Responsibility |
-| --- | --- |
-| `internal/wire` | Java-compatible primitive binary readers/writers and bounds checking |
-| `internal/transport` | Plain TCP/framed Thrift client construction, socket cancellation, and idempotent connection shutdown |
-| `internal/identifier` | SQL identifier validation and protocol identifier parsing |
-| `internal/configutil` | Shared connection defaults/copying/validation and dialect normalization |
-| `internal/record` | Concrete record/watermark messages, borrowed batch storage, ordering views, release, and ownership |
-| `internal/protocol` | Subscription request/response codecs, commit/progress formats, Tablet decoding, continuation checks, and payload dispatch |
-| `internal/rpcsession` | Authentication, Session/statement IDs, RPC calls, SHOW result pagination/decoding, and query cleanup |
+```go
+subscription.TreeDialect
+subscription.TableDialect
+```
 
-The root shared package has no dependency on business packages. `payload` defines the shared contracts; concrete record storage implements those contracts internally. `session` coordinates management over `internal/rpcsession`; `consumer` coordinates providers, protocol events, progress, and processor pipelines; `processor` consumes payload contracts and builds owned record output through internal record support. Lower-level packages do not import these public coordinators. All seven internal packages remain in the existing subscription module and are unavailable as external public import paths.
-
-Package boundaries do not add modules or dependencies. The subscription module, the existing independent example module, and the independent E2E module retain their own `go.mod` files alongside the root Session module. The example and E2E modules keep local replacements for the two production modules. Their module paths and dependency versions are unchanged by this package migration.
-
-## Configuration and Data Model Selection
-
-In this section, model constants and `ConnectionConfig` belong to the root package; management configuration belongs to `session`, and consumer configuration and acknowledgment types belong to `consumer`.
-
-Go uses `Dialect` to distinguish the tree and table models. Management and consumption each share a contract rather than duplicating Java's tree/table types and Builder hierarchy.
-
-Java's `ISubscriptionTreeSession/ISubscriptionTableSession`, tree/table Pull interfaces, and tree/table Push interfaces have identical method signatures within each pair. Go therefore uses `SubscriptionSession`, `SubscriptionPullConsumer`, and `SubscriptionPushConsumer` for those common operations. Configuration selects the model through `Dialect`; each instance uses one model.
-
-Only the public method contract is shared. Management sessions pass the model when connecting. Consumer handshakes carry the selected model, and record decoding distinguishes tree device paths from table databases, tables, and TAG identities. Sharing an interface does not require the two models to use the same internal implementation.
-
-| Public Go type | Java counterpart | Go representation |
-| --- | --- | --- |
-| `Dialect`, `TreeDialect`, `TableDialect` | Tree/table Session and Consumer types, SQL dialect | Select the model in `SubscriptionSessionConfig` or `SubscriptionConsumerConfig` |
-| `ConnectionConfig` | Session/Consumer Builder settings for nodes, authentication, connection timeout, and maximum frame size | `NodeURLs` represents either a single node or cluster seed addresses; durations use `time.Duration`; plaintext and encrypted passwords are mutually exclusive |
-| `SubscriptionSessionConfig` | `SubscriptionTreeSessionBuilder`, `SubscriptionTableSessionBuilder` | Obtain defaults through `DefaultSubscriptionSessionConfig`, then pass them to `NewSubscriptionSession`; construction does not connect |
-| `SubscriptionConsumerConfig` | `AbstractSubscriptionConsumerBuilder` | Shared configuration for consumer identity, ownership, heartbeats, endpoint synchronization, and parallelism |
-| `SubscriptionPullConsumerConfig` | `AbstractSubscriptionPullConsumerBuilder` | `AutoCommit == nil` selects Java's default, `true`; a pointer to `false` explicitly selects manual commits |
-| `SubscriptionPushConsumerConfig` | `AbstractSubscriptionPushConsumerBuilder` | Combines a Handler, ACK strategy, and polling interval and timeout |
-| `AckStrategy`, `AckAfterConsume`, `AckBeforeConsume` | `AckStrategy.AFTER_CONSUME`, `BEFORE_CONSUME` | The zero value acknowledges after consumption; callback failure does not cause redelivery when acknowledgment precedes consumption |
-
-`SubscriptionConsumerConfig.OwnerEpoch == nil` means that no epoch was supplied; a pointer to zero explicitly supplies epoch 0. `DefaultSubscriptionConsumerConfig`, `DefaultSubscriptionPullConsumerConfig`, and `DefaultSubscriptionPushConsumerConfig` are available. The default Push Handler remains nil, so callers must supply a real handler. Internal normalization copies endpoint slices and optional pointers. Zero durations select defaults, negative durations return errors, and positive values below Java's minimum are raised to that minimum. Construct consumers with `NewSubscriptionPullConsumer` or `NewSubscriptionPushConsumer`; neither constructor connects to the network.
-
-The management session defaults are `localhost:6667`, the tree model, root/root authentication, a 64 MiB frame limit, and a ten-second connection and authentication timeout. Java management sessions do not limit connection time by default; the Go entry point uses a bounded timeout here. The constructor fills empty endpoints, username, and dialect, as well as zero timeout and frame size, validates addresses and mutually exclusive authentication, and copies the endpoint slice. Passwords are always preserved as supplied, including empty strings. Start with the default configuration function when root/root defaults are needed. To use an encrypted password, clear `Password` and set `EncryptedPassword`.
+Select it in the configuration:
 
 ```go
 cfg := subsession.DefaultSubscriptionSessionConfig()
 cfg.Dialect = subscription.TableDialect
-s, err := subsession.NewSubscriptionSession(cfg)
+```
+
+## Connection Configuration
+
+`subscription.ConnectionConfig` is shared by sessions and consumers.
+
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `NodeURLs` | `[]string` | `["localhost:6667"]` | Single address or cluster seed list |
+| `Username` | `string` | `"root"` | User name |
+| `Password` | `string` | `"root"` | Plaintext password; mutually exclusive with `EncryptedPassword` |
+| `EncryptedPassword` | `string` | Empty | Encrypted password; mutually exclusive with `Password` |
+| `ConnectTimeout` | `time.Duration` | `10s` | Connection and authentication timeout per seed |
+| `MaxFrameSize` | `int32` | `64 MiB` | Maximum Thrift frame size |
+
+TLS connections are not currently supported by this module.
+
+## Quick Start
+
+### Manage Topics
+
+```go
+cfg := subsession.DefaultSubscriptionSessionConfig()
+cfg.Dialect = subscription.TreeDialect
+
+session, err := subsession.NewSubscriptionSession(cfg)
 if err != nil {
     return err
 }
-if err := s.Open(ctx); err != nil {
+if err := session.Open(ctx); err != nil {
     return err
 }
-defer s.Close()
-topics, err := s.Topics(ctx)
+defer session.Close()
+
+if err := session.CreateTopic(ctx, "all_metrics", subsession.CreateTopicOptions{
+    Attributes: map[string]string{
+        "format": "SubscriptionRecordHandler",
+        "mode":   "snapshot",
+        "path":   "root.factory.**",
+    },
+    IfNotExists: true,
+}); err != nil {
+    return err
+}
+
+topics, err := session.Topics(ctx)
+if err != nil {
+    return err
+}
+fmt.Println(topics)
 ```
 
-Management connections own query pagination and closing while reusing the existing TsBlock decoder. They do not use the existing SessionDataSet, whose pagination uses `context.Background()`. Cancellation interrupts the underlying connection. Later operations rebuild a failed connection with the same model and authentication settings. Already-sent management statements are not automatically replayed after a connection failure; callers can query server state before deciding whether to retry. A management session can be opened again after closing, separately from the Consumer contract that prohibits reopening after a successful close.
+### Pull Records
 
-## Internal Subscription Protocol and Providers
-
-The internal implementation covers handshakes, heartbeats, subscribe/unsubscribe, close, commits, seek, Poll and Tablet-continuation requests, and oversized-request slicing. Pull and Push share these internal capabilities.
-
-- Primitive encoding uses Java's big-endian layout. Commit contexts use version 2 and retain legacy commit fields plus optional Writer identity and progress. Topic/Region/Writer progress follows the original protocol structure.
-- Topic sets in subscribe and Poll requests use Java ObjectSet string tags, separately from the ordinary StringList used by heartbeat unsubscribe lists. Set encoding is sorted for stability. Null strings map to empty strings in existing Go string fields.
-- Each Provider owns a plain Thrift connection and a serialized RPC channel. Opening includes authentication, frame negotiation, and the subscription handshake, all bounded by the opening timeout. The Provider retains server-assigned consumer identities and sends instance identity and ownership information in the handshake.
-- The frame limit is the smaller of the local and server limits, with protocol space reserved. Older servers without the property field or property-probe RPC fall back to the local limit. All slices of a sliceable request retain the same connection, order, and batch identity.
-- Heartbeats batch buffered commit contexts by message size. Commits reserve response space and send batches; a later batch failure still returns earlier accepted contexts and progress. A response without a body retains an empty result rather than implying that the entire batch succeeded.
-- Status handling distinguishes ordinary errors, owner fencing, consumer fencing, connection replacement, and critical errors. A Poll diagnostic reporting a missing consumer-group Broker invalidates the old connection for Consumer recovery. Late responses cannot reactivate an invalidated connection.
-- Providers decode every nonempty Poll response body and retain record, error, termination, and watermark events. File responses return `ErrUnsupportedTsFile` during type dispatch. Mixed responses do not return partially decoded records, and file polling is not implemented.
-
-## Record Messages and Decoding
-
-Records use the Tablet serialization format of Java's current `2.5.1-261023-SNAPSHOT` dependency, separately from insert RPC and query TsBlock formats. They do not depend on TsFile Go or native libraries.
-
-- Supported types are BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, STRING, TIMESTAMP, DATE, BLOB, and OBJECT, preserving TAG/FIELD/ATTRIBUTE categories. TEXT/STRING values are strings, BLOB/OBJECT values are `[]byte`, and DATE values are `time.Time` at midnight UTC.
-- Bitmaps and absent value columns determine NULL values. A Binary absence marker first becomes empty content, after which the Bitmap is applied. Empty strings and empty BLOBs are not automatically converted to NULL. Dates follow Java's integer date representation.
-- `Timestamp/Value` use original row indexes. `Rows()` iterates a separate stable view in ascending timestamp order, retaining original order for equal timestamps. Row value slices are not reused between iterations, and internal locks are not held while invoking the caller's iteration function.
-- Tree records always expose timestamps. Table records first use database/table-specific time projection, falling back to the message-level flag. Older responses without the projection suffix retain Java's default of selecting time.
-- Message release is idempotent and clears record buffers. Commit contexts and their optional Writer metadata remain available as independent snapshots, as do watermark and message kind. Accessing data through previously borrowed batches after release returns an error.
-- Record continuation uses the original DataNode Provider, checks the complete commit context, and merges data and time projections across pages. The final count is checked against the number of Tablets, not rows. Outdated or unavailable partial deliveries are not exposed.
-- Empty-record deliveries and termination events retain their contexts at the decoding layer. Pull handles empty-message ACKs and termination unsubscribe only after confirming that the entire poll round has no TsFile or fencing error. Server ERROR payloads retain their severity, and watermarks can become processor messages.
-
-## Pull Consumption
-
-`NewSubscriptionPullConsumer` copies and validates configuration without connecting. `Open(ctx)` opens seed connections and discovers other nodes. Background lifetime is independent of the opening context. `Subscribe/Unsubscribe` update subscriptions, and `AddProcessor` adds processors in order.
+The example assumes that a table-model Topic named `metrics_topic` already exists with `format=SubscriptionRecordHandler`.
 
 ```go
 cfg := subconsumer.DefaultSubscriptionPullConsumerConfig()
 cfg.Consumer.Dialect = subscription.TableDialect
-autoCommit := false
-cfg.AutoCommit = &autoCommit
+cfg.Consumer.ConsumerID = "go-pull-consumer"
+cfg.Consumer.GroupID = "go-consumer-group"
+
+manual := false
+cfg.AutoCommit = &manual
+
 consumer, err := subconsumer.NewSubscriptionPullConsumer(cfg)
 if err != nil {
     return err
@@ -150,13 +144,25 @@ if err := consumer.Open(ctx); err != nil {
     return err
 }
 defer consumer.Close()
-if err := consumer.Subscribe(ctx, "measurements"); err != nil {
+
+if err := consumer.Subscribe(ctx, "metrics_topic"); err != nil {
     return err
 }
+
 messages, err := consumer.Poll(ctx, 5*time.Second)
 if err != nil {
     return err
 }
+if len(messages) == 0 {
+    return nil
+}
+
+defer func() {
+    for _, message := range messages {
+        message.Release()
+    }
+}()
+
 for _, message := range messages {
     batches, err := message.Records()
     if err != nil {
@@ -167,29 +173,27 @@ for _, message := range messages {
             if err != nil {
                 return err
             }
-            fmt.Println(row.Timestamp, row.Values)
+            fmt.Println(batch.Database(), batch.Target(), row.Timestamp, row.Values)
         }
     }
-    message.Release()
 }
-return consumer.Commit(ctx, messages...)
+
+if err := consumer.Commit(ctx, messages...); err != nil {
+    return err
+}
 ```
 
-- A positive Poll timeout starts at entry and covers waiting for the serialized foreground gate, polling, and termination unsubscribe cleanup. Processor callbacks must return promptly. Negative timeouts return argument errors. A zero timeout does not wait for a busy foreground gate or perform synchronous provider recovery; it sends one round of requests to available Providers with server timeout 0. Network I/O can still wait and is bounded by the caller's context. Caller context cancellation always returns an error.
-- Poll work is serial even when `MaxPollParallelism` is greater than one, matching the current Java client. TsFile or current-consumer fencing makes the entire round fail without passing records to processors, automatic commit tracking, or fetch positions. Custom processor code must still avoid blocking indefinitely.
-- Heartbeats renew records buffered by Pull processors. Automatic commits track only records delivered to the caller and use an expiry heap so each tick processes due entries instead of scanning the full backlog. `LastAutoCommitError` exposes the last background ACK failure; it is cleared by a later successful due batch. Manual `Commit` can run concurrently with Poll; `CommitAsync` reports its result once through a buffered channel.
-- Commit and seek server requests and local progress updates are mutually exclusive. Partial acceptance is applied first and accepted contexts leave the pending queue; only the remainder is retried. NACKs are not replayed. A writer ACK pending after node loss is redirected only after the same Topic/Region reappears through a healthy node.
-- Heartbeats are scheduled independently per Provider. Endpoint synchronization and connection failure trigger recovery. Background recovery attempts are at least five seconds apart. Late old-connection responses cannot reactivate an old Provider or incorrectly fence the replacement connection's Consumer.
-- `Close` interrupts blocked polling and stops background work. In manual mode, buffered processor messages make closing return an error while preserving the drain path. Call `DrainBufferedMessages`, process and commit its records, then close again. Automatic mode makes a best-effort commit of delivered and drained records during closing. Commit failures return errors; a successful close does not imply that all historical messages were processed.
+`AutoCommit == nil` selects the default value `true`. Set a pointer to `false` for manual commit.
 
-## Push Consumption
-
-`NewSubscriptionPushConsumer` normalizes configuration once, requires a non-nil Handler, and does not connect. It reuses the manual Pull core for providers, progress, and polling, without installing processors or enabling automatic commits. `Open(ctx)` starts one fixed-delay polling loop; its background lifetime is independent of the opening context. Handlers run sequentially, and the next round starts only after the current round and `PollInterval` delay finish.
+### Push Records
 
 ```go
 cfg := subconsumer.DefaultSubscriptionPushConsumerConfig()
-cfg.Consumer.Dialect = subscription.TableDialect
+cfg.Consumer.Dialect = subscription.TreeDialect
+cfg.Consumer.ConsumerID = "go-push-consumer"
+cfg.Consumer.GroupID = "go-consumer-group"
 cfg.AckStrategy = subconsumer.AckAfterConsume
+
 cfg.Handler = func(callbackCtx context.Context, message subpayload.SubscriptionMessage) error {
     batches, err := message.Records()
     if err != nil {
@@ -203,11 +207,12 @@ cfg.Handler = func(callbackCtx context.Context, message subpayload.SubscriptionM
             if err := callbackCtx.Err(); err != nil {
                 return err
             }
-            fmt.Println(row.Timestamp, row.Values)
+            fmt.Println(batch.Target(), row.Timestamp, row.Values)
         }
     }
     return nil
 }
+
 consumer, err := subconsumer.NewSubscriptionPushConsumer(cfg)
 if err != nil {
     return err
@@ -216,175 +221,285 @@ if err := consumer.Open(ctx); err != nil {
     return err
 }
 defer consumer.Close()
-if err := consumer.Subscribe(ctx, "measurements"); err != nil {
+
+if err := consumer.Subscribe(ctx, "all_metrics"); err != nil {
     return err
 }
+
 select {
 case err, ok := <-consumer.Errors():
-    if !ok {
-        return nil
+    if ok {
+        return err
     }
-    return err
+    return nil
 case <-ctx.Done():
     return ctx.Err()
 }
 ```
 
-- `AckBeforeConsume` acknowledges the whole batch before invoking any Handler. A partial or failed ACK prevents callbacks for that batch. A later Handler error or panic does not trigger NACK under this strategy.
-- `AckAfterConsume` runs all callbacks in order, then acknowledges the successful group and nacks the failed group. An ACK error skips the subsequent NACK request. A nil Handler result means success; an error or panic means consumption failed, not that the background loop has terminated.
-- Ordinary network failures are retried in a later polling round. TsFile decoding, fencing, and critical background errors stop delivery. `Errors()` buffers one result, sends the first terminal error once, and is closed by the loop when it exits. Normal closing does not invent a terminal error. A TsFile failure never enters the Handler or acknowledgment path.
-- Handlers run without an internal consumer operation gate and may call Subscribe, Seek, or Close. Push seek invalidates pending delivery for the target topic before sending the request. That topic's active callback context is canceled after the seek request finishes, whether it succeeds or fails, so a Handler can use its own context to call Seek without canceling that request at entry. An already-started callback can run until it returns; later callbacks and ACKs for the old delivery generation are skipped. A failed seek does not restore the old batch because server positions may already have changed partially. Already accepted acknowledgments are not rolled back.
-- `Close` cancels the active callback context and synchronously closes core connection resources, but does not wait for user Handler code to return. This permits calling Close from inside a Handler without waiting on itself. The active message is released only after its callback returns, so borrowed data remains valid during that callback. Handlers should return promptly after cancellation. If a callback has not returned, the loop and `Errors()` channel may finish after Close returns.
-- Push messages are owned by the delivery loop. Do not call `Release` in a Handler; copy any record data that must outlive the callback. Watermarks update consumer state but do not reach record Handlers. Push does not expose the Pull processor pipeline.
+Do not call `Release` from a Push handler. The delivery loop manages message lifetime.
 
-## Management Sessions
+## Configuration
 
-All management interfaces, DTOs, defaults, and constructors in this mapping belong to `session`, including `SubscriptionSessionConfig`, `DefaultSubscriptionSessionConfig`, and `NewSubscriptionSession`.
+### Subscription Session
 
-`SubscriptionSession` corresponds to Java's `ISubscriptionTreeSession` and `ISubscriptionTableSession`. Methods take an explicit `context.Context`, while parameter structures express existence conditions.
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Connection` | `subscription.ConnectionConfig` | Connection defaults above | Endpoint and authentication |
+| `Dialect` | `subscription.Dialect` | `TreeDialect` | Tree or table model |
 
-| Go method or type | Java counterpart | Consolidation |
-| --- | --- | --- |
-| `Open(ctx)`, `Close()` | `open()`, `AutoCloseable.close()` | Opening is cancelable; closing owns resource release |
-| `CreateTopic(ctx, name, options)`, `CreateTopicOptions` | Four `createTopic/createTopicIfNotExists` overloads | `Attributes` carries optional properties; `IfNotExists` requests conditional creation |
-| `AlterTopic(ctx, name, attributes)` | `alterTopic(name, properties)` | Attributes use `map[string]string` |
-| `AlterTopicOwner(ctx, name, owner)`, `TopicOwner` | Two `alterTopicOwner` overloads | A `LeaseDuration` pointer represents an optional lease duration |
-| `DropTopic(ctx, name, options)`, `DropOptions` | `dropTopic/dropTopicIfExists` | `IfExists` requests conditional deletion |
-| `Topics(ctx)`, `Topic(ctx, name)` | `getTopics()`, `getTopic(name)` | Collections are slices; an absent single topic returns `found == false` |
-| `Subscriptions(ctx, topic)` | `getSubscriptions()`, `getSubscriptions(topic)` | `topic == ""` lists all subscriptions |
-| `DropSubscription(ctx, id, options)` | `dropSubscription/dropSubscriptionIfExists` | Reuses `DropOptions` |
-| `Topic` | `model.Topic` | Retains the server's raw attribute text rather than assuming it is directly parseable as a map |
-| `Subscription` | `model.Subscription` | Retains the server's raw `ConsumerIDs` text rather than assuming it is CSV |
+### Shared Consumer Configuration
 
-## Consumers, Commits, and Progress
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Connection` | `subscription.ConnectionConfig` | Connection defaults above | Endpoint and authentication |
+| `Dialect` | `subscription.Dialect` | `TreeDialect` | Tree or table model |
+| `ConsumerID` | `string` | Assigned by the server after Open | Consumer identity |
+| `GroupID` | `string` | Assigned by the server after Open | Consumer group identity |
+| `OwnerID` | `string` | Empty | Topic owner identity |
+| `OwnerEpoch` | `*int64` | `nil` | Owner epoch; a pointer to zero sets epoch zero |
+| `HeartbeatInterval` | `time.Duration` | `30s`, minimum `1s` | Provider heartbeat interval |
+| `EndpointsSyncInterval` | `time.Duration` | `2m`, minimum `5s` | Endpoint synchronization interval |
+| `MaxPollParallelism` | `int` | `1` | Accepted for compatibility; Poll currently runs serially |
 
-Consumer interfaces, configurations, defaults, constructors, acknowledgment types, `ConsumeFunc`, `PollResult`, and `Positioner` belong to `consumer`. Message and commit/progress types in the same mapping belong to `payload`, including `TopicProgress`, `RegionProgress`, `WriterID`, `WriterProgress`, `WriterPosition`, and `CommitContext`.
+### Pull Consumer Configuration
 
-`SubscriptionConsumer` is the common interface for Pull and Push. It embeds `Positioner`, so both share progress and seek contracts, including public methods inherited by Java's concrete consumers from their base class.
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Consumer` | `SubscriptionConsumerConfig` | Shared consumer defaults | Shared consumer settings |
+| `AutoCommit` | `*bool` | `true` | `nil` uses the default; explicit `false` enables manual commit |
+| `AutoCommitInterval` | `time.Duration` | `5s`, minimum `500ms` | Automatic commit interval |
 
-| Go method or type | Java counterpart | Consolidation |
-| --- | --- | --- |
-| `NewSubscriptionPullConsumer(config)` | `SubscriptionTreePullConsumerBuilder.build`, `SubscriptionTablePullConsumerBuilder.build` | One constructor with `Dialect`; validates configuration without connecting |
-| `NewSubscriptionPushConsumer(config)` | `SubscriptionTreePushConsumerBuilder.build`, `SubscriptionTablePushConsumerBuilder.build` | One constructor with `Dialect` and a required Go Handler; validates configuration without connecting |
-| `SubscriptionConsumer.Open(ctx)`, `Close()` | Each Consumer's `open/close` | Shared lifecycle interface |
-| `Subscribe(ctx, topics...)`, `Unsubscribe(ctx, topics...)` | Single-topic, array, and collection overloads | Variadic topic names |
-| `Info()`, `SubscriptionConsumerInfo` | `getConsumerId/getConsumerGroupId/getOwnerId/getOwnerEpoch` | Returns a credential-free identity snapshot, including server-assigned IDs |
-| `LatestWatermark()` | `getLatestWatermarkTimestamp()` | An additional `ok` distinguishes an unavailable watermark from a valid timestamp |
-| `AllConsumed()` | `allTopicMessagesHaveBeenConsumed()` | True only when the consumer has no remaining subscriptions; a termination with pending, timed-out, or failed unsubscribe cleanup remains incomplete |
-| `SubscriptionPullConsumer.Poll(ctx, timeout, topics...)` | Four `poll` overloads | `time.Duration` replaces millisecond and Java Duration overloads; omitted topics mean all current subscriptions |
-| `PollWithInfo(ctx, timeout, topics...)`, `PollResult` | Concrete Pull classes' `pollWithInfo`, `payload.PollResult` | Returns messages, buffered count, and processor watermark together |
-| `DrainBufferedMessages(ctx)` | `drainBufferedMessages()` | Explicitly drains processors or pending delivery buffers |
-| `Commit(ctx, messages...)` | Single/batch `commitSync` | Variadic messages for synchronous commits |
-| `CommitAsync(ctx, messages...)` | `CompletableFuture` and `AsyncCommitCallback` overloads | Returns `<-chan error`; callers can wait directly or wait in a goroutine before invoking a callback |
-| `AddProcessor(processor)` | Concrete Pull classes' `addProcessor` | Adds processing stages in order and returns an error rather than a chained Builder |
-| `ConsumeFunc`, `SubscriptionPushConsumerConfig.Handler` | `ConsumeListener.onReceive`, `ConsumeResult` | `func(ctx, message) error`; nil means success and a non-nil error means failure |
-| `SubscriptionPushConsumer.Errors()` | Explicit Go error outlet for Java's automatic-poll exception path | Reports the first terminal background error once; ordinary Handler failures are not terminal |
-| `Positioner.Positions(topic)` | `positions(topic)` | Returns a deep snapshot of current fetch positions |
-| `CommittedPositions(topic)` | `committedPositions(topic)` | Separately retains confirmed, recoverable positions |
-| `SeekToBeginning(ctx, topic)`, `SeekToEnd(ctx, topic)` | Methods with the same names | Retains both positioning operations |
-| `Seek(ctx, topic, progress)`, `SeekAfter(ctx, topic, progress)` | `seek/seekAfter` | Replays from progress or resumes after it, respectively |
-| `TopicProgress`, `RegionProgress` | Classes with the same names | Topic → Region → Writer maps rather than a single offset |
-| `WriterID`, `WriterProgress` | `WriterId`, `WriterProgress` | Comparable Writer IDs serve as map keys; progress retains physical time and local sequence |
-| `WriterPosition`, `CommitContext`, `InvalidCommitID` | Optional writer progress and legacy commit metadata in `SubscriptionCommitContext` | Preserves paired writer identity and progress, routing, restart, and seek-generation information |
+### Push Consumer Configuration
 
-`CommitAsync` returns a channel with capacity 1. It sends one result, nil on success, then closes. An unread result cannot block cleanup. Canceling the context does not undo commits accepted by the server, and a synchronous or asynchronous commit error does not mean that the whole batch failed.
+| Field | Type | Default | Description |
+| --- | --- | --- | --- |
+| `Consumer` | `SubscriptionConsumerConfig` | Shared consumer defaults | Shared consumer settings |
+| `AckStrategy` | `AckStrategy` | `AckAfterConsume` | Acknowledgment timing |
+| `Handler` | `ConsumeFunc` | Required | Record callback |
+| `PollInterval` | `time.Duration` | `100ms`, minimum `1ms` | Delay between polling rounds |
+| `PollTimeout` | `time.Duration` | `10s`, minimum `1s` | Timeout for one automatic poll |
 
-The `SubscriptionPushConsumer.Errors()` channel buffers one error. A TsFile decoding error stops automatic polling before notification; the failed round cannot enter the Handler or ACK path. The polling loop owns channel closure. If Close cancels a still-running Handler, channel closure can occur after Close returns, when that Handler returns and the loop finishes.
-
-## Messages, Records, and Processors
-
-Message/record/progress types in this mapping belong to `payload`; processor interfaces, `ProcessorBuffer`, configurations, and concrete processors belong to `processor`.
-
-| Go method or type | Java counterpart | Go representation |
-| --- | --- | --- |
-| `SubscriptionMessage`, `SubscriptionMessageKind`, `RecordMessage`, `WatermarkMessage` | `SubscriptionMessage`, record and watermark message kinds | Public kinds are independent of numeric wire types; Pull and Push deliver records only, while processors can receive watermarks |
-| `SubscriptionMessage.Kind()`, `CommitContext()` | `getMessageType/getCommitContext` | Returns the public kind and a commit-context snapshot |
-| `SubscriptionMessage.Records()` | `getResultSets/getRecordTabletIterator`, `SubscriptionRecordHandler` | Returns `[]RecordBatch` across databases and Tablets without reproducing Java's ResultSet hierarchy |
-| `SubscriptionMessage.Watermark()` | `getWatermarkTimestamp()` | `ok` identifies a watermark message |
-| `EstimatedSize()`, `Release()` | `estimateSize/removeUserData` | Releases record buffers while retaining kind and commit identity, allowing a later commit |
-| `RecordBatch` | `SubscriptionRecordHandler.SubscriptionResultSet` and its Tablet view | Exposes model, database, target, column metadata, time projection, row count, and indexed access |
-| `Column` | Measurement schema, column type, and category | Reuses `client.TSDataType/ColumnCategory`; time is represented separately |
-| `RecordBatch.Rows()`, `Row` | Iteration views of `ResultSet`, `RowRecord`, and `TSRecord` | Uses `iter.Seq2[Row, error]` with zero-based indexes |
-| `RecordBatch.TimeSelected()`, `Row.Timestamp` | Message-level and per-table time-selection metadata | Each batch retains its projection; `Row.Timestamp == nil` when time is not selected |
-| `RecordBatch.Timestamp(row)` | Raw Tablet timestamp access | Processors can read raw timestamps even when time is not projected |
-| `SubscriptionMessageProcessor.Process/Flush/Reset` | Methods with the same roles in `SubscriptionMessageProcessor` | Processing and flushing explicitly return errors; consumers invoke each processor serially |
-| `BufferingProcessor.Buffered()`, `ProcessorBuffer` | `getBufferedCount/getBufferedCommitContexts` | An optional buffering interface reports both the count and all renewable contexts |
-| `TopicResetter.ResetTopic(topic)` | `supportsTopicScopedReset/reset(topic)` | Interface implementation replaces Java's capability flag |
-| `WatermarkReporter.Watermark()` | `WatermarkProcessor.getWatermark()` | Optionally exposes a processor's ordering watermark, distinct from the Consumer's latest server watermark |
-| `NewWatermarkProcessor(config)`, `WatermarkProcessorConfig` | Both `WatermarkProcessor` constructors | One configuration structure; event-time distance retains server precision, while timeout fields use `time.Duration` |
-| `WatermarkProcessor.Process/Flush/Buffered/Reset/ResetTopic/Watermark` | `process/flush/getBufferedCount/getBufferedCommitContexts/reset/getWatermark` | Buffers whole messages by maximum timestamp, renews every retained commit context, and resets by topic |
-| `NewColumnAlignProcessor(dialect)` | Both `ColumnAlignProcessor` constructors and its nested `Dialect` | Reuses the module's `Dialect`; empty selects tree and table requires `TableDialect` |
-| `ColumnAlignProcessor.Process/Flush/Reset/ResetTopic` | Methods with the same roles | Preserves delivery identity and returns independently owned record buffers with NULLs forward-filled |
-
-A `SubscriptionMessageProcessor` that retains messages must implement `BufferingProcessor` so heartbeats can renew undelivered records. Seek clears only its target topic. With multiple subscribed topics, a processor without `TopicResetter` makes seek fail before server positions change. A single-topic consumer can fall back to `Reset()`. Messages returned by `Flush` pass through subsequent stages; the processor must not retain or modify messages after transferring them.
-
-## Built-in Pull Processors
-
-Create processors and install them with `AddProcessor` before the first Poll. A processor instance belongs to one consumer. Installation order determines pipeline order; putting watermark ordering before column alignment lets aligned records benefit from message reordering.
+Default configuration functions:
 
 ```go
-// This example assumes the server uses millisecond timestamps.
+subsession.DefaultSubscriptionSessionConfig()
+subconsumer.DefaultSubscriptionConsumerConfig()
+subconsumer.DefaultSubscriptionPullConsumerConfig()
+subconsumer.DefaultSubscriptionPushConsumerConfig()
+```
+
+## Public APIs
+
+### Session
+
+```go
+NewSubscriptionSession(config)
+Open(ctx)
+Close()
+CreateTopic(ctx, name, options)
+AlterTopic(ctx, name, attributes)
+AlterTopicOwner(ctx, name, owner)
+DropTopic(ctx, name, options)
+Topics(ctx)
+Topic(ctx, name)
+Subscriptions(ctx, topic)
+DropSubscription(ctx, id, options)
+```
+
+### Pull Consumer
+
+```go
+NewSubscriptionPullConsumer(config)
+Open(ctx)
+Close()
+Subscribe(ctx, topics...)
+Unsubscribe(ctx, topics...)
+Poll(ctx, timeout, topics...)
+PollWithInfo(ctx, timeout, topics...)
+DrainBufferedMessages(ctx)
+Commit(ctx, messages...)
+CommitAsync(ctx, messages...)
+AddProcessor(processor)
+Info()
+LatestWatermark()
+AllConsumed()
+LastAutoCommitError()
+Positions(topic)
+CommittedPositions(topic)
+SeekToBeginning(ctx, topic)
+SeekToEnd(ctx, topic)
+Seek(ctx, topic, progress)
+SeekAfter(ctx, topic, progress)
+```
+
+### Push Consumer
+
+```go
+NewSubscriptionPushConsumer(config)
+Open(ctx)
+Close()
+Subscribe(ctx, topics...)
+Unsubscribe(ctx, topics...)
+Errors()
+Info()
+LatestWatermark()
+AllConsumed()
+Positions(topic)
+CommittedPositions(topic)
+SeekToBeginning(ctx, topic)
+SeekToEnd(ctx, topic)
+Seek(ctx, topic, progress)
+SeekAfter(ctx, topic, progress)
+```
+
+### Messages and Records
+
+`SubscriptionMessage` exposes:
+
+```go
+Kind()
+CommitContext()
+Records()
+Watermark()
+EstimatedSize()
+Release()
+```
+
+`RecordBatch` exposes:
+
+```go
+Dialect()
+Database()
+Target()
+Columns()
+TimeSelected()
+Len()
+Timestamp(row)
+Value(row, column)
+Rows()
+```
+
+Use `Timestamp` and `Value` for raw record indexes. `Rows` returns the visible records in stable timestamp-ascending order.
+
+### Progress and Commit
+
+`payload.TopicProgress` maps a region ID to `RegionProgress`. `RegionProgress` maps a `WriterID` to `WriterProgress`.
+
+```go
+positions, err := consumer.Positions(topic)
+committed, err := consumer.CommittedPositions(topic)
+err = consumer.SeekAfter(ctx, topic, committed)
+```
+
+`Commit` confirms a batch synchronously. `CommitAsync` returns a channel that receives one result and then closes.
+
+## Processors
+
+Pull consumers support ordered processor stages through `AddProcessor`.
+
+```go
+align, err := subprocessor.NewColumnAlignProcessor(subscription.TableDialect)
+if err != nil {
+    return err
+}
+
 watermark, err := subprocessor.NewWatermarkProcessor(subprocessor.WatermarkProcessorConfig{
-    MaxOutOfOrderness: 5000,
-    Timeout: 30 * time.Second,
+    MaxOutOfOrderness:  1000,
+    Timeout:            30 * time.Second,
+    StaleRegionTimeout: 2 * time.Minute,
+    MaxBufferBytes:     64 * 1024 * 1024,
 })
 if err != nil {
     return err
 }
-alignment, err := subprocessor.NewColumnAlignProcessor(subscription.TableDialect)
-if err != nil {
+
+if err := consumer.AddProcessor(align); err != nil {
     return err
 }
 if err := consumer.AddProcessor(watermark); err != nil {
     return err
 }
-if err := consumer.AddProcessor(alignment); err != nil {
-    return err
+```
+
+Custom processors implement `Process`, `Flush`, and `Reset`. A processor that retains messages should implement `BufferingProcessor`. A processor used with topic-scoped Seek should implement `TopicResetter`. A processor that exposes its watermark may implement `WatermarkReporter`.
+
+## Message Ownership
+
+- `CommitContext()` returns a caller-owned snapshot.
+- `Records()` returns borrowed, read-only batches and rows.
+- Borrowed data is valid until `Release()`.
+- `Release()` is idempotent. Commit metadata and watermark remain available after release.
+- Pull callers should release record messages after processing and commit.
+- Push handlers must not release messages. The consumer releases them after the callback.
+- Copy byte slices and row values before retaining them after callback or release.
+
+## Errors
+
+Use `errors.Is` and `errors.As` to classify operation errors.
+
+| Error | Meaning |
+| --- | --- |
+| `ErrUnsupportedTsFile` | TsFile payload decoding is unsupported |
+| `ErrClosed` | The client has been closed |
+| `ErrNotOpen` | The operation requires an open client |
+| `ErrDataReleased` | Record buffers have already been released |
+| `ErrIncompatibleMessage` | The accessor does not match the message kind |
+| `ErrConsumerFenced` | The consumer identity was taken over |
+| `ErrOwnerFenced` | Topic owner, epoch, or lease is invalid |
+| `SubscriptionError` | Server or transport error with `Kind`, `Code`, `Message`, `Critical`, and `Cause` |
+
+```go
+var subscriptionErr *subscription.SubscriptionError
+if errors.As(err, &subscriptionErr) {
+    fmt.Println(subscriptionErr.Kind, subscriptionErr.Code, subscriptionErr.Critical)
 }
 ```
 
-`WatermarkProcessor` tracks sources by topic, DataNode ID, and region ID, matching Java's region identity. Its watermark is the minimum latest timestamp among active sources minus `MaxOutOfOrderness`. Repeated or older timestamps do not refresh source activity. Zero `StaleRegionTimeout` selects 30 seconds, a negative value disables stale-source exclusion, and zero `MaxBufferBytes` selects 64 MiB. Negative event-time distance, timeout, or byte limit is rejected. `Timeout == 0` immediately flushes remaining buffered messages on a Process call without ordered output. The timeout is evaluated on Process calls, including empty calls from Poll; no independent timer goroutine is installed.
+Connection errors redact plaintext and encrypted passwords.
 
-Messages are ordered by their maximum raw timestamp and emitted whole when that maximum is at most the watermark. This does not globally sort rows across messages or batches. Equal message maxima have no guaranteed order. Capacity overflow force-flushes all remaining messages after normal emission. A timeout force-flushes when no message was emitted and the interval since the previous emission has elapsed. When every source is stale, the previous watermark remains in effect. New sources and topic resets can move the watermark backward, matching Java. Subtraction saturates at the minimum timestamp instead of overflowing. Empty record messages use the current wall-clock milliseconds, matching Java's fallback; actual record and watermark timestamps retain server precision.
+## Limitations
 
-`Buffered()` snapshots the message count and every committable context for heartbeat renewal. `Flush()` transfers buffered records in maximum-timestamp order without clearing source progress. `Reset()` releases all retained records and clears ordering state; `ResetTopic(topic)` releases only that topic and recomputes ordering from the remaining sources. Reset discards unconfirmed records without acknowledging them. `Watermark()` returns `ok == false` before progress is known or when reset leaves no active sources. Record size estimation uses the typed column lengths and retained variable-byte totals rather than scanning every cell.
+- Only record payloads are decoded.
+- Topic management and subscription do not reject TsFile topics in advance.
+- A TsFile payload returns `subscription.ErrUnsupportedTsFile` during decode.
+- A failed TsFile poll is not acknowledged, does not advance positions, and does not enter processor or automatic-commit buffers.
+- Push reports a TsFile decode failure through `Errors()` before invoking the handler.
+- No Reader or file-management API is provided for TsFile payloads.
+- TLS connections are not currently supported.
 
-`ColumnAlignProcessor` preserves raw row order, as Java does. It fills a NULL only from a cached non-null value with a strictly earlier timestamp; a non-null observation updates the cache at equal or greater timestamps. Columns are identified by name and data type, so reordered columns remain independent and changed types cannot reuse incompatible values. Tree state is isolated by topic and device path. Table state is isolated by topic, database, table name, and ordered TAG values per row. Trailing NULL TAGs are ignored as in TsFile device IDs, while interior NULL and empty strings remain distinct. Tables without TAGs and those with all TAGs NULL still have a device identity. Table TAG identity uses a typed hash plus exact value comparison and does not allocate a formatted string for every row.
+## Consumer Lifecycle
 
-Decoded subscription records use typed column storage and are aligned in place under one batch lock; their buffer ownership is transferred to the returned messages. User-provided RecordBatch implementations use a copying compatibility path. Input errors and dialect mismatches leave cache and ownership unchanged. Cache byte values and filled byte values are independently copied so Release calls cannot invalidate cached data. Watermarks pass through unchanged. It buffers no messages, so Flush is empty; Reset and ResetTopic clear the corresponding cached values. The per-device value cache is not size-bounded.
+- `Open(ctx)` bounds connection establishment only; a successfully opened consumer owns its background lifetime.
+- Repeated `Open` and repeated `Close` are safe. A successfully closed consumer cannot reopen.
+- Pull requests execute serially. `MaxPollParallelism` is accepted but does not create parallel network polls.
+- `AllConsumed()` is true only after the server confirms that no subscribed topics remain.
+- A pending or failed automatic unsubscribe keeps `AllConsumed()` false.
+- `AllConsumed()` does not imply that processor buffers are empty. Manual-commit callers should call `DrainBufferedMessages`, process and commit every returned message, and drain again until no messages remain.
+- `LastAutoCommitError()` exposes the latest automatic commit failure.
+- `Close()` stops new work and cancels active contexts.
+- In manual-commit mode, `Close()` can return an error while processors still hold messages. Drain, process, and commit those messages before calling `Close()` again.
+- Push `Close()` does not wait for a still-running handler to return.
 
-## Data Ownership and Context Contracts
+## Examples
 
-- Session query collections, Consumer identity, commit contexts, and progress are caller-owned snapshots; progress maps are deep snapshots. Seek copies its input rather than retaining the caller's maps.
-- Batches, columns, and row data from `SubscriptionMessage.Records()` are borrowed, read-only views valid until the message's `Release()`. Callers must copy values and byte slices that need to outlive that point.
-- `Release()` is idempotent. Do not reuse borrowed batch, column, or row data after release. `Records()` returns `ErrDataReleased`, while kind, commit context, and watermark remain available.
-- Nil in `Row.Values` means SQL NULL. DATE uses `time.Time`; TIMESTAMP and record timestamps use `int64` in server precision; BLOB/OBJECT use `[]byte`.
-- A Push Handler must not release its message. Copy record data before returning if it is needed afterward. The callback context is canceled when delivery stops or after a seek request for its topic finishes, regardless of that request's outcome. Close does not wait for the Handler; its message remains valid until the Handler returns.
-- The `Open(ctx)` context bounds opening only, not the background lifetime. Close stops new work and cancels active work. Other operation contexts bound their corresponding operations only; Push user code can finish after Close returns.
-- A positive Pull timeout bounds foreground queue waiting and network polling, subject to an earlier context deadline. Zero has the single-round behavior described above; processor callbacks must return promptly. Operation timeouts use `time.Duration` without changing message timestamp units.
-- Repeated Consumer `Open` while open and repeated `Close` after closing are harmless. A successfully closed Consumer cannot reopen. A failed close requiring buffered data to be drained preserves the drain-and-commit recovery path.
+Complete programs are in [example/subscription](../example/subscription):
 
-## Errors and Remaining Work
-
-| Go sentinel error | Java counterpart or behavior |
-| --- | --- |
-| `ErrUnsupportedTsFile` | The excluded TsFile handler; returned only while decoding a file payload, not during management or subscribe |
-| `ErrClosed`, `ErrNotOpen` | Consumer lifecycle checks |
-| `ErrDataReleased` | Record access after user data release |
-| `ErrIncompatibleMessage` | Incompatible payload access represented by `SubscriptionIncompatibleHandlerException` |
-| `ErrConsumerFenced`, `ErrOwnerFenced` | `SubscriptionConsumerFencedException`, `SubscriptionOwnerFencedException` |
-| `*SubscriptionError` with `Kind` and `Code` | Server status categories: connection setup, pipe timeout, non-critical/critical runtime, payload limit, or fencing |
-
-Operation errors can wrap these sentinels; callers identify them with `errors.Is`. Unsupported TsFile errors must not trigger connection retries or file-payload acknowledgments. Pull returns an error and no messages for a failed round. That round must not advance positions or enter processor or automatic-commit buffers. Previously delivered records and confirmed progress are not rolled back. Callers can unsubscribe the offending topic and poll again. A termination received from the server is persisted even if the Poll budget expires, but `AllConsumed` remains false until unsubscription or heartbeat reconciliation removes the topic.
-
-`SubscriptionError` is exposed for `errors.As`. Its `Kind`, `Code`, `Critical`, and `Message` fields retain the server classification; wrapped transport causes remain available through `errors.Is` and `errors.As`. Connection setup errors redact configured plaintext and encrypted passwords before returning. `MaxPollParallelism` remains accepted for Java configuration compatibility, while poll work currently runs serially to match Java behavior.
-
-The built-in Watermark/ColumnAlign processors and standalone tree/table examples are implemented. The existing 19 unit-test cases now live in `internal/protocol` (protocol and real-message lifecycle cases) and the external `processor_test` package under `processor` (processor behavior). This package migration moves those cases without expanding their scenarios; runtime verification is pending. Management queries reuse the root module's decoder; this work does not change its handling of malformed data.
+```sh
+cd example
+go run ./subscription/tree
+go run ./subscription/table
+go run ./subscription/tree/incremental
+go run ./subscription/table/incremental
+```
 
 ## Testing
 
-This subscription module requires Go 1.25 or later. To run its unit tests, enter `subscription` from the repository root and run `go test ./...`.
+Run subscription unit tests from this directory:
 
-Server-backed tree/table tests live in the independent [E2E module](../test/e2e/README.md), which uses local replacements for both production modules. Root-module commands do not traverse the subscription, example, or E2E modules. See the E2E instructions for module-specific commands, the local subscription test selector, credentials, and subscription/WAL server requirements. The Docker workflow keeps subscription cases disabled unless explicitly configured through a suitable override.
+```sh
+cd subscription
+go test ./...
+```
 
-These commands are provided for the user to run. No compilation, tests, examples, formatting tools, or compiler/syntax checks were run during this package migration, and no runtime validation result is claimed.
+Server-backed tests are in [test/e2e](../test/e2e). Subscription tests are skipped unless `IOTDB_SUBSCRIPTION_E2E=1` is set. See the E2E guide for connection variables, server requirements, and coverage.

@@ -45,5 +45,3 @@ go run ./subscription/tree -host=127.0.0.1 -port=6667 -username=root
 ```
 
 This module is separate from the client unit tests and the independent [E2E module](../test/e2e/README.md). Root-module commands do not traverse these nested modules. CI downloads and builds the example module explicitly after generating the shared RPC code; it does not execute these sample programs.
-
-The commands above are provided for manual use. No compilation, examples, tests, formatting tools, or compiler/syntax checks were run during this reorganization. Runtime behavior remains unverified.
