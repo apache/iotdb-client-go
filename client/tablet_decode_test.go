@@ -24,7 +24,7 @@ import (
 	"testing"
 )
 
-func decodedTestTabletFrame(valuesPresent bool) []byte {
+func decodedTestTabletFrame(timestampsPresent, valuesPresent bool) []byte {
 	var data []byte
 	data = appendTabletInt32(data, int32(len("events")))
 	data = append(data, "events"...)
@@ -37,9 +37,13 @@ func decodedTestTabletFrame(valuesPresent bool) []byte {
 	data = append(data, byte(INT64), 0, 0)
 	data = appendTabletInt32(data, 0)
 	data = append(data, byte(FIELD))
-	data = append(data, 1)
-	data = appendTabletInt64(data, 10)
-	data = appendTabletInt64(data, 20)
+	if timestampsPresent {
+		data = append(data, 1)
+		data = appendTabletInt64(data, 10)
+		data = appendTabletInt64(data, 20)
+	} else {
+		data = append(data, 0)
+	}
 	data = append(data, 0)
 	if valuesPresent {
 		data = append(data, 1, 1)
@@ -60,7 +64,7 @@ func appendTabletInt64(data []byte, value int64) []byte {
 }
 
 func TestDecodeTabletReturnsTabletAndBytesRead(t *testing.T) {
-	frame := decodedTestTabletFrame(true)
+	frame := decodedTestTabletFrame(true, true)
 	data := append(append([]byte{}, frame...), 0xff)
 	tablet, bytesRead, err := DecodeTablet(data)
 	if err != nil {
@@ -69,7 +73,7 @@ func TestDecodeTabletReturnsTabletAndBytesRead(t *testing.T) {
 	if bytesRead != len(frame) {
 		t.Fatalf("BytesRead = %d, want %d", bytesRead, len(frame))
 	}
-	if tablet.GetTargetName() != "events" || !tablet.HasTimestamps() || tablet.Len() != 2 {
+	if tablet.GetTargetName() != "events" || tablet.Len() != 2 {
 		t.Fatalf("decoded Tablet metadata is inconsistent")
 	}
 	if tablet.ColumnCount() != 1 || tablet.ColumnName(0) != "s1" || tablet.ColumnDataType(0) != INT64 || tablet.ColumnCategory(0) != FIELD {
@@ -87,7 +91,7 @@ func TestDecodeTabletReturnsTabletAndBytesRead(t *testing.T) {
 }
 
 func TestDecodeTabletReturnsAbsentColumnAsNull(t *testing.T) {
-	tablet, _, err := DecodeTablet(decodedTestTabletFrame(false))
+	tablet, _, err := DecodeTablet(decodedTestTabletFrame(true, false))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,19 +103,58 @@ func TestDecodeTabletReturnsAbsentColumnAsNull(t *testing.T) {
 	}
 }
 
-func TestDecodedTabletMaterializesSparseColumnOnFirstWrite(t *testing.T) {
-	tablet, _, err := DecodeTablet(decodedTestTabletFrame(false))
+func TestDecodedTabletKeepsAbsentColumnOnWrite(t *testing.T) {
+	tablet, _, err := DecodeTablet(decodedTestTabletFrame(true, false))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := tablet.SetValueAt(int64(101), 0, 0); err != nil {
+	if err := tablet.SetValueAt(int64(101), 0, 0); err == nil {
+		t.Fatal("SetValueAt accepted a missing decoded column")
+	}
+	if tablet.values[0] != nil {
+		t.Fatal("failed SetValueAt materialized a missing decoded column")
+	}
+	if err := tablet.SetValueAt(nil, 0, 0); err != nil {
+		t.Fatalf("SetValueAt(NULL) on an absent decoded column: %v", err)
+	}
+	if tablet.values[0] != nil {
+		t.Fatal("SetValueAt(NULL) materialized a missing decoded column")
+	}
+	for row := 0; row < tablet.Len(); row++ {
+		value, err := tablet.GetValueAt(0, row)
+		if err != nil || value != nil {
+			t.Fatalf("row %d absent value after write = %v, %v", row, value, err)
+		}
+	}
+}
+
+func TestDecodeTabletWithoutTimestampsUsesZeroTimestampArray(t *testing.T) {
+	tablet, _, err := DecodeTablet(decodedTestTabletFrame(false, true))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if value, err := tablet.GetValueAt(0, 0); err != nil || value != int64(101) {
-		t.Fatalf("filled value = %v, %v", value, err)
+	for row := 0; row < tablet.Len(); row++ {
+		if got := tablet.GetTimestampAt(row); got != 0 {
+			t.Fatalf("GetTimestampAt(%d) = %d, want 0", row, got)
+		}
 	}
-	if value, err := tablet.GetValueAt(0, 1); err != nil || value != nil {
-		t.Fatalf("other sparse value = %v, %v", value, err)
+	if err := tablet.SetTimestampAt(3, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := tablet.SetTimestampAt(2, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := tablet.Sort(); err != nil {
+		t.Fatal(err)
+	}
+	for row, want := range []int64{2, 3} {
+		if got := tablet.GetTimestampAt(row); got != want {
+			t.Fatalf("sorted timestamp %d = %d, want %d", row, got, want)
+		}
+		value, err := tablet.GetValueAt(0, row)
+		if err != nil || value != []int64{200, 100}[row] {
+			t.Fatalf("sorted value %d = %v, %v", row, value, err)
+		}
 	}
 }
 
@@ -142,22 +185,41 @@ func TestDecodeTabletPreservesRawObjectBytes(t *testing.T) {
 	}
 }
 
-func TestTabletSetObjectBytesAtStoresRawBytes(t *testing.T) {
+func TestTabletSetValueAtStoresRawObjectValues(t *testing.T) {
 	tablet, err := NewRelationalTablet(
 		"events",
 		[]*MeasurementSchema{{Measurement: "object", DataType: OBJECT}},
 		[]ColumnCategory{FIELD},
-		1,
+		2,
 	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	raw := []byte{1, 2, 3}
-	if err := tablet.SetObjectBytesAt(raw, 0, 0); err != nil {
+	if err := tablet.SetValueAt(raw, 0, 0); err != nil {
 		t.Fatal(err)
 	}
+	if err := tablet.SetValueAt("hello", 0, 1); err != nil {
+		t.Fatal(err)
+	}
+	tablet.RowSize = 2
 	value, err := tablet.GetValueAt(0, 0)
 	if err != nil || string(value.([]byte)) != string(raw) {
-		t.Fatalf("raw OBJECT value = %v, %v", value, err)
+		t.Fatalf("raw OBJECT bytes = %v, %v", value, err)
+	}
+	value, err = tablet.GetValueAt(0, 1)
+	if err != nil || string(value.([]byte)) != "hello" {
+		t.Fatalf("raw OBJECT string = %v, %v", value, err)
+	}
+	values, err := tablet.getValuesBytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantValues := []byte{0, 0, 0, byte(len(raw))}
+	wantValues = append(wantValues, raw...)
+	wantValues = append(wantValues, 0, 0, 0, byte(len("hello")))
+	wantValues = append(wantValues, "hello"...)
+	if string(values) != string(wantValues) {
+		t.Fatalf("raw OBJECT serialization = %v, want %v", values, wantValues)
 	}
 }

@@ -114,6 +114,50 @@ func TestColumnAlignMutatesReusedSessionTablet(t *testing.T) {
 	}
 }
 
+func TestColumnAlignPreservesNullForAbsentDecodedColumn(t *testing.T) {
+	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
+	context := payload.CommitContext{CommitID: 1, Topic: "topic", GroupID: "group"}
+	schemas := []*client.MeasurementSchema{{Measurement: "value", DataType: client.INT64}}
+	categories := []client.ColumnCategory{client.FIELD}
+
+	seedTablet := client.NewDecodedTablet(
+		"root.db.device",
+		schemas,
+		categories,
+		1,
+		[]int64{1},
+		[]interface{}{[]int64{101}},
+		nil,
+	)
+	seed := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		seedTablet,
+		true,
+	)})
+	processAlignment(t, processor, seed)
+
+	inputTablet := client.NewDecodedTablet(
+		"root.db.device",
+		schemas,
+		categories,
+		1,
+		[]int64{2},
+		[]interface{}{nil},
+		nil,
+	)
+	input := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		inputTablet,
+		true,
+	)})
+	messages := processAlignment(t, processor, input)
+	if value := processorOutputValue(t, messages, 0, 0); value != nil {
+		t.Fatalf("absent decoded column value = %v, want NULL", value)
+	}
+}
+
 func TestColumnAlignMutatesDecodedObject(t *testing.T) {
 	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
 	context := payload.CommitContext{CommitID: 1, Topic: "topic", GroupID: "group"}
@@ -124,7 +168,7 @@ func TestColumnAlignMutatesDecodedObject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := seedData.SetObjectBytesAt([]byte{1, 2}, 0, 0); err != nil {
+	if err := seedData.SetValueAt([]byte{1, 2}, 0, 0); err != nil {
 		t.Fatal(err)
 	}
 	seedData.SetTimestampAt(1, 0)
@@ -186,11 +230,11 @@ func TestColumnAlignMatchesColumnNamesAfterSchemaReordering(t *testing.T) {
 
 func TestColumnAlignTableIdentityCannotLeakValuesAcrossDevices(t *testing.T) {
 	for _, test := range []struct {
-		name string
-		topic string
-		database string
-		table string
-		seedTags []any
+		name      string
+		topic     string
+		database  string
+		table     string
+		seedTags  []any
 		otherTags []any
 	}{
 		{name: "topic", topic: "other", database: "db", table: "table", seedTags: []any{"a"}, otherTags: []any{"a"}},
@@ -217,7 +261,7 @@ func TestColumnAlignTableIdentityCannotLeakValuesAcrossDevices(t *testing.T) {
 
 func TestColumnAlignTableIdentityIgnoresTrailingNullTags(t *testing.T) {
 	for _, test := range []struct {
-		name string
+		name     string
 		seedTags []any
 		nextTags []any
 	}{

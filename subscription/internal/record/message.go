@@ -33,18 +33,18 @@ import (
 // subscriptionMessage keeps immutable delivery metadata separate from releasable
 // record buffers. Its factories take ownership of decoded batches.
 type subscriptionMessage struct {
-	mu sync.RWMutex
-	kind payload.SubscriptionMessageKind
-	context payload.CommitContext
+	mu        sync.RWMutex
+	kind      payload.SubscriptionMessageKind
+	context   payload.CommitContext
 	watermark int64
-	batches []payload.RecordBatch
-	released bool
+	batches   []payload.RecordBatch
+	released  bool
 }
 
 // NewRecordMessage takes ownership of batches and snapshots commit metadata.
 func NewRecordMessage(commitContext payload.CommitContext, batches []payload.RecordBatch) payload.SubscriptionMessage {
 	return &subscriptionMessage{
-		kind: payload.RecordMessage,
+		kind:    payload.RecordMessage,
 		context: CloneCommitContext(commitContext),
 		batches: append([]payload.RecordBatch(nil), batches...),
 	}
@@ -53,8 +53,8 @@ func NewRecordMessage(commitContext payload.CommitContext, batches []payload.Rec
 // NewWatermarkMessage creates a metadata-only timestamp progress signal.
 func NewWatermarkMessage(commitContext payload.CommitContext, timestamp int64) payload.SubscriptionMessage {
 	return &subscriptionMessage{
-		kind: payload.WatermarkMessage,
-		context: CloneCommitContext(commitContext),
+		kind:      payload.WatermarkMessage,
+		context:   CloneCommitContext(commitContext),
 		watermark: timestamp,
 	}
 }
@@ -139,15 +139,15 @@ func (m *subscriptionMessage) Release() {
 // a separate stable permutation for user-visible iteration. Immutable target
 // metadata remains available after release; column accessors and Len return zero.
 type subscriptionRecordBatch struct {
-	mu sync.RWMutex
-	dialect subscription.Dialect
-	database string
-	target string
+	mu           sync.RWMutex
+	dialect      subscription.Dialect
+	database     string
+	target       string
 	timeSelected bool
-	rowCount int
-	tablet *client.Tablet
-	rowOrder []int
-	released bool
+	rowCount     int
+	tablet       *client.Tablet
+	rowOrder     []int
+	released     bool
 }
 
 // NewRecordBatch takes ownership of decoded arrays and preserves indexed order.
@@ -158,23 +158,20 @@ func NewRecordBatch(dialect subscription.Dialect, database string, tablet *clien
 	}
 	rowCount := tablet.Len()
 	batch := &subscriptionRecordBatch{
-		dialect: dialect,
-		database: database,
-		target: tablet.GetTargetName(),
+		dialect:      dialect,
+		database:     database,
+		target:       tablet.GetTargetName(),
 		timeSelected: timeSelected,
-		rowCount: rowCount,
-		tablet: tablet,
+		rowCount:     rowCount,
+		tablet:       tablet,
 	}
-	// A missing timestamp array represents zero for every row. Sorted timestamps
-	// already have the required stable order, so only retain a permutation when
-	// the decoded Tablet is actually out of order.
+	// Sorted timestamps already have the required stable order, so only retain a
+	// permutation when the decoded Tablet is actually out of order.
 	ordered := true
-	if tablet.HasTimestamps() {
-		for index := 1; index < rowCount; index++ {
-			if tablet.GetTimestampAt(index) < tablet.GetTimestampAt(index-1) {
-				ordered = false
-				break
-			}
+	for index := 1; index < rowCount; index++ {
+		if tablet.GetTimestampAt(index) < tablet.GetTimestampAt(index-1) {
+			ordered = false
+			break
 		}
 	}
 	if !ordered {
@@ -265,9 +262,6 @@ func (b *subscriptionRecordBatch) Timestamp(row int) (int64, error) {
 	if row < 0 || row >= b.rowCount {
 		return 0, fmt.Errorf("subscription: row index %d out of range", row)
 	}
-	if !b.tablet.HasTimestamps() {
-		return 0, nil
-	}
 	return b.tablet.GetTimestampAt(row), nil
 }
 
@@ -309,10 +303,7 @@ func (b *subscriptionRecordBatch) Rows() iter.Seq2[payload.Row, error] {
 			}
 			row := payload.Row{Values: make([]any, b.tablet.ColumnCount())}
 			if b.timeSelected {
-				var timestamp int64
-				if b.tablet.HasTimestamps() {
-					timestamp = b.tablet.GetTimestampAt(index)
-				}
+				timestamp := b.tablet.GetTimestampAt(index)
 				row.Timestamp = &timestamp
 			}
 			var err error

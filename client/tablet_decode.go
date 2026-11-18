@@ -96,12 +96,11 @@ func decodeTablet(reader *tabletDecoder) (*Tablet, error) {
 		return nil, reader.Err()
 	}
 
-	var timestamps []int64
+	timestamps := make([]int64, rows)
 	if reader.ReadBool() {
 		if err := requireTabletValues(reader, rows, 8); err != nil {
 			return nil, err
 		}
-		timestamps = make([]int64, rows)
 		for row := range timestamps {
 			timestamps[row] = reader.ReadInt64()
 		}

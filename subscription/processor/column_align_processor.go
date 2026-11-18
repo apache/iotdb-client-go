@@ -78,9 +78,9 @@ type columnAlignTablet interface {
 
 type tabletReader struct{ tablet *client.Tablet }
 
-func (r tabletReader) target() string { return r.tablet.GetTargetName() }
-func (r tabletReader) rowCount() int { return r.tablet.Len() }
-func (r tabletReader) columnCount() int { return r.tablet.ColumnCount() }
+func (r tabletReader) target() string               { return r.tablet.GetTargetName() }
+func (r tabletReader) rowCount() int                { return r.tablet.Len() }
+func (r tabletReader) columnCount() int             { return r.tablet.ColumnCount() }
 func (r tabletReader) columnName(column int) string { return r.tablet.ColumnName(column) }
 func (r tabletReader) columnDataType(column int) client.TSDataType {
 	return r.tablet.ColumnDataType(column)
@@ -96,18 +96,14 @@ func (r tabletReader) valueAt(row, column int) (any, bool) {
 	return value, err == nil
 }
 func (r tabletReader) setValueAt(row, column int, value any) bool {
-	if value != nil && r.tablet.ColumnDataType(column) == client.OBJECT {
-		typed, ok := value.([]byte)
-		return ok && r.tablet.SetObjectBytesAt(typed, column, row) == nil
-	}
 	return r.tablet.SetValueAt(value, column, row) == nil
 }
 
 type tabletMutator struct{ tablet record.TabletMutator }
 
-func (m tabletMutator) target() string { return m.tablet.Target() }
-func (m tabletMutator) rowCount() int { return m.tablet.RowCount() }
-func (m tabletMutator) columnCount() int { return m.tablet.ColumnCount() }
+func (m tabletMutator) target() string               { return m.tablet.Target() }
+func (m tabletMutator) rowCount() int                { return m.tablet.RowCount() }
+func (m tabletMutator) columnCount() int             { return m.tablet.ColumnCount() }
 func (m tabletMutator) columnName(column int) string { return m.tablet.ColumnName(column) }
 func (m tabletMutator) columnDataType(column int) client.TSDataType {
 	return m.tablet.ColumnDataType(column)
@@ -115,7 +111,7 @@ func (m tabletMutator) columnDataType(column int) client.TSDataType {
 func (m tabletMutator) columnCategory(column int) client.ColumnCategory {
 	return m.tablet.ColumnCategory(column)
 }
-func (m tabletMutator) timestampAt(row int) int64 { return m.tablet.Timestamp(row) }
+func (m tabletMutator) timestampAt(row int) int64           { return m.tablet.Timestamp(row) }
 func (m tabletMutator) valueAt(row, column int) (any, bool) { return m.tablet.Value(row, column) }
 func (m tabletMutator) setValueAt(row, column int, value any) bool {
 	return m.tablet.SetValue(row, column, value)
@@ -331,8 +327,11 @@ func (p *ColumnAlignProcessor) fillTablet(topic, database string, tablet columnA
 				return fmt.Errorf("subscription: column alignment has no value for column %d", column)
 			}
 			if value == nil {
-				if ok && cached.timestamp < timestamp && !tablet.setValueAt(row, column, cloneColumnAlignValue(cached.value)) {
-					return fmt.Errorf("subscription: column alignment cannot fill column %d", column)
+				if ok && cached.timestamp < timestamp {
+					// Java leaves values NULL when the decoded Tablet omits the
+					// entire backing column. Match that behavior without
+					// materializing a column during processor mutation.
+					_ = tablet.setValueAt(row, column, cloneColumnAlignValue(cached.value))
 				}
 			} else if !ok || timestamp >= cached.timestamp {
 				cache[cellKey] = columnAlignValue{timestamp: timestamp, value: cloneColumnAlignValue(value)}

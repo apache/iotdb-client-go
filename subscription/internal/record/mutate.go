@@ -35,12 +35,12 @@ type TabletMutator struct {
 }
 
 func (m TabletMutator) Dialect() subscription.Dialect { return m.batch.dialect }
-func (m TabletMutator) Database() string { return m.batch.database }
-func (m TabletMutator) Target() string { return m.batch.target }
-func (m TabletMutator) TimeSelected() bool { return m.batch.timeSelected }
-func (m TabletMutator) RowCount() int { return m.batch.rowCount }
-func (m TabletMutator) ColumnCount() int { return m.batch.tablet.ColumnCount() }
-func (m TabletMutator) ColumnName(column int) string { return m.batch.tablet.ColumnName(column) }
+func (m TabletMutator) Database() string              { return m.batch.database }
+func (m TabletMutator) Target() string                { return m.batch.target }
+func (m TabletMutator) TimeSelected() bool            { return m.batch.timeSelected }
+func (m TabletMutator) RowCount() int                 { return m.batch.rowCount }
+func (m TabletMutator) ColumnCount() int              { return m.batch.tablet.ColumnCount() }
+func (m TabletMutator) ColumnName(column int) string  { return m.batch.tablet.ColumnName(column) }
 func (m TabletMutator) ColumnDataType(column int) client.TSDataType {
 	return m.batch.tablet.ColumnDataType(column)
 }
@@ -64,17 +64,7 @@ func (m TabletMutator) SetValue(row, column int, value any) bool {
 	if column < 0 || column >= m.batch.tablet.ColumnCount() {
 		return false
 	}
-	var err error
-	if value != nil && m.batch.tablet.ColumnDataType(column) == client.OBJECT {
-		typed, ok := value.([]byte)
-		if !ok {
-			return false
-		}
-		err = m.batch.tablet.SetObjectBytesAt(typed, column, row)
-	} else {
-		err = m.batch.tablet.SetValueAt(value, column, row)
-	}
-	return err == nil
+	return m.batch.tablet.SetValueAt(value, column, row) == nil
 }
 
 // TryMutateRecordMessages mutates decoded record buffers in place and transfers
@@ -87,7 +77,7 @@ func TryMutateRecordMessages(messages []payload.SubscriptionMessage, mutate func
 	owned := make([]*subscriptionMessage, len(messages))
 	type ownedBatch struct {
 		context payload.CommitContext
-		batch *subscriptionRecordBatch
+		batch   *subscriptionRecordBatch
 	}
 	var batches []ownedBatch
 	for index, message := range messages {
@@ -155,7 +145,7 @@ func TryMutateRecordMessages(messages []payload.SubscriptionMessage, mutate func
 		}
 		internal := owned[index]
 		result[index] = &subscriptionMessage{
-			kind: payload.RecordMessage,
+			kind:    payload.RecordMessage,
 			context: CloneCommitContext(internal.context),
 			batches: append([]payload.RecordBatch(nil), internal.batches...),
 		}
@@ -173,10 +163,10 @@ type TabletReader struct {
 	batch *subscriptionRecordBatch
 }
 
-func (r TabletReader) Database() string { return r.batch.database }
-func (r TabletReader) Target() string { return r.batch.target }
-func (r TabletReader) RowCount() int { return r.batch.rowCount }
-func (r TabletReader) ColumnCount() int { return r.batch.tablet.ColumnCount() }
+func (r TabletReader) Database() string             { return r.batch.database }
+func (r TabletReader) Target() string               { return r.batch.target }
+func (r TabletReader) RowCount() int                { return r.batch.rowCount }
+func (r TabletReader) ColumnCount() int             { return r.batch.tablet.ColumnCount() }
 func (r TabletReader) ColumnName(column int) string { return r.batch.tablet.ColumnName(column) }
 func (r TabletReader) ColumnDataType(column int) client.TSDataType {
 	return r.batch.tablet.ColumnDataType(column)

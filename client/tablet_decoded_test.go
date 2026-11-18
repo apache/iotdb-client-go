@@ -19,7 +19,10 @@
 
 package client
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestNewDecodedTabletUsesProvidedStorage(t *testing.T) {
 	timestamps := []int64{10, 20}
@@ -63,12 +66,15 @@ func TestNewDecodedTabletUsesProvidedStorage(t *testing.T) {
 	if got, err := tablet.GetValueAt(6, 0); err != nil || got != "left" {
 		t.Fatalf("TEXT value = %v, %v", got, err)
 	}
-	if err := tablet.SetValueAt([]byte{9}, 8, 0); err == nil {
-		t.Fatal("SetValueAt accepted raw OBJECT bytes")
+	if err := tablet.SetValueAt([]byte{9}, 8, 0); err != nil {
+		t.Fatalf("SetValueAt raw OBJECT bytes: %v", err)
+	}
+	if got, err := tablet.GetValueAt(8, 0); err != nil || !reflect.DeepEqual(got, []byte{9}) {
+		t.Fatalf("raw OBJECT bytes = %v, %v", got, err)
 	}
 }
 
-func TestDecodedTabletWithoutTimestampsReturnsZero(t *testing.T) {
+func TestDecodedTabletNormalizesNilTimestamps(t *testing.T) {
 	tablet := NewDecodedTablet(
 		"events",
 		[]*MeasurementSchema{{Measurement: "value", DataType: INT64}},
@@ -82,6 +88,12 @@ func TestDecodedTabletWithoutTimestampsReturnsZero(t *testing.T) {
 		if got := tablet.GetTimestampAt(row); got != 0 {
 			t.Fatalf("GetTimestampAt(%d) = %d, want 0", row, got)
 		}
+	}
+	if err := tablet.SetTimestampAt(7, 1); err != nil {
+		t.Fatal(err)
+	}
+	if got := tablet.GetTimestampAt(1); got != 7 {
+		t.Fatalf("GetTimestampAt(1) = %d, want 7", got)
 	}
 }
 
