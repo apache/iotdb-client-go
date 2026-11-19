@@ -31,7 +31,6 @@ import (
 	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/common"
 	"github.com/apache/iotdb-client-go/v2/rpc"
-	"github.com/apache/iotdb-client-go/v2/subscription"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
 	"github.com/apache/iotdb-client-go/v2/subscription/payload"
@@ -103,8 +102,9 @@ func successSubscriptionStatus() *common.TSStatus {
 }
 
 func subscriptionResponse(code int32) *rpc.TPipeSubscribeResp {
+	message := "fake subscription response"
 	return &rpc.TPipeSubscribeResp{
-		Status:  &common.TSStatus{Code: code, Message: "fake subscription response"},
+		Status:  &common.TSStatus{Code: code, Message: &message},
 		Version: fakeSubscriptionResponseVersion,
 	}
 }
