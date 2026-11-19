@@ -754,7 +754,7 @@ func subscriptionTablePollStrictSnapshot(
 		}
 		recordCount := 0
 		contexts := make([]string, 0, len(messages))
-		for _, message := range messages {
+		for messageIndex, message := range messages {
 			context := message.CommitContext()
 			contexts = append(contexts, fmt.Sprintf("topic=%s group=%s node=%d reboot=%d commit=%d seek=%d region=%s physical=%d writer=%v",
 				context.Topic, context.GroupID, context.DataNodeID, context.RebootTimes, context.CommitID, context.SeekGeneration, context.RegionID, context.PhysicalTime, context.Writer))
@@ -765,9 +765,12 @@ func subscriptionTablePollStrictSnapshot(
 				t.Fatalf("strict snapshot read after %d polls: %v", polls, readErr)
 			}
 			recordCount += len(records)
+			t.Logf("[strict snapshot] received poll=%d message=%d at=%s context=%+v records=%+v",
+				polls, messageIndex, time.Since(startedAt), context, records)
 			if mergeErr := subscriptionTableMergeStrict(seen, want, records, tagColumns); mergeErr != nil {
 				message.Release()
-				t.Fatal(mergeErr)
+				t.Fatalf("strict snapshot merge failure at poll=%d message=%d context=%+v records=%+v: %v",
+					polls, messageIndex, context, records, mergeErr)
 			}
 			if manualCommit {
 				if subscriptionTableContextSeen(manualCommitContexts, context) {
@@ -783,14 +786,17 @@ func subscriptionTablePollStrictSnapshot(
 			message.Release()
 		}
 
-		if !manualCommit {
-			if autoCommitErr := consumer.LastAutoCommitError(); autoCommitErr != nil {
-				t.Fatalf("strict snapshot auto-commit failed after %d polls: %v", polls, autoCommitErr)
-			}
+		positions, positionErr := consumer.CommittedPositions(topic)
+		autoCommitErr := consumer.LastAutoCommitError()
+		t.Logf("[strict snapshot] progress poll=%d at=%s positions=%+v positionError=%v autoCommitError=%v",
+			polls, time.Since(startedAt), positions, positionErr, autoCommitErr)
+		if !manualCommit && autoCommitErr != nil {
+			t.Fatalf("strict snapshot auto-commit failed after %d polls: %v positions=%+v positionError=%v",
+				polls, autoCommitErr, positions, positionErr)
 		}
 		complete := subscriptionTableRecordsComplete(seen, want)
-		t.Logf("[strict snapshot] poll=%d messages=%d records=%d seen=%d/%d complete=%t consumed=%t manualCommit=%t contexts=%v",
-			polls, len(messages), recordCount, len(seen), len(want), complete, consumer.AllConsumed(), manualCommit, contexts)
+		t.Logf("[strict snapshot] poll=%d messages=%d records=%d seen=%d/%d complete=%t consumed=%t manualCommit=%t positions=%+v contexts=%v",
+			polls, len(messages), recordCount, len(seen), len(want), complete, consumer.AllConsumed(), manualCommit, positions, contexts)
 
 		if complete && len(requiredProgress) == 0 && !positionChecked {
 			t.Logf("[strict snapshot] delivered contexts use legacy commit metadata; writer-position assertion unavailable")
