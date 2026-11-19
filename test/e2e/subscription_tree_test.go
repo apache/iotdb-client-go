@@ -29,11 +29,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
 	subconsumer "github.com/apache/iotdb-client-go/v2/subscription/consumer"
 	subpayload "github.com/apache/iotdb-client-go/v2/subscription/payload"
 	subsession "github.com/apache/iotdb-client-go/v2/subscription/session"
+	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 func subscriptionE2EContext(t *testing.T) context.Context {

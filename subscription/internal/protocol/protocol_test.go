@@ -28,9 +28,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
 	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // This fixture is transcribed independently from Java SubscriptionPollResponse,

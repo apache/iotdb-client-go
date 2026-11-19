@@ -27,8 +27,8 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // processorInputMessage is a caller-owned implementation of the public message

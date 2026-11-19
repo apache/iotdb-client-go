@@ -21,10 +21,10 @@ package consumer
 
 import (
 	"github.com/apache/iotdb-client-go/v2/subscription"
-	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
 
 	"context"
 	"errors"
