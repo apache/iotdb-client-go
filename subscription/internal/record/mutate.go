@@ -48,6 +48,12 @@ func (m TabletMutator) ColumnCategory(column int) client.ColumnCategory {
 	return m.batch.tablet.ColumnCategory(column)
 }
 
+// HasColumnValues reports whether the column has decoded backing storage. It is
+// an internal read-only capability used to avoid writing into omitted columns.
+func (m TabletMutator) HasColumnValues(column int) bool {
+	return column >= 0 && column < m.batch.tablet.ColumnCount() && m.batch.tablet.HasColumnValues(column)
+}
+
 func (m TabletMutator) Timestamp(row int) int64 {
 	return m.batch.tablet.GetTimestampAt(row)
 }
@@ -57,6 +63,16 @@ func (m TabletMutator) Value(row, column int) (any, bool) {
 		return nil, false
 	}
 	value, err := m.batch.tablet.GetValueAt(column, row)
+	return value, err == nil
+}
+
+// RawValue returns the decoded backing value without converting TEXT or STRING
+// storage to string. Returned byte slices are borrowed from the Tablet.
+func (m TabletMutator) RawValue(row, column int) (any, bool) {
+	if column < 0 || column >= m.batch.tablet.ColumnCount() {
+		return nil, false
+	}
+	value, err := m.batch.tablet.GetRawValueAt(column, row)
 	return value, err == nil
 }
 

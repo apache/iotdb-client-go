@@ -64,6 +64,8 @@ type columnAlignValue struct {
 	value     any
 }
 
+// columnAlignTablet separates backing-column availability from per-cell NULL so
+// processors can skip columns that a decoded Tablet omitted entirely.
 type columnAlignTablet interface {
 	target() string
 	rowCount() int
@@ -72,7 +74,8 @@ type columnAlignTablet interface {
 	columnDataType(int) client.TSDataType
 	columnCategory(int) client.ColumnCategory
 	timestampAt(int) int64
-	valueAt(int, int) (any, bool)
+	hasColumnValues(int) bool
+	rawValueAt(int, int) (any, bool)
 	setValueAt(int, int, any) bool
 }
 
@@ -91,8 +94,11 @@ func (r tabletReader) columnCategory(column int) client.ColumnCategory {
 func (r tabletReader) timestampAt(row int) int64 {
 	return r.tablet.GetTimestampAt(row)
 }
-func (r tabletReader) valueAt(row, column int) (any, bool) {
-	value, err := r.tablet.GetValueAt(column, row)
+func (r tabletReader) hasColumnValues(column int) bool {
+	return r.tablet.HasColumnValues(column)
+}
+func (r tabletReader) rawValueAt(row, column int) (any, bool) {
+	value, err := r.tablet.GetRawValueAt(column, row)
 	return value, err == nil
 }
 func (r tabletReader) setValueAt(row, column int, value any) bool {
@@ -111,8 +117,13 @@ func (m tabletMutator) columnDataType(column int) client.TSDataType {
 func (m tabletMutator) columnCategory(column int) client.ColumnCategory {
 	return m.tablet.ColumnCategory(column)
 }
-func (m tabletMutator) timestampAt(row int) int64           { return m.tablet.Timestamp(row) }
-func (m tabletMutator) valueAt(row, column int) (any, bool) { return m.tablet.Value(row, column) }
+func (m tabletMutator) timestampAt(row int) int64 { return m.tablet.Timestamp(row) }
+func (m tabletMutator) hasColumnValues(column int) bool {
+	return m.tablet.HasColumnValues(column)
+}
+func (m tabletMutator) rawValueAt(row, column int) (any, bool) {
+	return m.tablet.RawValue(row, column)
+}
 func (m tabletMutator) setValueAt(row, column int, value any) bool {
 	return m.tablet.SetValue(row, column, value)
 }
@@ -320,18 +331,18 @@ func (p *ColumnAlignProcessor) fillTablet(topic, database string, tablet columnA
 		}
 		timestamp := tablet.timestampAt(row)
 		for column := 0; column < tablet.columnCount(); column++ {
+			if !tablet.hasColumnValues(column) {
+				continue
+			}
 			cellKey := columnAlignColumn{name: tablet.columnName(column), dataType: tablet.columnDataType(column)}
 			cached, ok := cache[cellKey]
-			value, valid := tablet.valueAt(row, column)
+			value, valid := tablet.rawValueAt(row, column)
 			if !valid {
 				return fmt.Errorf("subscription: column alignment has no value for column %d", column)
 			}
 			if value == nil {
-				if ok && cached.timestamp < timestamp {
-					// Java leaves values NULL when the decoded Tablet omits the
-					// entire backing column. Match that behavior without
-					// materializing a column during processor mutation.
-					_ = tablet.setValueAt(row, column, cloneColumnAlignValue(cached.value))
+				if ok && cached.timestamp < timestamp && !tablet.setValueAt(row, column, cloneColumnAlignValue(cached.value)) {
+					return fmt.Errorf("subscription: column alignment cannot fill column %d", column)
 				}
 			} else if !ok || timestamp >= cached.timestamp {
 				cache[cellKey] = columnAlignValue{timestamp: timestamp, value: cloneColumnAlignValue(value)}
@@ -368,7 +379,7 @@ func columnAlignTagHash(tablet columnAlignTablet, row int) uint64 {
 		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
-		value, _ := tablet.valueAt(row, column)
+		value, _ := tablet.rawValueAt(row, column)
 		if value != nil {
 			lastNonNull = column
 		}
@@ -381,7 +392,7 @@ func columnAlignTagHash(tablet columnAlignTablet, row int) uint64 {
 		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
-		value, _ := tablet.valueAt(row, column)
+		value, _ := tablet.rawValueAt(row, column)
 		hash = columnAlignHashValue(hash, value)
 	}
 	return hash
@@ -394,7 +405,7 @@ func columnAlignTags(tablet columnAlignTablet, row int) []any {
 		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
-		value, _ := tablet.valueAt(row, column)
+		value, _ := tablet.rawValueAt(row, column)
 		tags = append(tags, cloneColumnAlignValue(value))
 		if value != nil {
 			lastNonNull = len(tags)
@@ -410,7 +421,7 @@ func columnAlignTagsEqual(tablet columnAlignTablet, row int, tags []any) bool {
 		if tablet.columnCategory(column) != client.TAG {
 			continue
 		}
-		value, _ := tablet.valueAt(row, column)
+		value, _ := tablet.rawValueAt(row, column)
 		if index >= len(tags) {
 			if value != nil {
 				return false

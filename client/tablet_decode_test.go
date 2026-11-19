@@ -185,16 +185,16 @@ func TestDecodeTabletPreservesRawObjectBytes(t *testing.T) {
 	}
 }
 
-func TestTabletSetValueAtStoresRawObjectValues(t *testing.T) {
-	tablet, err := NewRelationalTablet(
+func TestDecodedTabletSetValueAtStoresRawObjectValues(t *testing.T) {
+	tablet := NewDecodedTablet(
 		"events",
 		[]*MeasurementSchema{{Measurement: "object", DataType: OBJECT}},
 		[]ColumnCategory{FIELD},
 		2,
+		[]int64{1, 2},
+		[]interface{}{make([][]byte, 2)},
+		nil,
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
 	raw := []byte{1, 2, 3}
 	if err := tablet.SetValueAt(raw, 0, 0); err != nil {
 		t.Fatal(err)
@@ -202,7 +202,6 @@ func TestTabletSetValueAtStoresRawObjectValues(t *testing.T) {
 	if err := tablet.SetValueAt("hello", 0, 1); err != nil {
 		t.Fatal(err)
 	}
-	tablet.RowSize = 2
 	value, err := tablet.GetValueAt(0, 0)
 	if err != nil || string(value.([]byte)) != string(raw) {
 		t.Fatalf("raw OBJECT bytes = %v, %v", value, err)

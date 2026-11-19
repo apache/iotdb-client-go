@@ -82,6 +82,9 @@ func TestColumnAlignMutatesReusedSessionTablet(t *testing.T) {
 		[]interface{}{[]int64{101}},
 		nil,
 	)
+	if !seedTablet.HasColumnValues(0) {
+		t.Fatal("seed Tablet is missing its decoded value column")
+	}
 	seed := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
 		subscription.TreeDialect,
 		"",
@@ -146,6 +149,9 @@ func TestColumnAlignPreservesNullForAbsentDecodedColumn(t *testing.T) {
 		[]interface{}{nil},
 		nil,
 	)
+	if inputTablet.HasColumnValues(0) {
+		t.Fatal("input Tablet unexpectedly has a decoded value column")
+	}
 	input := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
 		subscription.TreeDialect,
 		"",
@@ -158,21 +164,65 @@ func TestColumnAlignPreservesNullForAbsentDecodedColumn(t *testing.T) {
 	}
 }
 
+func TestColumnAlignForwardFillsDecodedTextWithoutStringConversion(t *testing.T) {
+	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
+	context := payload.CommitContext{CommitID: 1, Topic: "topic", GroupID: "group"}
+	schemas := []*client.MeasurementSchema{{Measurement: "value", DataType: client.TEXT}}
+	categories := []client.ColumnCategory{client.FIELD}
+
+	seedTablet := client.NewDecodedTablet(
+		"root.db.device",
+		schemas,
+		categories,
+		1,
+		[]int64{1},
+		[]interface{}{[][]byte{[]byte("cached")}},
+		nil,
+	)
+	seed := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		seedTablet,
+		true,
+	)})
+	processAlignment(t, processor, seed)
+
+	inputTablet := client.NewDecodedTablet(
+		"root.db.device",
+		schemas,
+		categories,
+		1,
+		[]int64{2},
+		[]interface{}{[][]byte{nil}},
+		[][]byte{{1}},
+	)
+	input := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
+		subscription.TreeDialect,
+		"",
+		inputTablet,
+		true,
+	)})
+	messages := processAlignment(t, processor, input)
+	if value := processorOutputValue(t, messages, 0, 0); value != "cached" {
+		t.Fatalf("forward-filled TEXT value = %v, want cached", value)
+	}
+}
+
 func TestColumnAlignMutatesDecodedObject(t *testing.T) {
 	processor := newTestColumnAlignProcessor(t, subscription.TreeDialect)
 	context := payload.CommitContext{CommitID: 1, Topic: "topic", GroupID: "group"}
 	categories := []client.ColumnCategory{client.FIELD}
 	schemas := []*client.MeasurementSchema{{Measurement: "value", DataType: client.OBJECT}}
 
-	seedData, err := client.NewRelationalTablet("root.db.device", schemas, categories, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := seedData.SetValueAt([]byte{1, 2}, 0, 0); err != nil {
-		t.Fatal(err)
-	}
-	seedData.SetTimestampAt(1, 0)
-	seedData.RowSize = 1
+	seedData := client.NewDecodedTablet(
+		"root.db.device",
+		schemas,
+		categories,
+		1,
+		[]int64{1},
+		[]interface{}{[][]byte{{1, 2}}},
+		nil,
+	)
 	seed := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
 		subscription.TreeDialect,
 		"",
@@ -181,19 +231,15 @@ func TestColumnAlignMutatesDecodedObject(t *testing.T) {
 	)})
 	processAlignment(t, processor, seed)
 
-	inputData, err := client.NewRelationalTablet("root.db.device", schemas, categories, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := inputData.SetValueAt(nil, 0, 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := inputData.SetValueAt(nil, 0, 1); err != nil {
-		t.Fatal(err)
-	}
-	inputData.SetTimestampAt(2, 0)
-	inputData.SetTimestampAt(3, 1)
-	inputData.RowSize = 2
+	inputData := client.NewDecodedTablet(
+		"root.db.device",
+		schemas,
+		categories,
+		2,
+		[]int64{2, 3},
+		[]interface{}{[][]byte{nil, nil}},
+		[][]byte{{3}},
+	)
 	input := record.NewRecordMessage(context, []payload.RecordBatch{record.NewRecordBatch(
 		subscription.TreeDialect,
 		"",

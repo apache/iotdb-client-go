@@ -113,6 +113,9 @@ const (
 )
 
 // TSStatusCode
+// The names and values follow the current Java TSStatusCode definition. Legacy
+// Go-only names are intentionally not retained as aliases because they no longer
+// identify valid current server statuses and continuing to use them is unsafe.
 const (
 	SuccessStatus int32 = 200
 

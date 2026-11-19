@@ -50,6 +50,7 @@ type Tablet struct {
 	bitMaps            []*BitMap
 	maxRowNumber       int
 	variableBytes      int64
+	fromDecodedPayload bool
 	RowSize            int
 }
 
@@ -125,6 +126,10 @@ func (t *Tablet) SetTimestampAt(timestamp int64, rowIndex int) error {
 	return nil
 }
 
+// SetValueAt stores a typed value or NULL. OBJECT values on a normal insert
+// Tablet must use SetObjectValueAt so their EOF and offset are encoded. Tablets
+// created from decoded subscription payloads also accept raw OBJECT bytes here
+// because those bytes are already in the wire representation.
 func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error {
 
 	if columnIndex < 0 || columnIndex >= len(t.measurementSchemas) {
@@ -224,6 +229,9 @@ func (t *Tablet) SetValueAt(value interface{}, columnIndex, rowIndex int) error 
 			return fmt.Errorf("illegal argument value %v %v", value, reflect.TypeOf(value))
 		}
 	case OBJECT:
+		if !t.fromDecodedPayload {
+			return fmt.Errorf("OBJECT values must be set with SetObjectValueAt")
+		}
 		values := t.values[columnIndex].([][]byte)
 		switch v := value.(type) {
 		case string:
@@ -304,7 +312,38 @@ func (t *Tablet) GetMaxRowNumber() int {
 	return t.maxRowNumber
 }
 
+// HasColumnValues reports whether columnIndex has a value backing array. A
+// decoded Tablet may omit an entire column; such a column reads as NULL and
+// rejects non-NULL SetValueAt calls.
+func (t *Tablet) HasColumnValues(columnIndex int) bool {
+	if columnIndex < 0 || columnIndex >= len(t.values) {
+		return false
+	}
+	return t.values[columnIndex] != nil
+}
+
+// GetValueAt returns the value at the zero-based column and row indexes. TEXT
+// and STRING values are converted to string for the public API; use
+// GetRawValueAt to access their decoded byte storage without that allocation.
 func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
+	value, err := t.GetRawValueAt(columnIndex, rowIndex)
+	if err != nil || value == nil {
+		return value, err
+	}
+	switch t.measurementSchemas[columnIndex].DataType {
+	case TEXT, STRING:
+		return string(value.([]byte)), nil
+	default:
+		return value, nil
+	}
+}
+
+// GetRawValueAt is the allocation-conscious counterpart to GetValueAt for
+// processor hot paths. TEXT and STRING values are returned as borrowed []byte
+// storage instead of allocating a string; all other types use the GetValueAt
+// representation. The returned slice must not be mutated and remains valid only
+// while the Tablet retains its decoded buffers.
+func (t *Tablet) GetRawValueAt(columnIndex, rowIndex int) (interface{}, error) {
 	if columnIndex < 0 || columnIndex >= len(t.measurementSchemas) {
 		return nil, fmt.Errorf("illegal argument columnIndex %d", columnIndex)
 	}
@@ -332,9 +371,7 @@ func (t *Tablet) GetValueAt(columnIndex, rowIndex int) (interface{}, error) {
 		return t.values[columnIndex].([]float32)[rowIndex], nil
 	case DOUBLE:
 		return t.values[columnIndex].([]float64)[rowIndex], nil
-	case TEXT, STRING:
-		return string(t.values[columnIndex].([][]byte)[rowIndex]), nil
-	case BLOB, OBJECT:
+	case TEXT, STRING, BLOB, OBJECT:
 		return t.values[columnIndex].([][]byte)[rowIndex], nil
 	case DATE:
 		return Int32ToDate(t.values[columnIndex].([]int32)[rowIndex])
@@ -549,6 +586,7 @@ func NewDecodedTablet(
 		timestamps:         timestamps,
 		values:             values,
 		maxRowNumber:       rowCount,
+		fromDecodedPayload: true,
 		RowSize:            rowCount,
 	}
 	if tablet.timestamps == nil {

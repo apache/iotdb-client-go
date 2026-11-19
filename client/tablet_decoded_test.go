@@ -66,6 +66,9 @@ func TestNewDecodedTabletUsesProvidedStorage(t *testing.T) {
 	if got, err := tablet.GetValueAt(6, 0); err != nil || got != "left" {
 		t.Fatalf("TEXT value = %v, %v", got, err)
 	}
+	if got, err := tablet.GetRawValueAt(6, 0); err != nil || string(got.([]byte)) != "left" {
+		t.Fatalf("raw TEXT value = %v, %v", got, err)
+	}
 	if err := tablet.SetValueAt([]byte{9}, 8, 0); err != nil {
 		t.Fatalf("SetValueAt raw OBJECT bytes: %v", err)
 	}
