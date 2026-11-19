@@ -25,9 +25,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	subsession "github.com/apache/iotdb-client-go/subscription/session"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	subsession "github.com/apache/iotdb-client-go/v2/subscription/session"
 )
 
 const (

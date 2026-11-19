@@ -27,8 +27,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/internal/transport"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/transport"
 
 	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/common"

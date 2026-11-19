@@ -22,7 +22,7 @@ package consumer
 import (
 	"context"
 
-	"github.com/apache/iotdb-client-go/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 )
 
 // Positioner separates fetched positions from confirmed, recoverable positions.

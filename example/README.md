@@ -19,9 +19,9 @@ under the License.
 
 # Go Client Examples
 
-This directory is the independent `github.com/apache/iotdb-client-go/example` module. It requires Go 1.25 or later and uses local `replace` directives for the Session client at `..` and the subscription client at `../subscription`. Keep the repository layout intact and run the commands below from `example/`.
+These examples are packages in the main `github.com/apache/iotdb-client-go/v2` module. They require Go 1.25 or later and can be run directly from a repository checkout.
 
-The Session module still contains the database/sql driver. Its existing imports, including `github.com/apache/iotdb-client-go/v2/client` and `github.com/apache/iotdb-client-go/v2/database`, are unchanged. Neither client module depends on this example module.
+The main module contains the Session client, database/sql driver, and subscription packages. Existing imports, including `github.com/apache/iotdb-client-go/v2/client` and `github.com/apache/iotdb-client-go/v2/database`, are unchanged.
 
 | Example | Command from this directory |
 | --- | --- |
@@ -44,4 +44,4 @@ cd example
 go run ./subscription/tree -host=127.0.0.1 -port=6667 -username=root
 ```
 
-This module is separate from the client unit tests and the independent [E2E module](../test/e2e/README.md). Root-module commands do not traverse these nested modules. CI downloads and builds the example module explicitly after generating the shared RPC code; it does not execute these sample programs.
+These programs are built by the root-module CI together with the client tests and [E2E tests](../test/e2e/README.md). CI does not execute the sample programs.

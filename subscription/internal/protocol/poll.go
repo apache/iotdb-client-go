@@ -24,11 +24,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/internal/record"
-	internalwire "github.com/apache/iotdb-client-go/subscription/internal/wire"
-	"github.com/apache/iotdb-client-go/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
+	internalwire "github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 )
 
 // Poll response tags retain their Java protocol numbers.

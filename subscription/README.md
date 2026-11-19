@@ -19,9 +19,9 @@ under the License.
 
 # Go Subscription Client
 
-The `github.com/apache/iotdb-client-go/subscription` module provides native Go APIs for topic management, subscription management, Pull and Push record consumption, automatic and manual commit, progress tracking, Seek, and message processors.
+The `github.com/apache/iotdb-client-go/v2/subscription` package family provides native Go APIs for topic management, subscription management, Pull and Push record consumption, automatic and manual commit, progress tracking, Seek, and message processors.
 
-The module is independent from the existing `github.com/apache/iotdb-client-go/v2` Session module.
+The subscription packages are part of the main `github.com/apache/iotdb-client-go/v2` module and share its version with the Session client.
 
 ## Requirements
 
@@ -29,10 +29,10 @@ The module is independent from the existing `github.com/apache/iotdb-client-go/v
 - An IoTDB server with subscription support enabled
 - A `SubscriptionRecordHandler` topic for record consumption
 
-Install the module from a Go project:
+Install the client module from a Go project:
 
 ```sh
-go get github.com/apache/iotdb-client-go/subscription@latest
+go get github.com/apache/iotdb-client-go/v2@latest
 ```
 
 ## Packages
@@ -49,11 +49,11 @@ Use aliases when local variables are named `session`, `consumer`, or `processor`
 
 ```go
 import (
-    "github.com/apache/iotdb-client-go/subscription"
-    subconsumer "github.com/apache/iotdb-client-go/subscription/consumer"
-    subpayload "github.com/apache/iotdb-client-go/subscription/payload"
-    subprocessor "github.com/apache/iotdb-client-go/subscription/processor"
-    subsession "github.com/apache/iotdb-client-go/subscription/session"
+    "github.com/apache/iotdb-client-go/v2/subscription"
+    subconsumer "github.com/apache/iotdb-client-go/v2/subscription/consumer"
+    subpayload "github.com/apache/iotdb-client-go/v2/subscription/payload"
+    subprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
+    subsession "github.com/apache/iotdb-client-go/v2/subscription/session"
 )
 ```
 
@@ -499,11 +499,10 @@ go run ./subscription/table/incremental
 
 ## Testing
 
-Run subscription unit tests from this directory:
+Run subscription unit tests from the repository root:
 
 ```sh
-cd subscription
-go test ./...
+go test ./subscription/...
 ```
 
 Server-backed tests are in [test/e2e](../test/e2e). Subscription tests are skipped unless `IOTDB_SUBSCRIPTION_E2E=1` is set. See the E2E guide for connection variables, server requirements, and coverage.

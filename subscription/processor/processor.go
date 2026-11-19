@@ -20,7 +20,7 @@
 package processor
 
 import (
-	"github.com/apache/iotdb-client-go/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 )
 
 // SubscriptionMessageProcessor transforms, filters, or enriches messages in the

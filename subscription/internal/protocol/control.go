@@ -25,9 +25,9 @@ import (
 	"sort"
 	"strconv"
 
-	internalwire "github.com/apache/iotdb-client-go/subscription/internal/wire"
-	"github.com/apache/iotdb-client-go/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/rpc"
+	internalwire "github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 )
 
 // RequestVersion is the subscription RPC request envelope version.

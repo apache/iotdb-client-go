@@ -20,16 +20,16 @@
 package processor_test
 
 import (
-	"github.com/apache/iotdb-client-go/subscription/payload"
-	subprocessor "github.com/apache/iotdb-client-go/subscription/processor"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	subprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
 
 	"bytes"
 	"errors"
 	"testing"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/internal/record"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
 )
 
 func newTestColumnAlignProcessor(t *testing.T, dialect subscription.Dialect) *subprocessor.ColumnAlignProcessor {

@@ -20,11 +20,11 @@
 package consumer
 
 import (
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/payload"
-	"github.com/apache/iotdb-client-go/subscription/internal/protocol"
-	"github.com/apache/iotdb-client-go/subscription/internal/rpcsession"
-	"github.com/apache/iotdb-client-go/subscription/internal/wire"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/rpcsession"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 
 	"context"
 	"errors"

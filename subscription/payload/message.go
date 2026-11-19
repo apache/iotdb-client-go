@@ -22,8 +22,8 @@ package payload
 import (
 	"iter"
 
-	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
 )
 
 // SubscriptionMessageKind identifies a record or watermark message independently

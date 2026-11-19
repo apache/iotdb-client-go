@@ -20,15 +20,15 @@
 package processor_test
 
 import (
-	"github.com/apache/iotdb-client-go/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 
 	"fmt"
 	"iter"
 	"sort"
 	"testing"
 
-	"github.com/apache/iotdb-client-go/subscription"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
 )
 
 // processorInputMessage is a caller-owned implementation of the public message

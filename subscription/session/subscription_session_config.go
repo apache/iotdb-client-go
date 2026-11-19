@@ -20,8 +20,8 @@
 package session
 
 import (
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/internal/configutil"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/configutil"
 )
 
 // SubscriptionSessionConfig configures a topic and subscription management session.

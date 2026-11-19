@@ -20,15 +20,15 @@
 package processor_test
 
 import (
-	"github.com/apache/iotdb-client-go/subscription/payload"
-	subprocessor "github.com/apache/iotdb-client-go/subscription/processor"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	subprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
 
 	"errors"
 	"math"
 	"testing"
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription"
 )
 
 func newTestWatermarkProcessor(t *testing.T, config subprocessor.WatermarkProcessorConfig) *subprocessor.WatermarkProcessor {

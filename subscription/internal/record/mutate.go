@@ -22,14 +22,14 @@ package record
 import (
 	"errors"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 )
 
 // TabletMutator provides one exclusive lock across an in-place Tablet mutation.
-// It is intentionally internal to the subscription module and never changes the
-// public RecordBatch contract.
+// It is intentionally internal to the subscription packages and never changes
+// the public RecordBatch contract.
 type TabletMutator struct {
 	batch *subscriptionRecordBatch
 }

@@ -19,9 +19,9 @@ under the License.
 
 # Subscription Examples
 
-These programs are part of the independent `github.com/apache/iotdb-client-go/example` module. They demonstrate the Go subscription client with Pull and Push consumers, manual commit, progress, Seek, and processors.
+These programs are part of the main `github.com/apache/iotdb-client-go/v2` module. They demonstrate the Go subscription client with Pull and Push consumers, manual commit, progress, Seek, and processors.
 
-Run the commands from the `example/` directory with Go 1.25 or later and a subscription-enabled IoTDB server. This module uses local replacements for the Session and subscription client modules, so keep the repository layout intact.
+Run the commands from the `example/` directory with Go 1.25 or later and a subscription-enabled IoTDB server.
 
 ## Programs
 
@@ -36,11 +36,11 @@ Run the commands from the `example/` directory with Go 1.25 or later and a subsc
 
 ```go
 import (
-    "github.com/apache/iotdb-client-go/subscription"
-    subconsumer "github.com/apache/iotdb-client-go/subscription/consumer"
-    subpayload "github.com/apache/iotdb-client-go/subscription/payload"
-    subprocessor "github.com/apache/iotdb-client-go/subscription/processor"
-    subsession "github.com/apache/iotdb-client-go/subscription/session"
+    "github.com/apache/iotdb-client-go/v2/subscription"
+    subconsumer "github.com/apache/iotdb-client-go/v2/subscription/consumer"
+    subpayload "github.com/apache/iotdb-client-go/v2/subscription/payload"
+    subprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
+    subsession "github.com/apache/iotdb-client-go/v2/subscription/session"
 )
 ```
 

@@ -21,10 +21,10 @@ package consumer
 
 import (
 	"github.com/apache/iotdb-client-go/v2/client"
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/payload"
-	messageprocessor "github.com/apache/iotdb-client-go/subscription/processor"
-	"github.com/apache/iotdb-client-go/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	messageprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
 
 	"context"
 	"crypto/rand"

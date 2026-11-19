@@ -27,10 +27,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/internal/record"
-	"github.com/apache/iotdb-client-go/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 )
 
 // ColumnAlignProcessor forward-fills NULL columns with the latest known non-null

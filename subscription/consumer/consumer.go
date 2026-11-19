@@ -23,8 +23,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription/payload"
-	messageprocessor "github.com/apache/iotdb-client-go/subscription/processor"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	messageprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
 )
 
 // SubscriptionConsumer is the shared lifecycle, subscription, and positioning contract.

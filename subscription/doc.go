@@ -18,7 +18,7 @@
  */
 
 // Package subscription provides shared connection settings, model selection,
-// and sentinel errors for the IoTDB subscription client module.
+// and sentinel errors for the IoTDB subscription client packages.
 //
 // Management sessions live in the session subpackage. Pull and push consumers
 // live in consumer, message and progress contracts in payload, and optional
@@ -27,6 +27,6 @@
 //
 // Topic management and subscription accept TsFile topics. Decoding a file
 // payload returns ErrUnsupportedTsFile before delivery or acknowledgment.
-// The module exposes no TsFile readers or TLS configuration and adds no native
-// library dependency. It is versioned separately from the Session client.
+// The packages expose no TsFile readers or TLS configuration and add no native
+// library dependency. They share the main client module's release version.
 package subscription

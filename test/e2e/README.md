@@ -19,26 +19,22 @@ under the License.
 
 # Go Client E2E Tests
 
-This directory is an independent Go module for Session and subscription E2E tests. It requires Go 1.25 or later and uses local replacements for the root Session module and the independent subscription module.
-
-The repository root does not include this nested module in `go test ./...`.
+This directory contains Session and subscription E2E tests in the main Go module. It requires Go 1.25 or later.
 
 ## Unit Tests
 
-Run subscription unit tests from the subscription module:
+Run subscription unit tests from the repository root:
 
 ```sh
-cd subscription
-go test ./...
+go test ./subscription/...
 ```
 
 ## E2E Tests
 
-Run all Session and subscription E2E tests from this directory:
+Run all Session and subscription E2E tests from the repository root:
 
 ```sh
-cd test/e2e
-go test -v ./...
+go test -v ./test/e2e
 ```
 
 The subscription cases are discovered by the normal test run but skip unless `IOTDB_SUBSCRIPTION_E2E=1` is set.
@@ -46,12 +42,12 @@ The subscription cases are discovered by the normal test run but skip unless `IO
 ## Subscription Test Configuration
 
 ```sh
-cd test/e2e
+cd "$(git rev-parse --show-toplevel)"
 IOTDB_SUBSCRIPTION_E2E=1 \
 IOTDB_E2E_NODE_URLS=iotdb:6668,iotdb:6667,iotdb:6669 \
 IOTDB_E2E_USERNAME=root \
 IOTDB_E2E_PASSWORD=root \
-go test -v -run '^TestSubscription' ./...
+go test -v -run '^TestSubscription' ./test/e2e
 ```
 
 | Environment variable | Default | Description |
@@ -125,6 +121,6 @@ make e2e_test
 make e2e_test_clean
 ```
 
-The client container runs this independent test module. `IOTDB_E2E_*` and `IOTDB_SUBSCRIPTION_E2E` are passed into the container when set. Unset values use the defaults described above.
+The client container runs the `test/e2e` package from the root module. `IOTDB_E2E_*` and `IOTDB_SUBSCRIPTION_E2E` are passed into the container when set. Unset values use the defaults described above.
 
 See the [subscription client guide](../../subscription/README.md) for API contracts and connection defaults.

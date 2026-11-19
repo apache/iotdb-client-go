@@ -34,12 +34,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	subconsumer "github.com/apache/iotdb-client-go/subscription/consumer"
-	subpayload "github.com/apache/iotdb-client-go/subscription/payload"
-	subprocessor "github.com/apache/iotdb-client-go/subscription/processor"
-	subsession "github.com/apache/iotdb-client-go/subscription/session"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	subconsumer "github.com/apache/iotdb-client-go/v2/subscription/consumer"
+	subpayload "github.com/apache/iotdb-client-go/v2/subscription/payload"
+	subprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
+	subsession "github.com/apache/iotdb-client-go/v2/subscription/session"
 )
 
 func main() {

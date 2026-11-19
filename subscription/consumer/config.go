@@ -22,7 +22,7 @@ package consumer
 import (
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription"
 )
 
 // SubscriptionConsumerConfig holds settings shared by pull and push consumers. Empty consumer

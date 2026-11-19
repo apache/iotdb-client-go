@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"sort"
 
-	internalwire "github.com/apache/iotdb-client-go/subscription/internal/wire"
-	"github.com/apache/iotdb-client-go/subscription/payload"
+	internalwire "github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 )
 
 const (

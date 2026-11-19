@@ -26,9 +26,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/apache/iotdb-client-go/subscription"
-	"github.com/apache/iotdb-client-go/subscription/internal/identifier"
-	"github.com/apache/iotdb-client-go/subscription/internal/rpcsession"
+	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/rpcsession"
 )
 
 // NewSubscriptionSession validates and copies config without opening a network

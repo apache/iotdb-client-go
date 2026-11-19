@@ -39,10 +39,6 @@ jobs:
       run: |
         go mod download
 
-    - name: Get example dependencies
-      working-directory: example
-      run: go mod download
-
     - name: Install curl on Ubuntu
       if: matrix.os == 'ubuntu-latest'
       run: sudo apt-get update && sudo apt-get install -y curl
@@ -55,10 +51,6 @@ jobs:
       run: |
         make generate
         go build -v ./...
-
-    - name: Build examples
-      working-directory: example
-      run: go build -v ./...
 
     - name: Test
       run: make test
