@@ -62,17 +62,17 @@ func decodeTablet(reader *tabletDecoder) (*Tablet, error) {
 			if !hasSchema {
 				return nil, fmt.Errorf("tablet: null schema at column %d is not supported", index)
 			}
-			schema := &MeasurementSchema{Measurement: reader.ReadString(), DataType: TSDataType(reader.ReadByte())}
+			schema := &MeasurementSchema{Measurement: reader.ReadString(), DataType: TSDataType(reader.ReadInt8())}
 			// Encoding and compression describe the source representation; the
 			// serialized Tablet already contains uncompressed typed arrays.
-			reader.ReadByte()
-			reader.ReadByte()
+			reader.ReadInt8()
+			reader.ReadInt8()
 			properties := reader.ReadCount(8)
 			for property := int32(0); property < properties && reader.Err() == nil; property++ {
 				reader.ReadString()
 				reader.ReadString()
 			}
-			category := reader.ReadByte()
+			category := reader.ReadInt8()
 			if reader.Err() != nil {
 				break
 			}
@@ -266,7 +266,8 @@ func (d *tabletDecoder) Take(count int) []byte {
 	return value
 }
 
-func (d *tabletDecoder) ReadByte() int8 {
+// ReadInt8 reads a signed byte, returning zero after an error.
+func (d *tabletDecoder) ReadInt8() int8 {
 	value := d.Take(1)
 	if d.err != nil {
 		return 0
@@ -275,7 +276,7 @@ func (d *tabletDecoder) ReadByte() int8 {
 }
 
 func (d *tabletDecoder) ReadBool() bool {
-	return d.ReadByte() == 1
+	return d.ReadInt8() == 1
 }
 
 func (d *tabletDecoder) ReadInt32() int32 {

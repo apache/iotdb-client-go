@@ -481,6 +481,9 @@ func (t *Tablet) getColumnCategories() []int8 {
 func (t *Tablet) getValuesBytes() ([]byte, error) {
 	buff := &bytes.Buffer{}
 	for i, schema := range t.measurementSchemas {
+		if t.values[i] == nil {
+			return nil, fmt.Errorf("tablet: column %d (%s) has no values and cannot be serialized", i, schema.Measurement)
+		}
 		switch schema.DataType {
 		case BOOLEAN:
 			binary.Write(buff, binary.BigEndian, t.values[i].([]bool)[0:t.RowSize])

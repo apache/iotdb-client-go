@@ -284,7 +284,7 @@ func EncodeSlice(request *rpc.TPipeSubscribeReq, orderID int32, index, count int
 	}
 	var writer subscriptionWireWriter
 	writer.WriteInt32(orderID)
-	writer.WriteByte(request.Version)
+	writer.WriteInt8(request.Version)
 	writer.WriteInt16(request.Type)
 	writer.WriteInt32(int32(len(request.Body)))
 	writer.WriteInt32(index)
@@ -347,7 +347,7 @@ func writeSubscriptionTopicSet(writer *subscriptionWireWriter, topics []string) 
 	sort.Strings(names)
 	writeSubscriptionControlCount(writer, len(names))
 	for _, topic := range names {
-		writer.WriteByte(subscriptionStringObjectTag)
+		writer.WriteInt8(subscriptionStringObjectTag)
 		writer.WriteString(topic)
 	}
 }

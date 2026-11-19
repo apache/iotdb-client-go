@@ -38,8 +38,8 @@ type Writer struct {
 	err error
 }
 
-// WriteByte appends the signed byte representation without conversion checks.
-func (w *Writer) WriteByte(value int8) {
+// WriteInt8 appends the signed byte representation without conversion checks.
+func (w *Writer) WriteInt8(value int8) {
 	if w.err == nil {
 		w.data = append(w.data, byte(value))
 	}
@@ -69,9 +69,9 @@ func (w *Writer) WriteInt64(value int64) {
 // WriteBool writes one for true and zero for false.
 func (w *Writer) WriteBool(value bool) {
 	if value {
-		w.WriteByte(1)
+		w.WriteInt8(1)
 	} else {
-		w.WriteByte(0)
+		w.WriteInt8(0)
 	}
 }
 
@@ -201,8 +201,8 @@ func (r *Reader) Take(count int) []byte {
 	return value
 }
 
-// ReadByte reads a signed byte, returning zero after an error.
-func (r *Reader) ReadByte() int8 {
+// ReadInt8 reads a signed byte, returning zero after an error.
+func (r *Reader) ReadInt8() int8 {
 	value := r.Take(1)
 	if r.err != nil {
 		return 0
@@ -239,7 +239,7 @@ func (r *Reader) ReadInt64() int64 {
 
 // ReadBool matches Java: only the byte value one denotes true.
 func (r *Reader) ReadBool() bool {
-	return r.ReadByte() == 1
+	return r.ReadInt8() == 1
 }
 
 // ReadString maps Java's null marker to the Go string zero value. Other negative

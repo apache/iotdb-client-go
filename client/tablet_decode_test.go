@@ -128,6 +128,16 @@ func TestDecodedTabletKeepsAbsentColumnOnWrite(t *testing.T) {
 	}
 }
 
+func TestDecodedTabletRejectsSerializationWithAbsentColumn(t *testing.T) {
+	tablet, _, err := DecodeTablet(decodedTestTabletFrame(true, false))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tablet.getValuesBytes(); err == nil {
+		t.Fatal("serializing a Tablet with an absent value column succeeded")
+	}
+}
+
 func TestDecodeTabletWithoutTimestampsUsesZeroTimestampArray(t *testing.T) {
 	tablet, _, err := DecodeTablet(decodedTestTabletFrame(false, true))
 	if err != nil {

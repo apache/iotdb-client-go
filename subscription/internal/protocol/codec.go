@@ -39,7 +39,7 @@ type subscriptionWireReader = internalwire.Reader
 
 // WriteCommitContext encodes delivery identity and optional writer progress.
 func WriteCommitContext(w *internalwire.Writer, context payload.CommitContext) {
-	w.WriteByte(subscriptionCommitContextVersion)
+	w.WriteInt8(subscriptionCommitContextVersion)
 	w.WriteInt32(context.DataNodeID)
 	w.WriteInt32(context.RebootTimes)
 	w.WriteString(context.Topic)
@@ -55,7 +55,7 @@ func WriteCommitContext(w *internalwire.Writer, context payload.CommitContext) {
 }
 
 func readSubscriptionCommitContext(r *subscriptionWireReader) payload.CommitContext {
-	version := r.ReadByte()
+	version := r.ReadInt8()
 	if r.Err() != nil {
 		return payload.CommitContext{}
 	}
@@ -74,7 +74,7 @@ func readSubscriptionCommitContext(r *subscriptionWireReader) payload.CommitCont
 		PhysicalTime: r.ReadInt64(),
 	}
 	// Java reads this presence marker as a byte, not ReadWriteIOUtils.readBool.
-	if r.ReadByte() != 0 {
+	if r.ReadInt8() != 0 {
 		position := readSubscriptionWriterPosition(r)
 		context.Writer = &position
 	}
