@@ -86,6 +86,12 @@ func (s *e2eTestSuite) waitForTimeseriesDeletion(paths []string, timeout time.Du
 		lastProcedureID = procedureID
 		lastState = state
 		if state == "ROLLEDBACK" {
+			// These tests use deletion to establish a clean state. An absent path
+			// is therefore complete cleanup even though the server records the
+			// submitted asynchronous procedure as rolled back.
+			if strings.HasPrefix(errorMessage, fmt.Sprintf("%d:", client.PathNotExist)) {
+				return
+			}
 			s.Require().Fail(
 				"timeseries deletion rolled back",
 				"procedureId=%d, paths=%s, error=%s",
