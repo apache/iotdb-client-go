@@ -48,6 +48,14 @@ Apache IoTDB GitHub: <https://github.com/apache/iotdb>
 
     golang >= 1.25
 
+## Subscription Client
+
+The `github.com/apache/iotdb-client-go/v2/subscription` package family provides tree-model and table-model topic management and record consumption through Pull and Push consumers. It is part of the main Go module and shares its version with the Session client. See the [Subscription Client README](subscription/README.md) for package imports, configuration, and usage, or the [subscription examples](example/subscription/README.md) for complete programs.
+
+## Examples
+
+The [examples](example/README.md) contain Session, Session pool, database/sql, and tree/table subscription programs. They are packages in the main Go module and can be run from a repository checkout. The [subscription examples](example/subscription/README.md) include record Pull/Push consumption and incremental checkpoint resume. Existing Session and database/sql import paths are unchanged. Subscription APIs are organized into `session`, `consumer`, `payload`, and `processor` subpackages.
+
 ## How to Use the Client (Quick Start)
 
 With go mod

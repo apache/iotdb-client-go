@@ -696,7 +696,7 @@ func TestTablet_OBJECT(t *testing.T) {
 
 	objVal := []byte{0x01, 0x02, 0x03}
 	if err := tablet.SetValueAt(objVal, 1, 0); err == nil {
-		t.Fatal("SetValueAt([]byte) for OBJECT: want error, got nil")
+		t.Fatal("SetValueAt([]byte) for OBJECT: want an error for a normal Tablet")
 	}
 	if err := tablet.SetObjectValueAt(true, 0, objVal, 1, 0); err != nil {
 		t.Fatalf("SetObjectValueAt([]byte) error = %v", err)
@@ -705,7 +705,7 @@ func TestTablet_OBJECT(t *testing.T) {
 	tablet.RowSize++
 
 	if err := tablet.SetValueAt("hello", 1, 1); err == nil {
-		t.Fatal("SetValueAt(string) for OBJECT: want error, got nil")
+		t.Fatal("SetValueAt(string) for OBJECT: want an error for a normal Tablet")
 	}
 	if err := tablet.SetObjectValueAt(true, 0, []byte("hello"), 1, 1); err != nil {
 		t.Fatalf("SetObjectValueAt(string bytes) error = %v", err)

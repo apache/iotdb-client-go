@@ -18,6 +18,8 @@
 # under the License.
 #
 sed -i 's/dn_rpc_address=127.0.0.1/dn_rpc_address=0.0.0.0/g' /usr/local/iotdb/conf/iotdb-system.properties
+sed -i 's/^subscription_enabled=.*/subscription_enabled=true/' /usr/local/iotdb/conf/iotdb-system.properties
+sed -i 's/^chunk_timeseriesmeta_free_memory_proportion=.*/chunk_timeseriesmeta_free_memory_proportion=1:100:200:50:200:200:200:50:250/' /usr/local/iotdb/conf/iotdb-system.properties
 nohup /usr/local/iotdb/sbin/start-confignode.sh > /dev/null 2>&1 &
 sleep 5
 ls /usr/local/iotdb/sbin

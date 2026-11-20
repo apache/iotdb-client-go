@@ -46,6 +46,10 @@ Apache IoTDB GitHub: https://github.com/apache/iotdb
 
     golang >= 1.25
 
+## 示例
+
+[example 独立模块](example/README.md) 汇集 Session、SessionPool、database/sql 和树/表模型订阅程序，通过本地 replace 引用两个客户端模块；在仓库内使用时先进入 `example/`。[订阅示例](example/subscription/README.md) 包含记录 Pull/Push 消费及增量 checkpoint 恢复。原有 Session 和 database/sql 导入路径保持不变；订阅 API 在其独立模块内按 `session`、`consumer`、`payload` 和 `processor` 分包。
+
 ## 如何使用 (快速上手)
 
 使用go mod

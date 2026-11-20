@@ -22,4 +22,4 @@ FROM golang:1.25-alpine
 ENV CGO_ENABLED=0
 COPY . /go/src/github.com/apache/iotdb-client-go/
 WORKDIR /go/src/github.com/apache/iotdb-client-go
-CMD [ "go", "test", "-v", "./test/e2e/..." ]
+CMD [ "go", "test", "-v", "./test/e2e" ]
