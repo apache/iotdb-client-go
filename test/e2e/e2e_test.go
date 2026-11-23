@@ -81,7 +81,7 @@ func (s *e2eTestSuite) latestDeleteTimeseriesProcedureID() int64 {
 			break
 		}
 
-		procedureID, err := ds.GetLongByIndex(0)
+		procedureID, err := ds.GetLongByIndex(1)
 		s.Require().NoError(err)
 		if procedureID > latestID {
 			latestID = procedureID
@@ -108,20 +108,20 @@ func (s *e2eTestSuite) deleteTimeseriesAndWait(paths []string) {
 					return false, ""
 				}
 
-				procedureID, err := ds.GetLongByIndex(0)
+				procedureID, err := ds.GetLongByIndex(1)
 				s.Require().NoError(err)
 				if procedureID <= previousID {
 					continue
 				}
 
-				state, err := ds.GetStringByIndex(3)
+				state, err := ds.GetStringByIndex(5)
 				s.Require().NoError(err)
 				if state == "ROLLEDBACK" {
 					errorMessage := "unknown error"
-					isNull, err := ds.IsNullByIndex(5)
+					isNull, err := ds.IsNullByIndex(6)
 					s.Require().NoError(err)
 					if !isNull {
-						errorMessage, err = ds.GetStringByIndex(5)
+						errorMessage, err = ds.GetStringByIndex(6)
 						s.Require().NoError(err)
 					}
 					return false, fmt.Sprintf("procedure %d: %s", procedureID, errorMessage)
