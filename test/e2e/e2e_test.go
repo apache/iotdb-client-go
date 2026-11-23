@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -123,6 +124,10 @@ func (s *e2eTestSuite) deleteTimeseriesAndWait(paths []string) {
 					if !isNull {
 						errorMessage, err = ds.GetStringByIndex(6)
 						s.Require().NoError(err)
+					}
+					// No matching timeseries is a successful cleanup no-op.
+					if strings.HasPrefix(errorMessage, fmt.Sprintf("%d:", client.PathNotExist)) {
+						return true, ""
 					}
 					return false, fmt.Sprintf("procedure %d: %s", procedureID, errorMessage)
 				}
