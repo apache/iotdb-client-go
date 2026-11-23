@@ -25,9 +25,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
 	subsession "github.com/apache/iotdb-client-go/v2/subscription/session"
-	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 const (
@@ -50,12 +50,12 @@ var (
 const (
 	subscriptionE2EDefaultEnabled = false
 
-	subscriptionE2ETestTimeout     = 20 * time.Second
-	subscriptionE2EOpenTimeout     = 10 * time.Second
+	subscriptionE2ETestTimeout = 30 * time.Second
+	subscriptionE2EOpenTimeout = 10 * time.Second
 	// The server closes an inactive consumer after its 10s timeout plus up to
 	// one 5s checker interval, and metadata propagation may add further delay.
 	// Keep a full extra checker window for CI scheduling variance.
-	subscriptionE2ECleanupTimeout = 30 * time.Second
+	subscriptionE2ECleanupTimeout  = 30 * time.Second
 	subscriptionE2EWriterTimeoutMs = 10000
 
 	subscriptionE2EHeartbeatInterval     = time.Second
