@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"strings"
 	"testing"
 	"time"
 
@@ -66,6 +67,84 @@ func (s *e2eTestSuite) TearDownTest() {
 
 func (s *e2eTestSuite) checkError(err error) {
 	s.Require().NoError(err)
+}
+
+func (s *e2eTestSuite) latestDeleteTimeseriesProcedureID() int64 {
+	ds, err := s.session.ExecuteQueryStatement("SHOW DELETE TIMESERIES PROGRESS", nil)
+	s.Require().NoError(err)
+	defer ds.Close()
+
+	latestID := int64(-1)
+	for {
+		hasNext, err := ds.Next()
+		s.Require().NoError(err)
+		if !hasNext {
+			break
+		}
+
+		procedureID, err := ds.GetLongByIndex(1)
+		s.Require().NoError(err)
+		if procedureID > latestID {
+			latestID = procedureID
+		}
+	}
+	return latestID
+}
+
+func (s *e2eTestSuite) deleteTimeseriesAndWait(paths []string) {
+	previousID := s.latestDeleteTimeseriesProcedureID()
+	s.checkError(s.session.DeleteTimeseries(paths))
+
+	deadline := time.Now().Add(60 * time.Second)
+	for time.Now().Before(deadline) {
+		ds, err := s.session.ExecuteQueryStatement("SHOW DELETE TIMESERIES PROGRESS", nil)
+		s.Require().NoError(err)
+
+		completed, rollbackError := func() (bool, string) {
+			defer ds.Close()
+			for {
+				hasNext, err := ds.Next()
+				s.Require().NoError(err)
+				if !hasNext {
+					return false, ""
+				}
+
+				procedureID, err := ds.GetLongByIndex(1)
+				s.Require().NoError(err)
+				if procedureID <= previousID {
+					continue
+				}
+
+				state, err := ds.GetStringByIndex(5)
+				s.Require().NoError(err)
+				if state == "ROLLEDBACK" {
+					errorMessage := "unknown error"
+					isNull, err := ds.IsNullByIndex(6)
+					s.Require().NoError(err)
+					if !isNull {
+						errorMessage, err = ds.GetStringByIndex(6)
+						s.Require().NoError(err)
+					}
+					// No matching timeseries is a successful cleanup no-op.
+					if strings.HasPrefix(errorMessage, fmt.Sprintf("%d:", client.PathNotExist)) {
+						return true, ""
+					}
+					return false, fmt.Sprintf("procedure %d: %s", procedureID, errorMessage)
+				}
+				if state == "SUCCESS" {
+					return true, ""
+				}
+			}
+		}()
+		if rollbackError != "" {
+			s.Require().FailNowf("asynchronous timeseries deletion rolled back", "%s", rollbackError)
+		}
+		if completed {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	s.Require().FailNow("timed out waiting for asynchronous timeseries deletion")
 }
 
 func (s *e2eTestSuite) Test_WrongURL() {
@@ -241,7 +320,7 @@ func (s *e2eTestSuite) Test_InsertAlignedRecordsOfOneDevice() {
 
 func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 	var timeseries = []string{"root.ln.device1.**"}
-	s.session.DeleteTimeseries(timeseries)
+	s.deleteTimeseriesAndWait(timeseries)
 	if tablet, err := createTablet(12); err == nil {
 		err := s.session.InsertAlignedTablet(tablet, false)
 		s.checkError(err)
@@ -263,7 +342,7 @@ func (s *e2eTestSuite) Test_InsertAlignedTablet() {
 
 func (s *e2eTestSuite) Test_InsertAlignedTabletWithNilValue() {
 	var timeseries = []string{"root.ln.device1.**"}
-	s.session.DeleteTimeseries(timeseries)
+	s.deleteTimeseriesAndWait(timeseries)
 	if tablet, err := createTabletWithNil(12); err == nil {
 		err := s.session.InsertAlignedTablet(tablet, false)
 		s.checkError(err)
@@ -377,7 +456,7 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 
 func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 	var timeseries = []string{"root.ln.device1.**"}
-	s.session.DeleteTimeseries(timeseries)
+	s.deleteTimeseriesAndWait(timeseries)
 	tablet1, err := createTablet(8)
 	if err != nil {
 		log.Fatal(err)
@@ -406,7 +485,7 @@ func (s *e2eTestSuite) Test_InsertAlignedTablets() {
 func (s *e2eTestSuite) Test_FetchMoreData() {
 	var timeseries = []string{"root.ln.device1.**"}
 	s.session.SetFetchSize(1000)
-	s.session.DeleteTimeseries(timeseries)
+	s.deleteTimeseriesAndWait(timeseries)
 	writeCount := 10000
 	tablet1, err := createTablet(writeCount)
 	if err != nil {
@@ -468,7 +547,7 @@ func (s *e2eTestSuite) Test_QueryDataAcrossMultipleFetches() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			s.session.SetFetchSize(tt.fetchSize)
-			s.session.DeleteTimeseries(timeseries)
+			s.deleteTimeseriesAndWait(timeseries)
 			tablet, err := createSimpleTablet("root.ln.device1", tt.rowCount)
 			s.Require().NoError(err)
 			s.checkError(s.session.InsertAlignedTablets([]*client.Tablet{tablet}, false))
