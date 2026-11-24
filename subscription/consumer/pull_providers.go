@@ -44,6 +44,7 @@ func (c *subscriptionPullConsumer) handleProviderError(provider *subscriptionPro
 	}
 	if errors.Is(failure, subscription.ErrConsumerFenced) {
 		c.mu.Lock()
+		c.clearTerminatedProviderStatesLocked()
 		current := c.providers[provider.dataNodeID] == provider
 		if current && c.fenced == nil {
 			c.fenced = failure
@@ -63,6 +64,9 @@ func (c *subscriptionPullConsumer) handleProviderError(provider *subscriptionPro
 		}
 		return failure
 	}
+	c.mu.Lock()
+	c.clearTerminatedProviderStatesLocked()
+	c.mu.Unlock()
 	if provider.connection.Closed() {
 		c.requestRecovery()
 	}
@@ -98,8 +102,17 @@ func (c *subscriptionPullConsumer) publishProvider(provider *subscriptionProvide
 	c.identity.ConsumerID = provider.consumerID
 	c.identity.GroupID = provider.groupID
 	previous := c.providers[provider.dataNodeID]
+	provider.epoch = c.nextProviderEpochLocked()
 	c.providers[provider.dataNodeID] = provider
-	c.observeEndpointLocked(provider.dataNodeID, provider.endpoint)
+	if c.endpoints == nil {
+		c.endpoints = make(map[int32]string)
+	}
+	endpointChanged := c.endpoints[provider.dataNodeID] != provider.endpoint
+	c.endpoints[provider.dataNodeID] = provider.endpoint
+	if (previous != nil && previous != provider) || endpointChanged {
+		c.topologyGeneration++
+		c.clearTerminatedProviderStatesLocked()
+	}
 	c.mu.Unlock()
 	if previous != nil && previous != provider {
 		// Replacement must preserve the server-side consumer and subscriptions.
@@ -247,12 +260,15 @@ func (c *subscriptionPullConsumer) recoverProviders(ctx context.Context) error {
 		var stale []*subscriptionProvider
 		c.mu.Lock()
 		if c.generation == generation && !c.closing && !c.released {
-			c.replaceEndpointsLocked(known)
+			c.replaceClusterEndpointsLocked(known)
 			for id, provider := range c.providers {
 				if _, exists := known[id]; !exists {
 					delete(c.providers, id)
 					stale = append(stale, provider)
 				}
+			}
+			if len(stale) != 0 {
+				c.clearTerminatedProviderStatesLocked()
 			}
 		}
 		c.mu.Unlock()
@@ -291,6 +307,7 @@ func (c *subscriptionPullConsumer) providerHeartbeat(ctx context.Context, provid
 		return response, revision, err
 	}
 	c.mu.Lock()
+	membershipShrank := false
 	if c.providers[provider.dataNodeID] == provider && !provider.connection.Closed() && !c.released && !c.closing {
 		// changeSubscriptions marks an in-flight update with an odd revision.
 		// A heartbeat started during that window is not an authoritative topic
@@ -298,28 +315,49 @@ func (c *subscriptionPullConsumer) providerHeartbeat(ctx context.Context, provid
 		if c.topicRevision == revision && revision%2 == 0 {
 			c.topics = response.Topics
 			c.reconcileTopicStateLocked()
-			for id, endpoint := range response.Endpoints {
-				c.observeEndpointLocked(id, endpoint)
-			}
+			membershipShrank = c.observeHeartbeatEndpointsLocked(response.Endpoints)
 			c.invalidateProviderTopicCompletionsLocked(provider.dataNodeID, response.Unsubscribe)
-			terminations := make([]subscriptionTermination, 0, len(response.Unsubscribe))
-			for _, topic := range response.Unsubscribe {
-				terminations = append(
-					terminations,
-					subscriptionTermination{topic: topic, dataNodeID: provider.dataNodeID},
-				)
+			if !membershipShrank {
+				terminations := make([]subscriptionTermination, 0, len(response.Unsubscribe))
+				for _, topic := range response.Unsubscribe {
+					terminations = append(
+						terminations,
+						subscriptionTermination{
+							topic:                topic,
+							dataNodeID:           provider.dataNodeID,
+							provider:             provider,
+							providerEpoch:        provider.epoch,
+							topologyGeneration:   c.topologyGeneration,
+							completionGeneration: c.completionGeneration,
+						},
+					)
+				}
+				c.stagePendingTerminationsLocked(terminations)
+			} else {
+				response.Unsubscribe = nil
 			}
-			c.stagePendingTerminationsLocked(terminations)
 		} else {
 			response.Unsubscribe = nil
-			for id, endpoint := range response.Endpoints {
-				c.observeEndpointLocked(id, endpoint)
+			if len(response.Endpoints) != 0 && c.endpointsDiscovered {
+				for dataNodeID := range c.knownClusterDataNodeIDs {
+					if _, exists := response.Endpoints[dataNodeID]; !exists {
+						membershipShrank = true
+						break
+					}
+				}
+				if membershipShrank {
+					c.topologyGeneration++
+					c.clearTerminatedProviderStatesLocked()
+				}
 			}
 		}
 	} else {
 		response.Unsubscribe = nil
 	}
 	c.mu.Unlock()
+	if membershipShrank {
+		c.requestRecovery()
+	}
 	return response, revision, nil
 }
 

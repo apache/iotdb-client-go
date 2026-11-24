@@ -38,10 +38,10 @@ import (
 // Connection owns authentication, statement state, and one serialized RPC caller.
 // Abort may run concurrently with that caller to interrupt a blocked socket.
 type Connection struct {
-	transport *transport.Connection
-	client *rpc.IClientRPCServiceClient
-	sessionID int64
-	statementID int64
+	transport      *transport.Connection
+	client         *rpc.IClientRPCServiceClient
+	sessionID      int64
+	statementID    int64
 	cleanupTimeout time.Duration
 }
 
@@ -70,14 +70,14 @@ func Open(ctx context.Context, config subscription.ConnectionConfig, dialect sub
 func openSubscriptionEndpoint(ctx context.Context, endpoint string, config subscription.ConnectionConfig, dialect subscription.Dialect) (_ *Connection, err error) {
 	rpcConnection, err := transport.Dial(ctx, endpoint, transport.Config{
 		ConnectTimeout: config.ConnectTimeout,
-		MaxFrameSize: config.MaxFrameSize,
+		MaxFrameSize:   config.MaxFrameSize,
 	})
 	if err != nil {
 		return nil, err
 	}
 	connection := &Connection{
-		transport: rpcConnection,
-		client: rpcConnection.Client(),
+		transport:      rpcConnection,
+		client:         rpcConnection.Client(),
 		cleanupTimeout: config.ConnectTimeout,
 	}
 	defer func() {
@@ -88,7 +88,7 @@ func openSubscriptionEndpoint(ctx context.Context, endpoint string, config subsc
 
 	password := config.Password
 	attributes := map[string]string{
-		"version": string(client.DEFAULT_VERSION),
+		"version":     string(client.DEFAULT_VERSION),
 		"sql_dialect": string(dialect),
 	}
 	if config.EncryptedPassword != "" {
@@ -97,10 +97,10 @@ func openSubscriptionEndpoint(ctx context.Context, endpoint string, config subsc
 	}
 	request := &rpc.TSOpenSessionReq{
 		ClientProtocol: rpc.TSProtocolVersion_IOTDB_SERVICE_PROTOCOL_V3,
-		ZoneId: client.DefaultTimeZone,
-		Username: config.Username,
-		Password: &password,
-		Configuration: attributes,
+		ZoneId:         client.DefaultTimeZone,
+		Username:       config.Username,
+		Password:       &password,
+		Configuration:  attributes,
 	}
 	var response *rpc.TSOpenSessionResp
 	if err = connection.Call(ctx, func() error {
@@ -182,8 +182,8 @@ func (c *Connection) Close(ctx context.Context) (err error) {
 // Execute sends a non-query statement and validates its server status.
 func (c *Connection) Execute(ctx context.Context, sql string) error {
 	request := &rpc.TSExecuteStatementReq{
-		SessionId: c.sessionID,
-		Statement: sql,
+		SessionId:   c.sessionID,
+		Statement:   sql,
 		StatementId: c.statementID,
 	}
 	var response *rpc.TSExecuteStatementResp
@@ -206,11 +206,11 @@ func (c *Connection) Query(ctx context.Context, sql string, columnCount int, all
 	fetchSize := int32(client.DefaultFetchSize)
 	redirect := false
 	request := &rpc.TSExecuteStatementReq{
-		SessionId: c.sessionID,
-		Statement: sql,
-		StatementId: c.statementID,
-		FetchSize: &fetchSize,
-		Timeout: subscriptionQueryTimeout(ctx),
+		SessionId:           c.sessionID,
+		Statement:           sql,
+		StatementId:         c.statementID,
+		FetchSize:           &fetchSize,
+		Timeout:             subscriptionQueryTimeout(ctx),
 		EnableRedirectQuery: &redirect,
 	}
 	var response *rpc.TSExecuteStatementResp
@@ -258,12 +258,12 @@ func (c *Connection) Query(ctx context.Context, sql string, columnCount int, all
 	moreData := response.GetMoreData()
 	for moreData {
 		fetch := &rpc.TSFetchResultsReq{
-			SessionId: c.sessionID,
-			Statement: sql,
-			FetchSize: fetchSize,
-			QueryId: *response.QueryId,
-			IsAlign: true,
-			Timeout: subscriptionQueryTimeout(ctx),
+			SessionId:   c.sessionID,
+			Statement:   sql,
+			FetchSize:   fetchSize,
+			QueryId:     *response.QueryId,
+			IsAlign:     true,
+			Timeout:     subscriptionQueryTimeout(ctx),
 			StatementId: &c.statementID,
 		}
 		var page *rpc.TSFetchResultsResp
@@ -301,8 +301,8 @@ func (c *Connection) closeQuery(ctx context.Context, queryID int64) error {
 	cleanupCtx, cancel := context.WithTimeout(ctx, c.cleanupTimeout)
 	defer cancel()
 	request := &rpc.TSCloseOperationReq{
-		SessionId: c.sessionID,
-		QueryId: &queryID,
+		SessionId:   c.sessionID,
+		QueryId:     &queryID,
 		StatementId: &c.statementID,
 	}
 	var status *common.TSStatus

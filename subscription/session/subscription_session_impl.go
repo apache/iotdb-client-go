@@ -41,19 +41,19 @@ func NewSubscriptionSession(config SubscriptionSessionConfig) (SubscriptionSessi
 		return nil, err
 	}
 	return &subscriptionSession{
-		config: resolved,
+		config:     resolved,
 		operations: make(chan struct{}, 1),
 	}, nil
 }
 
 type subscriptionSession struct {
-	config SubscriptionSessionConfig
-	operations chan struct{}
-	stateMu sync.Mutex
-	connection *rpcsession.Connection
+	config        SubscriptionSessionConfig
+	operations    chan struct{}
+	stateMu       sync.Mutex
+	connection    *rpcsession.Connection
 	openingCancel context.CancelFunc
-	generation uint64
-	closed bool
+	generation    uint64
+	closed        bool
 }
 
 func (s *subscriptionSession) acquire(ctx context.Context) error {
@@ -212,7 +212,7 @@ func (s *subscriptionSession) alterTopic(ctx context.Context, name string, attri
 	if err := validateAlterTopicAttributes(attributes, allowOwner); err != nil {
 		return err
 	}
-	return s.execute(ctx, "ALTER TOPIC " + sqlIdentifier + " WITH " + buildTopicAttributesClause(attributes))
+	return s.execute(ctx, "ALTER TOPIC "+sqlIdentifier+" WITH "+buildTopicAttributesClause(attributes))
 }
 
 func (s *subscriptionSession) AlterTopicOwner(ctx context.Context, name string, owner TopicOwner) error {
@@ -220,11 +220,11 @@ func (s *subscriptionSession) AlterTopicOwner(ctx context.Context, name string, 
 		return fmt.Errorf("subscription: topic owner ID must not be empty")
 	}
 	attributes := map[string]string{
-		"owner-id": owner.ID,
+		"owner-id":    owner.ID,
 		"owner-epoch": strconv.FormatInt(owner.Epoch, 10),
 	}
 	if owner.LeaseDuration != nil {
-		if *owner.LeaseDuration % time.Millisecond != 0 {
+		if *owner.LeaseDuration%time.Millisecond != 0 {
 			return fmt.Errorf("subscription: owner lease duration must be a whole number of milliseconds")
 		}
 		attributes["owner-lease-duration-ms"] = strconv.FormatInt(owner.LeaseDuration.Milliseconds(), 10)
@@ -241,7 +241,7 @@ func (s *subscriptionSession) DropTopic(ctx context.Context, name string, option
 	if options.IfExists {
 		statement += "IF EXISTS "
 	}
-	return s.execute(ctx, statement + sqlIdentifier)
+	return s.execute(ctx, statement+sqlIdentifier)
 }
 
 func (s *subscriptionSession) Topics(ctx context.Context) ([]Topic, error) {
@@ -261,7 +261,7 @@ func (s *subscriptionSession) Topic(ctx context.Context, name string) (Topic, bo
 	if err != nil {
 		return Topic{}, false, err
 	}
-	rows, err := s.query(ctx, "SHOW TOPIC " + sqlIdentifier, 2, true)
+	rows, err := s.query(ctx, "SHOW TOPIC "+sqlIdentifier, 2, true)
 	if err != nil {
 		return Topic{}, false, err
 	}
@@ -302,5 +302,5 @@ func (s *subscriptionSession) DropSubscription(ctx context.Context, id string, o
 	if options.IfExists {
 		statement += "IF EXISTS "
 	}
-	return s.execute(ctx, statement + sqlIdentifier)
+	return s.execute(ctx, statement+sqlIdentifier)
 }

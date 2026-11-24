@@ -35,11 +35,11 @@ import (
 // slice and does not establish a connection.
 func DefaultSubscriptionConsumerConfig() SubscriptionConsumerConfig {
 	return SubscriptionConsumerConfig{
-		Connection: configutil.DefaultConnection(),
-		Dialect: subscription.TreeDialect,
-		HeartbeatInterval: 30 * time.Second,
+		Connection:            configutil.DefaultConnection(),
+		Dialect:               subscription.TreeDialect,
+		HeartbeatInterval:     30 * time.Second,
 		EndpointsSyncInterval: 2 * time.Minute,
-		MaxPollParallelism: 1,
+		MaxPollParallelism:    1,
 	}
 }
 
@@ -49,8 +49,8 @@ func DefaultSubscriptionConsumerConfig() SubscriptionConsumerConfig {
 func DefaultSubscriptionPullConsumerConfig() SubscriptionPullConsumerConfig {
 	autoCommit := true
 	return SubscriptionPullConsumerConfig{
-		Consumer: DefaultSubscriptionConsumerConfig(),
-		AutoCommit: &autoCommit,
+		Consumer:           DefaultSubscriptionConsumerConfig(),
+		AutoCommit:         &autoCommit,
 		AutoCommitInterval: 5 * time.Second,
 	}
 }
@@ -61,10 +61,10 @@ func DefaultSubscriptionPullConsumerConfig() SubscriptionPullConsumerConfig {
 // nil: callers must supply their own handler before the configuration is usable.
 func DefaultSubscriptionPushConsumerConfig() SubscriptionPushConsumerConfig {
 	return SubscriptionPushConsumerConfig{
-		Consumer: DefaultSubscriptionConsumerConfig(),
-		AckStrategy: AckAfterConsume,
+		Consumer:     DefaultSubscriptionConsumerConfig(),
+		AckStrategy:  AckAfterConsume,
 		PollInterval: 100 * time.Millisecond,
-		PollTimeout: 10 * time.Second,
+		PollTimeout:  10 * time.Second,
 	}
 }
 
@@ -104,7 +104,7 @@ func normalizeSubscriptionConsumerConfig(config SubscriptionConsumerConfig) (Sub
 	if err != nil {
 		return SubscriptionConsumerConfig{}, err
 	}
-	config.EndpointsSyncInterval, err = normalizeConsumerInterval("EndpointsSyncInterval", config.EndpointsSyncInterval, defaults.EndpointsSyncInterval, 5 * time.Second)
+	config.EndpointsSyncInterval, err = normalizeConsumerInterval("EndpointsSyncInterval", config.EndpointsSyncInterval, defaults.EndpointsSyncInterval, 5*time.Second)
 	if err != nil {
 		return SubscriptionConsumerConfig{}, err
 	}
@@ -131,7 +131,7 @@ func normalizeSubscriptionPullConsumerConfig(config SubscriptionPullConsumerConf
 	}
 	config.AutoCommit = &autoCommit
 	defaults := DefaultSubscriptionPullConsumerConfig()
-	config.AutoCommitInterval, err = normalizeConsumerInterval("AutoCommitInterval", config.AutoCommitInterval, defaults.AutoCommitInterval, 500 * time.Millisecond)
+	config.AutoCommitInterval, err = normalizeConsumerInterval("AutoCommitInterval", config.AutoCommitInterval, defaults.AutoCommitInterval, 500*time.Millisecond)
 	if err != nil {
 		return SubscriptionPullConsumerConfig{}, err
 	}
@@ -177,4 +177,3 @@ func normalizeConsumerInterval(name string, value, fallback, minimum time.Durati
 	}
 	return value, nil
 }
-

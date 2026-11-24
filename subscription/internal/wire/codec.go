@@ -35,7 +35,7 @@ const maxLength = 1<<31 - 1
 // ReadWriteIOUtils. Its zero value is ready to use, and the first error is sticky.
 type Writer struct {
 	data []byte
-	err error
+	err  error
 }
 
 // WriteInt8 appends the signed byte representation without conversion checks.
@@ -144,9 +144,9 @@ func (w *Writer) Bytes() ([]byte, error) {
 // Reader borrows the payload and records the first decoding
 // error. Failed reads do not advance the offset or allocate from invalid lengths.
 type Reader struct {
-	data []byte
+	data   []byte
 	offset int
-	err error
+	err    error
 }
 
 // NewReader borrows data; it does not copy or modify the payload.

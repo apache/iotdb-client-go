@@ -20,12 +20,12 @@
 package consumer
 
 import (
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
-	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
-	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 
 	"container/heap"
 	"context"
@@ -38,25 +38,25 @@ import (
 // subscriptionCommitKey includes every identity field without borrowing a
 // mutable Writer pointer, so accepted contexts remove exactly their delivery.
 type subscriptionCommitKey struct {
-	DataNodeID int32
-	RebootTimes int32
-	Topic string
-	GroupID string
-	CommitID int64
+	DataNodeID     int32
+	RebootTimes    int32
+	Topic          string
+	GroupID        string
+	CommitID       int64
 	SeekGeneration int64
-	RegionID string
-	PhysicalTime int64
-	HasWriter bool
-	Writer payload.WriterPosition
+	RegionID       string
+	PhysicalTime   int64
+	HasWriter      bool
+	Writer         payload.WriterPosition
 }
 
 type subscriptionPendingCommit struct {
-	Context payload.CommitContext
+	Context   payload.CommitContext
 	ExpiresAt time.Time
 }
 
 type subscriptionCommitDeadline struct {
-	key subscriptionCommitKey
+	key       subscriptionCommitKey
 	ExpiresAt time.Time
 }
 
@@ -86,14 +86,14 @@ func (h *subscriptionCommitDeadlineHeap) Pop() any {
 
 func subscriptionContextKey(value payload.CommitContext) subscriptionCommitKey {
 	key := subscriptionCommitKey{
-		DataNodeID: value.DataNodeID,
-		RebootTimes: value.RebootTimes,
-		Topic: value.Topic,
-		GroupID: value.GroupID,
-		CommitID: value.CommitID,
+		DataNodeID:     value.DataNodeID,
+		RebootTimes:    value.RebootTimes,
+		Topic:          value.Topic,
+		GroupID:        value.GroupID,
+		CommitID:       value.CommitID,
 		SeekGeneration: value.SeekGeneration,
-		RegionID: value.RegionID,
-		PhysicalTime: value.PhysicalTime,
+		RegionID:       value.RegionID,
+		PhysicalTime:   value.PhysicalTime,
 	}
 	if value.Writer != nil {
 		key.HasWriter = true
@@ -423,7 +423,7 @@ func (c *subscriptionPullConsumer) flushRedirectAcks(ctx context.Context, messag
 	if err := c.checkOpen(); err != nil {
 		return
 	}
-	type topicRegion struct { topic, region string }
+	type topicRegion struct{ topic, region string }
 	targets := make(map[topicRegion]int32)
 	for _, message := range messages {
 		commitContext := record.ReadCommitContext(message)
@@ -659,7 +659,7 @@ func (c *subscriptionPullConsumer) seekProgress(ctx context.Context, topic strin
 	available := 0
 	type seekFailure struct {
 		provider *subscriptionProvider
-		err error
+		err      error
 	}
 	var providerFailures []seekFailure
 	for _, provider := range providers {
@@ -713,6 +713,7 @@ func (c *subscriptionPullConsumer) seekProgress(ctx context.Context, topic strin
 	}
 	delete(c.pendingTerminations, name)
 	delete(c.pendingUnsubscribes, name)
+	delete(c.pendingTerminationBarrier, name)
 	delete(c.terminatedDataNodeIDsByTopic, name)
 	c.mu.Unlock()
 	c.resetProcessors(name)

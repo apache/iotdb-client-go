@@ -25,9 +25,9 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/apache/iotdb-client-go/v2/rpc"
 	internalwire "github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
 	"github.com/apache/iotdb-client-go/v2/subscription/payload"
-	"github.com/apache/iotdb-client-go/v2/rpc"
 )
 
 // RequestVersion is the subscription RPC request envelope version.
@@ -56,10 +56,10 @@ const (
 )
 
 const (
-	subscriptionResponseVersion int8 = 1
-	subscriptionResponseAck int16 = 0
-	subscriptionStringObjectTag int8 = 6
-	subscriptionPollInitial int16 = 0
+	subscriptionResponseVersion int8  = 1
+	subscriptionResponseAck     int16 = 0
+	subscriptionStringObjectTag int8  = 6
+	subscriptionPollInitial     int16 = 0
 	subscriptionPollNextTablets int16 = 2
 )
 
@@ -67,13 +67,13 @@ const (
 type Handshake struct {
 	DataNodeID int32
 	ConsumerID string
-	GroupID string
+	GroupID    string
 }
 
 // Heartbeat carries subscription and endpoint coordination data.
 type Heartbeat struct {
-	Topics map[string]map[string]string
-	Endpoints map[int32]string
+	Topics      map[string]map[string]string
+	Endpoints   map[int32]string
 	Unsubscribe []string
 }
 
@@ -139,7 +139,7 @@ func EncodeHeartbeat(contexts []payload.CommitContext) (*rpc.TPipeSubscribeReq, 
 // DecodeHeartbeat reads current topics, endpoints, and unsubscribe hints.
 func DecodeHeartbeat(response *rpc.TPipeSubscribeResp) (Heartbeat, error) {
 	result := Heartbeat{
-		Topics: make(map[string]map[string]string),
+		Topics:    make(map[string]map[string]string),
 		Endpoints: make(map[int32]string),
 	}
 	if err := ValidateResponse(response); err != nil {
@@ -194,7 +194,7 @@ func DecodeTopics(response *rpc.TPipeSubscribeResp) (map[string]map[string]strin
 func EncodeClose() *rpc.TPipeSubscribeReq {
 	return &rpc.TPipeSubscribeReq{
 		Version: RequestVersion,
-		Type: RequestClose,
+		Type:    RequestClose,
 	}
 }
 
@@ -296,8 +296,8 @@ func EncodeSlice(request *rpc.TPipeSubscribeReq, orderID int32, index, count int
 	}
 	return &rpc.TPipeSubscribeReq{
 		Version: RequestVersion,
-		Type: RequestSlice,
-		Body: append(body, piece...),
+		Type:    RequestSlice,
+		Body:    append(body, piece...),
 	}, nil
 }
 
@@ -308,8 +308,8 @@ func subscriptionControlRequest(requestType int16, writer *subscriptionWireWrite
 	}
 	return &rpc.TPipeSubscribeReq{
 		Version: RequestVersion,
-		Type: requestType,
-		Body: body,
+		Type:    requestType,
+		Body:    body,
 	}, nil
 }
 

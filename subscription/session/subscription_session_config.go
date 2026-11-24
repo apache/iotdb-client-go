@@ -39,7 +39,7 @@ type SubscriptionSessionConfig struct {
 func DefaultSubscriptionSessionConfig() SubscriptionSessionConfig {
 	return SubscriptionSessionConfig{
 		Connection: configutil.DefaultConnection(),
-		Dialect: subscription.TreeDialect,
+		Dialect:    subscription.TreeDialect,
 	}
 }
 

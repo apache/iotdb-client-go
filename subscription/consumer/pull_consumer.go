@@ -87,6 +87,7 @@ func newSubscriptionPullConsumer(resolved SubscriptionPullConsumerConfig) (*subs
 		recovery:                     make(chan struct{}, 1),
 		providers:                    make(map[int32]*subscriptionProvider),
 		endpoints:                    make(map[int32]string),
+		knownClusterDataNodeIDs:      make(map[int32]struct{}),
 		topics:                       make(map[string]map[string]string),
 		heartbeatBusy:                make(map[*subscriptionProvider]bool),
 		positions:                    make(map[string]payload.TopicProgress),
@@ -96,6 +97,7 @@ func newSubscriptionPullConsumer(resolved SubscriptionPullConsumerConfig) (*subs
 		redirectAcks:                 make(map[subscriptionCommitKey]payload.CommitContext),
 		pendingTerminations:          make(map[string]struct{}),
 		pendingUnsubscribes:          make(map[string]struct{}),
+		pendingTerminationBarrier:    make(map[string]subscriptionTerminationBarrier),
 		terminatedDataNodeIDsByTopic: make(map[string]map[int32]struct{}),
 		identity: SubscriptionConsumerInfo{
 			ConsumerID: resolved.Consumer.ConsumerID,
@@ -118,6 +120,8 @@ type subscriptionPullConsumer struct {
 	workers                      sync.WaitGroup
 	providers                    map[int32]*subscriptionProvider
 	endpoints                    map[int32]string
+	knownClusterDataNodeIDs      map[int32]struct{}
+	endpointsDiscovered          bool
 	topics                       map[string]map[string]string
 	identity                     SubscriptionConsumerInfo
 	opened                       bool
@@ -141,8 +145,11 @@ type subscriptionPullConsumer struct {
 	redirectAcks                 map[subscriptionCommitKey]payload.CommitContext
 	pendingTerminations          map[string]struct{}
 	pendingUnsubscribes          map[string]struct{}
+	pendingTerminationBarrier    map[string]subscriptionTerminationBarrier
 	terminatedDataNodeIDsByTopic map[string]map[int32]struct{}
 	topologyGeneration           uint64
+	completionGeneration         uint64
+	providerEpochCounter         uint64
 	lastAutoCommitError          error
 	watermark                    int64
 	hasWatermark                 bool
@@ -382,6 +389,9 @@ func (c *subscriptionPullConsumer) Close() error {
 	c.mu.Lock()
 	fenced = c.fenced
 	providers := c.detachProvidersLocked()
+	c.clearTerminatedProviderStatesLocked()
+	clear(c.knownClusterDataNodeIDs)
+	c.endpointsDiscovered = false
 	c.opened = false
 	c.released = true
 	c.closing = false
@@ -430,8 +440,17 @@ func (c *subscriptionPullConsumer) LastAutoCommitError() error {
 }
 
 type subscriptionTermination struct {
-	topic      string
-	dataNodeID int32
+	topic                string
+	dataNodeID           int32
+	provider             *subscriptionProvider
+	providerEpoch        uint64
+	topologyGeneration   uint64
+	completionGeneration uint64
+}
+
+type subscriptionTerminationBarrier struct {
+	topologyGeneration   uint64
+	completionGeneration uint64
 }
 
 func (c *subscriptionPullConsumer) stagePendingTerminations(
@@ -448,6 +467,15 @@ func (c *subscriptionPullConsumer) stagePendingTerminationsLocked(
 	for _, termination := range terminations {
 		topic := termination.topic
 		if topic == "" {
+			continue
+		}
+		if termination.provider != nil &&
+			(c.providers[termination.dataNodeID] != termination.provider ||
+				termination.providerEpoch != termination.provider.epoch ||
+				termination.topologyGeneration != c.topologyGeneration ||
+				termination.completionGeneration != c.completionGeneration) {
+			// A heartbeat revocation, provider replacement, or topology change
+			// superseded this response before it could be applied.
 			continue
 		}
 		if _, subscribed := c.topics[topic]; !subscribed {
@@ -469,6 +497,13 @@ func (c *subscriptionPullConsumer) stagePendingTerminationsLocked(
 		}
 		c.pendingTerminations[topic] = struct{}{}
 		c.pendingUnsubscribes[topic] = struct{}{}
+		if c.pendingTerminationBarrier == nil {
+			c.pendingTerminationBarrier = make(map[string]subscriptionTerminationBarrier)
+		}
+		c.pendingTerminationBarrier[topic] = subscriptionTerminationBarrier{
+			topologyGeneration:   c.topologyGeneration,
+			completionGeneration: c.completionGeneration,
+		}
 	}
 }
 
@@ -477,16 +512,21 @@ func (c *subscriptionPullConsumer) isRetainedSnapshotTopicLocked(topic string) b
 	if !exists || attributes == nil {
 		return false
 	}
-	return strings.EqualFold(attributes[subscriptionTopicModeKey], subscriptionTopicModeSnapshot) &&
-		strings.EqualFold(
-			attributes[subscriptionTopicRetainProgressKey],
-			subscriptionTopicRetainProgressValue,
-		)
+	return strings.EqualFold(
+		strings.TrimSpace(attributes[subscriptionTopicModeKey]),
+		subscriptionTopicModeSnapshot,
+	) && strings.EqualFold(
+		strings.TrimSpace(attributes[subscriptionTopicRetainProgressKey]),
+		subscriptionTopicRetainProgressValue,
+	)
 }
 
 func (c *subscriptionPullConsumer) expectedDataNodeIDsLocked() []int32 {
-	expected := make(map[int32]struct{}, len(c.endpoints)+len(c.providers))
-	for dataNodeID := range c.endpoints {
+	if !c.endpointsDiscovered || len(c.knownClusterDataNodeIDs) == 0 {
+		return nil
+	}
+	expected := make(map[int32]struct{}, len(c.knownClusterDataNodeIDs)+len(c.providers))
+	for dataNodeID := range c.knownClusterDataNodeIDs {
 		expected[dataNodeID] = struct{}{}
 	}
 	for dataNodeID := range c.providers {
@@ -517,6 +557,12 @@ func (c *subscriptionPullConsumer) hasAllExpectedDataNodeIDsLocked(topic string)
 	return true
 }
 
+func (c *subscriptionPullConsumer) removePendingTerminationLocked(topic string) {
+	delete(c.pendingTerminations, topic)
+	delete(c.pendingUnsubscribes, topic)
+	delete(c.pendingTerminationBarrier, topic)
+}
+
 // invalidateProviderTopicCompletionsLocked revokes completion observations from
 // one DataNode for every topic that its latest heartbeat no longer reports as
 // complete. A completion notice is current state, not a permanent property of
@@ -529,61 +575,118 @@ func (c *subscriptionPullConsumer) invalidateProviderTopicCompletionsLocked(
 	for _, topic := range completedTopics {
 		completed[topic] = struct{}{}
 	}
+	changed := false
 	for topic, terminated := range c.terminatedDataNodeIDsByTopic {
 		if _, subscribed := c.topics[topic]; !subscribed {
 			delete(c.terminatedDataNodeIDsByTopic, topic)
-			delete(c.pendingTerminations, topic)
-			delete(c.pendingUnsubscribes, topic)
+			c.removePendingTerminationLocked(topic)
+			changed = true
 			continue
 		}
 		if _, stillCompleted := completed[topic]; stillCompleted {
 			continue
 		}
-		delete(terminated, dataNodeID)
+		if _, exists := terminated[dataNodeID]; exists {
+			delete(terminated, dataNodeID)
+			changed = true
+		}
 		if len(terminated) == 0 {
 			delete(c.terminatedDataNodeIDsByTopic, topic)
 		}
 		if !c.hasAllExpectedDataNodeIDsLocked(topic) {
-			delete(c.pendingTerminations, topic)
-			delete(c.pendingUnsubscribes, topic)
+			c.removePendingTerminationLocked(topic)
 		}
+	}
+	if changed {
+		c.completionGeneration++
 	}
 }
 
 func (c *subscriptionPullConsumer) clearTerminatedProviderStatesLocked() {
+	changed := len(c.terminatedDataNodeIDsByTopic) != 0
 	clear(c.terminatedDataNodeIDsByTopic)
 	for topic := range c.pendingTerminations {
 		if c.isRetainedSnapshotTopicLocked(topic) {
-			delete(c.pendingTerminations, topic)
-			delete(c.pendingUnsubscribes, topic)
+			c.removePendingTerminationLocked(topic)
+			changed = true
 		}
 	}
+	if changed {
+		c.completionGeneration++
+	}
 }
 
-func (c *subscriptionPullConsumer) observeEndpointLocked(dataNodeID int32, endpoint string) bool {
-	if previous, exists := c.endpoints[dataNodeID]; exists && previous == endpoint {
-		return false
-	}
-	if c.endpoints == nil {
-		c.endpoints = make(map[int32]string)
-	}
-	c.endpoints[dataNodeID] = endpoint
-	c.topologyGeneration++
-	c.clearTerminatedProviderStatesLocked()
-	return true
+func (c *subscriptionPullConsumer) nextProviderEpochLocked() uint64 {
+	c.providerEpochCounter++
+	return c.providerEpochCounter
 }
 
-func (c *subscriptionPullConsumer) replaceEndpointsLocked(endpoints map[int32]string) bool {
-	if sameSubscriptionEndpoints(c.endpoints, endpoints) {
+// observeHeartbeatEndpointsLocked merges advertised endpoints from a heartbeat
+// into the known cluster membership. It returns shrank=true when a non-empty
+// map omits a previously known DataNode; in that case membership is unproven
+// and the caller must trigger recovery instead of blindly overwriting endpoints.
+func (c *subscriptionPullConsumer) observeHeartbeatEndpointsLocked(
+	advertised map[int32]string,
+) bool {
+	if len(advertised) == 0 {
 		return false
 	}
+	if !c.endpointsDiscovered {
+		c.knownClusterDataNodeIDs = make(map[int32]struct{}, len(advertised))
+		if c.endpoints == nil {
+			c.endpoints = make(map[int32]string, len(advertised))
+		}
+		for dataNodeID, endpoint := range advertised {
+			c.knownClusterDataNodeIDs[dataNodeID] = struct{}{}
+			c.endpoints[dataNodeID] = endpoint
+		}
+		c.endpointsDiscovered = true
+		c.topologyGeneration++
+		c.clearTerminatedProviderStatesLocked()
+		return false
+	}
+	for dataNodeID := range c.knownClusterDataNodeIDs {
+		if _, exists := advertised[dataNodeID]; !exists {
+			c.topologyGeneration++
+			c.clearTerminatedProviderStatesLocked()
+			return true
+		}
+	}
+	changed := false
+	for dataNodeID, endpoint := range advertised {
+		if _, exists := c.knownClusterDataNodeIDs[dataNodeID]; !exists {
+			c.knownClusterDataNodeIDs[dataNodeID] = struct{}{}
+			changed = true
+		}
+		if previous, exists := c.endpoints[dataNodeID]; !exists || previous != endpoint {
+			if c.endpoints == nil {
+				c.endpoints = make(map[int32]string)
+			}
+			c.endpoints[dataNodeID] = endpoint
+			changed = true
+		}
+	}
+	if changed {
+		c.topologyGeneration++
+		c.clearTerminatedProviderStatesLocked()
+	}
+	return false
+}
+
+func (c *subscriptionPullConsumer) replaceClusterEndpointsLocked(endpoints map[int32]string) bool {
+	membershipChanged := !c.endpointsDiscovered || !sameSubscriptionEndpoints(c.endpoints, endpoints)
+	c.knownClusterDataNodeIDs = make(map[int32]struct{}, len(endpoints))
 	c.endpoints = make(map[int32]string, len(endpoints))
 	for dataNodeID, endpoint := range endpoints {
+		c.knownClusterDataNodeIDs[dataNodeID] = struct{}{}
 		c.endpoints[dataNodeID] = endpoint
 	}
-	c.topologyGeneration++
-	c.clearTerminatedProviderStatesLocked()
-	return true
+	c.endpointsDiscovered = true
+	if membershipChanged {
+		c.topologyGeneration++
+		c.clearTerminatedProviderStatesLocked()
+	}
+	return membershipChanged
 }
 
 func sameSubscriptionEndpoints(left, right map[int32]string) bool {
@@ -598,21 +701,44 @@ func sameSubscriptionEndpoints(left, right map[int32]string) bool {
 	return true
 }
 
-func (c *subscriptionPullConsumer) pendingTerminationTopics() []string {
-	c.mu.RLock()
+func (c *subscriptionPullConsumer) eligiblePendingTerminationsLocked() (
+	[]string,
+	map[string]subscriptionTerminationBarrier,
+) {
 	topics := make([]string, 0, len(c.pendingTerminations))
+	barriers := make(map[string]subscriptionTerminationBarrier, len(c.pendingTerminations))
 	for topic := range c.pendingTerminations {
+		if _, subscribed := c.topics[topic]; !subscribed {
+			c.removePendingTerminationLocked(topic)
+			continue
+		}
+		barrier, hasBarrier := c.pendingTerminationBarrier[topic]
+		if c.isRetainedSnapshotTopicLocked(topic) &&
+			(!hasBarrier ||
+				barrier.topologyGeneration != c.topologyGeneration ||
+				barrier.completionGeneration != c.completionGeneration ||
+				!c.hasAllExpectedDataNodeIDsLocked(topic)) {
+			c.removePendingTerminationLocked(topic)
+			continue
+		}
 		topics = append(topics, topic)
+		barriers[topic] = barrier
 	}
-	c.mu.RUnlock()
 	sort.Strings(topics)
+	return topics, barriers
+}
+
+func (c *subscriptionPullConsumer) pendingTerminationTopics() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	topics, _ := c.eligiblePendingTerminationsLocked()
 	return topics
 }
 
 func (c *subscriptionPullConsumer) reconcileTopicStateLocked() {
 	for topic := range c.pendingTerminations {
 		if _, exists := c.topics[topic]; !exists {
-			delete(c.pendingTerminations, topic)
+			c.removePendingTerminationLocked(topic)
 		}
 	}
 	for topic := range c.pendingUnsubscribes {
@@ -623,16 +749,19 @@ func (c *subscriptionPullConsumer) reconcileTopicStateLocked() {
 	for topic := range c.terminatedDataNodeIDsByTopic {
 		if _, exists := c.topics[topic]; !exists {
 			delete(c.terminatedDataNodeIDsByTopic, topic)
+			delete(c.pendingTerminationBarrier, topic)
 		}
 	}
 }
 
 func (c *subscriptionPullConsumer) flushPendingTerminations(ctx context.Context) error {
-	topics := c.pendingTerminationTopics()
+	c.mu.Lock()
+	topics, barriers := c.eligiblePendingTerminationsLocked()
+	c.mu.Unlock()
 	if len(topics) == 0 {
 		return nil
 	}
-	return c.changeSubscriptions(ctx, topics, true)
+	return c.changeSubscriptionsWithBarrier(ctx, topics, true, barriers)
 }
 
 func (c *subscriptionPullConsumer) Subscribe(ctx context.Context, topics ...string) error {
@@ -663,6 +792,35 @@ func (c *subscriptionPullConsumer) updateSubscriptions(ctx context.Context, topi
 // changeSubscriptions assumes the flow gate is held and names are already in
 // protocol form. Heartbeat and termination names must not be parsed a second time.
 func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topics []string, unsubscribe bool) error {
+	return c.changeSubscriptionsWithBarrier(ctx, topics, unsubscribe, nil)
+}
+
+func (c *subscriptionPullConsumer) filterAutomaticUnsubscribesLocked(
+	topics []string,
+	expectedBarriers map[string]subscriptionTerminationBarrier,
+) []string {
+	filtered := make([]string, 0, len(topics))
+	for _, topic := range topics {
+		barrier, hasBarrier := expectedBarriers[topic]
+		if c.isRetainedSnapshotTopicLocked(topic) &&
+			(!hasBarrier ||
+				barrier.topologyGeneration != c.topologyGeneration ||
+				barrier.completionGeneration != c.completionGeneration ||
+				!c.hasAllExpectedDataNodeIDsLocked(topic)) {
+			c.removePendingTerminationLocked(topic)
+			continue
+		}
+		filtered = append(filtered, topic)
+	}
+	return filtered
+}
+
+func (c *subscriptionPullConsumer) changeSubscriptionsWithBarrier(
+	ctx context.Context,
+	topics []string,
+	unsubscribe bool,
+	expectedBarriers map[string]subscriptionTerminationBarrier,
+) error {
 	if err := c.checkOpen(); err != nil {
 		return err
 	}
@@ -670,6 +828,13 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 		return nil
 	}
 	c.mu.Lock()
+	if unsubscribe && expectedBarriers != nil {
+		topics = c.filterAutomaticUnsubscribesLocked(topics, expectedBarriers)
+		if len(topics) == 0 {
+			c.mu.Unlock()
+			return nil
+		}
+	}
 	c.topicRevision++
 	if unsubscribe {
 		for _, topic := range topics {
@@ -709,13 +874,20 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 		if provider.connection.Closed() {
 			continue
 		}
+		if unsubscribe && expectedBarriers != nil {
+			c.mu.Lock()
+			topics = c.filterAutomaticUnsubscribesLocked(topics, expectedBarriers)
+			c.mu.Unlock()
+			if len(topics) == 0 {
+				return nil
+			}
+		}
 		current, err := provider.subscribe(ctx, topics, unsubscribe)
 		if err == nil {
 			c.mu.Lock()
 			c.topics = current
 			for _, topic := range topics {
-				delete(c.pendingTerminations, topic)
-				delete(c.pendingUnsubscribes, topic)
+				c.removePendingTerminationLocked(topic)
 				delete(c.terminatedDataNodeIDsByTopic, topic)
 			}
 			c.reconcileTopicStateLocked()

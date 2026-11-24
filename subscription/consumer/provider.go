@@ -21,10 +21,10 @@ package consumer
 
 import (
 	"github.com/apache/iotdb-client-go/v2/subscription"
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/rpcsession"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 
 	"context"
 	"errors"
@@ -50,11 +50,12 @@ var subscriptionSliceOrder atomic.Int32
 // Recovery creates a new provider; an old response cannot revive a failed one.
 type subscriptionProvider struct {
 	connection *rpcsession.Connection
-	endpoint string
+	endpoint   string
 	dataNodeID int32
+	epoch      uint64
 	consumerID string
-	groupID string
-	bodyLimit int
+	groupID    string
+	bodyLimit  int
 	operations chan struct{}
 }
 
@@ -81,8 +82,8 @@ func openSubscriptionProvider(ctx context.Context, config SubscriptionConsumerCo
 	}
 	provider := &subscriptionProvider{
 		connection: connection,
-		endpoint: endpoint,
-		bodyLimit: int(config.Connection.MaxFrameSize) - subscriptionFrameReserve,
+		endpoint:   endpoint,
+		bodyLimit:  int(config.Connection.MaxFrameSize) - subscriptionFrameReserve,
 		operations: make(chan struct{}, 1),
 	}
 	defer func() {
@@ -94,10 +95,10 @@ func openSubscriptionProvider(ctx context.Context, config SubscriptionConsumerCo
 		return nil, err
 	}
 	attributes := map[string]string{
-		"username": config.Connection.Username,
-		"password": config.Connection.Password,
-		"sql-dialect": string(config.Dialect),
-		"consumer-instance-id": instanceID,
+		"username":              config.Connection.Username,
+		"password":              config.Connection.Password,
+		"sql-dialect":           string(config.Dialect),
+		"consumer-instance-id":  instanceID,
 		"heartbeat-interval-ms": strconv.FormatInt(config.HeartbeatInterval.Milliseconds(), 10),
 		"connection-timeout-ms": strconv.FormatInt(config.Connection.ConnectTimeout.Milliseconds(), 10),
 	}
@@ -206,7 +207,7 @@ func (p *subscriptionProvider) sendLocked(ctx context.Context, request *rpc.TPip
 	orderID := subscriptionSliceOrder.Add(1)
 	var response *rpc.TPipeSubscribeResp
 	for index := 0; index < count; index++ {
-		start := index*p.bodyLimit
+		start := index * p.bodyLimit
 		end := start + min(p.bodyLimit, len(request.Body)-start)
 		slice, err := protocol.EncodeSlice(request, orderID, int32(index), int32(count), request.Body[start:end])
 		if err != nil {
@@ -273,8 +274,6 @@ func (p *subscriptionProvider) heartbeat(ctx context.Context, buffered []payload
 		return protocol.Heartbeat{}, err
 	}
 	var result protocol.Heartbeat
-	var terminated []string
-	seen := make(map[string]bool)
 	for _, batch := range batches {
 		request, err := protocol.EncodeHeartbeat(batch)
 		if err != nil {
@@ -288,14 +287,7 @@ func (p *subscriptionProvider) heartbeat(ctx context.Context, buffered []payload
 		if err != nil {
 			return result, err
 		}
-		for _, topic := range result.Unsubscribe {
-			if !seen[topic] {
-				seen[topic] = true
-				terminated = append(terminated, topic)
-			}
-		}
 	}
-	result.Unsubscribe = terminated
 	return result, nil
 }
 
@@ -307,7 +299,7 @@ func (p *subscriptionProvider) commit(ctx context.Context, contexts []payload.Co
 		return result, err
 	}
 	defer func() { <-p.operations }()
-	limit := p.bodyLimit/3
+	limit := p.bodyLimit / 3
 	if limit < 1 {
 		limit = 1
 	}
@@ -374,9 +366,9 @@ func (p *subscriptionProvider) pollPayloads(ctx context.Context, request *rpc.TP
 			// Broker loss is a server-reported connection failure. Rebuilding the
 			// provider and handshaking again is required before another poll.
 			group := "[" + p.groupID + "]"
-			if strings.Contains(statusErr.Message, "no broker bound to consumer group " + group) ||
-				strings.Contains(statusErr.Message, "broker bound to consumer group " + group + " does not exist") ||
-				strings.Contains(statusErr.Message, "绑定到消费者组 " + group + " 的 Broker 不存在") {
+			if strings.Contains(statusErr.Message, "no broker bound to consumer group "+group) ||
+				strings.Contains(statusErr.Message, "broker bound to consumer group "+group+" does not exist") ||
+				strings.Contains(statusErr.Message, "绑定到消费者组 "+group+" 的 Broker 不存在") {
 				_ = p.connection.Abort()
 			}
 		}
@@ -420,7 +412,7 @@ func partitionSubscriptionContexts(contexts []payload.CommitContext, limit, fixe
 		if err != nil {
 			return nil, err
 		}
-		if index > start && size + len(body) > limit {
+		if index > start && size+len(body) > limit {
 			batches = append(batches, contexts[start:index])
 			start, size = index, fixed
 		}
@@ -479,9 +471,9 @@ func classifyAndRedactConnectionError(err error, secrets ...string) error {
 		return &copy
 	}
 	return &subscription.SubscriptionError{
-		Kind: subscription.ErrorKindConnection,
+		Kind:    subscription.ErrorKindConnection,
 		Message: redactSubscriptionSecrets(err.Error(), secrets),
-		Cause: err,
+		Cause:   err,
 	}
 }
 

@@ -29,7 +29,7 @@ import (
 
 const (
 	subscriptionCommitContextVersion int8 = 2
-	maxSubscriptionWireLength = 1<<31 - 1
+	maxSubscriptionWireLength             = 1<<31 - 1
 )
 
 // Business codecs retain subscription-specific types in this package while
@@ -64,14 +64,14 @@ func readSubscriptionCommitContext(r *subscriptionWireReader) payload.CommitCont
 		return payload.CommitContext{}
 	}
 	context := payload.CommitContext{
-		DataNodeID: r.ReadInt32(),
-		RebootTimes: r.ReadInt32(),
-		Topic: r.ReadString(),
-		GroupID: r.ReadString(),
-		CommitID: r.ReadInt64(),
+		DataNodeID:     r.ReadInt32(),
+		RebootTimes:    r.ReadInt32(),
+		Topic:          r.ReadString(),
+		GroupID:        r.ReadString(),
+		CommitID:       r.ReadInt64(),
 		SeekGeneration: r.ReadInt64(),
-		RegionID: r.ReadString(),
-		PhysicalTime: r.ReadInt64(),
+		RegionID:       r.ReadString(),
+		PhysicalTime:   r.ReadInt64(),
 	}
 	// Java reads this presence marker as a byte, not ReadWriteIOUtils.readBool.
 	if r.ReadInt8() != 0 {
@@ -160,7 +160,7 @@ func writeSubscriptionWriterPosition(w *subscriptionWireWriter, position payload
 
 func readSubscriptionWriterPosition(r *subscriptionWireReader) payload.WriterPosition {
 	return payload.WriterPosition{
-		ID: payload.WriterID{RegionID: r.ReadString(), NodeID: r.ReadInt32()},
+		ID:       payload.WriterID{RegionID: r.ReadString(), NodeID: r.ReadInt32()},
 		Progress: payload.WriterProgress{PhysicalTime: r.ReadInt64(), LocalSeq: r.ReadInt64()},
 	}
 }
