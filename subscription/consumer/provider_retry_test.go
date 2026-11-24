@@ -183,6 +183,7 @@ func testPullConsumer(ctx context.Context, provider *subscriptionProvider) *subs
 		redirectAcks:        make(map[subscriptionCommitKey]payload.CommitContext),
 		pendingTerminations: make(map[string]struct{}),
 		pendingUnsubscribes: make(map[string]struct{}),
+		terminatedDataNodeIDsByTopic: make(map[string]map[int32]struct{}),
 		lifeCtx:             ctx,
 		opened:              true,
 	}

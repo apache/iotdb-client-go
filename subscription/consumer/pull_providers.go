@@ -20,9 +20,9 @@ package consumer
 
 import (
 	"github.com/apache/iotdb-client-go/v2/subscription"
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 
 	"context"
 	"errors"
@@ -99,7 +99,7 @@ func (c *subscriptionPullConsumer) publishProvider(provider *subscriptionProvide
 	c.identity.GroupID = provider.groupID
 	previous := c.providers[provider.dataNodeID]
 	c.providers[provider.dataNodeID] = provider
-	c.endpoints[provider.dataNodeID] = provider.endpoint
+	c.observeEndpointLocked(provider.dataNodeID, provider.endpoint)
 	c.mu.Unlock()
 	if previous != nil && previous != provider {
 		// Replacement must preserve the server-side consumer and subscriptions.
@@ -247,7 +247,7 @@ func (c *subscriptionPullConsumer) recoverProviders(ctx context.Context) error {
 		var stale []*subscriptionProvider
 		c.mu.Lock()
 		if c.generation == generation && !c.closing && !c.released {
-			c.endpoints = known
+			c.replaceEndpointsLocked(known)
 			for id, provider := range c.providers {
 				if _, exists := known[id]; !exists {
 					delete(c.providers, id)
@@ -298,11 +298,23 @@ func (c *subscriptionPullConsumer) providerHeartbeat(ctx context.Context, provid
 		if c.topicRevision == revision && revision%2 == 0 {
 			c.topics = response.Topics
 			c.reconcileTopicStateLocked()
+			for id, endpoint := range response.Endpoints {
+				c.observeEndpointLocked(id, endpoint)
+			}
+			c.invalidateProviderTopicCompletionsLocked(provider.dataNodeID, response.Unsubscribe)
+			terminations := make([]subscriptionTermination, 0, len(response.Unsubscribe))
+			for _, topic := range response.Unsubscribe {
+				terminations = append(
+					terminations,
+					subscriptionTermination{topic: topic, dataNodeID: provider.dataNodeID},
+				)
+			}
+			c.stagePendingTerminationsLocked(terminations)
 		} else {
 			response.Unsubscribe = nil
-		}
-		for id, endpoint := range response.Endpoints {
-			c.endpoints[id] = endpoint
+			for id, endpoint := range response.Endpoints {
+				c.observeEndpointLocked(id, endpoint)
+			}
 		}
 	} else {
 		response.Unsubscribe = nil
@@ -348,7 +360,6 @@ func (c *subscriptionPullConsumer) runProviderHeartbeat(provider *subscriptionPr
 		return
 	}
 	if len(response.Unsubscribe) != 0 {
-		c.stagePendingTerminations(response.Unsubscribe)
 		ctx, cancel := context.WithTimeout(c.lifeCtx, c.config.Consumer.Connection.ConnectTimeout)
 		defer cancel()
 		operationCtx, finish, err := c.beginOperation(ctx)
@@ -358,9 +369,15 @@ func (c *subscriptionPullConsumer) runProviderHeartbeat(provider *subscriptionPr
 		defer finish()
 		c.mu.RLock()
 		current := c.providers[provider.dataNodeID] == provider && c.topicRevision == revision
+		topologyGeneration := c.topologyGeneration
 		c.mu.RUnlock()
 		if current {
-			_ = c.flushPendingTerminations(operationCtx)
+			c.mu.RLock()
+			stable := c.topologyGeneration == topologyGeneration
+			c.mu.RUnlock()
+			if stable {
+				_ = c.flushPendingTerminations(operationCtx)
+			}
 		}
 	}
 }

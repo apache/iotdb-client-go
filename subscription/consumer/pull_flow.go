@@ -21,11 +21,11 @@ package consumer
 
 import (
 	"github.com/apache/iotdb-client-go/v2/subscription"
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
-	messageprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
-	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	messageprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
 
 	"context"
 	"errors"
@@ -37,12 +37,12 @@ import (
 )
 
 type flowPollResult struct {
-	messages []payload.SubscriptionMessage
-	emptyContexts []payload.CommitContext
-	nackContexts []payload.CommitContext
+	messages         []payload.SubscriptionMessage
+	emptyContexts    []payload.CommitContext
+	nackContexts     []payload.CommitContext
 	rollbackContexts []payload.CommitContext
-	terminated []string
-	err error
+	terminated       []subscriptionTermination
+	err              error
 }
 
 func (c *subscriptionPullConsumer) Poll(ctx context.Context, timeout time.Duration, topics ...string) ([]payload.SubscriptionMessage, error) {
@@ -436,7 +436,13 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 					}
 					result.messages = append(result.messages, message)
 				case protocol.ResponseTermination:
-					result.terminated = append(result.terminated, response.CommitContext.Topic)
+					result.terminated = append(
+						result.terminated,
+						subscriptionTermination{
+							topic:      response.CommitContext.Topic,
+							dataNodeID: response.CommitContext.DataNodeID,
+						},
+					)
 				case protocol.ResponseError:
 					if isOutdatedFlowResponse(response) {
 						continue
@@ -476,7 +482,7 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 		}
 		// Back off only after visiting all available providers. A slow or idle
 		// provider must not insert a pause before a ready sibling is checked.
-		timer := time.NewTimer(time.Duration(50+rand.IntN(100))*time.Millisecond)
+		timer := time.NewTimer(time.Duration(50+rand.IntN(100)) * time.Millisecond)
 		select {
 		case <-ctx.Done():
 			timer.Stop()

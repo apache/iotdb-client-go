@@ -713,6 +713,7 @@ func (c *subscriptionPullConsumer) seekProgress(ctx context.Context, topic strin
 	}
 	delete(c.pendingTerminations, name)
 	delete(c.pendingUnsubscribes, name)
+	delete(c.terminatedDataNodeIDsByTopic, name)
 	c.mu.Unlock()
 	c.resetProcessors(name)
 	return nil

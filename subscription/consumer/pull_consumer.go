@@ -22,9 +22,9 @@ package consumer
 import (
 	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
 	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 	messageprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
-	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
 
 	"context"
 	"crypto/rand"
@@ -32,9 +32,17 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+)
+
+const (
+	subscriptionTopicModeKey             = "mode"
+	subscriptionTopicModeSnapshot        = "snapshot"
+	subscriptionTopicRetainProgressKey   = "retain.progress.after.unsubscribe"
+	subscriptionTopicRetainProgressValue = "true"
 )
 
 var subscriptionInstanceEpoch atomic.Int64
@@ -71,27 +79,28 @@ func newSubscriptionPullConsumer(resolved SubscriptionPullConsumerConfig) (*subs
 		}
 	}
 	consumer := &subscriptionPullConsumer{
-		config: resolved,
-		instanceID: fmt.Sprintf("%016x-%s", epoch, hex.EncodeToString(suffix[:])),
-		flow: make(chan struct{}, 1),
-		progressOperations: make(chan struct{}, 1),
-		syncGate: make(chan struct{}, 1),
-		recovery: make(chan struct{}, 1),
-		providers: make(map[int32]*subscriptionProvider),
-		endpoints: make(map[int32]string),
-		topics: make(map[string]map[string]string),
-		heartbeatBusy: make(map[*subscriptionProvider]bool),
-		positions: make(map[string]payload.TopicProgress),
-		committed: make(map[string]payload.TopicProgress),
-		uncommitted: make(map[subscriptionCommitKey]subscriptionPendingCommit),
-		uncommittedDeadlines: make(subscriptionCommitDeadlineHeap, 0),
-		redirectAcks: make(map[subscriptionCommitKey]payload.CommitContext),
-		pendingTerminations: make(map[string]struct{}),
-		pendingUnsubscribes: make(map[string]struct{}),
+		config:                       resolved,
+		instanceID:                   fmt.Sprintf("%016x-%s", epoch, hex.EncodeToString(suffix[:])),
+		flow:                         make(chan struct{}, 1),
+		progressOperations:           make(chan struct{}, 1),
+		syncGate:                     make(chan struct{}, 1),
+		recovery:                     make(chan struct{}, 1),
+		providers:                    make(map[int32]*subscriptionProvider),
+		endpoints:                    make(map[int32]string),
+		topics:                       make(map[string]map[string]string),
+		heartbeatBusy:                make(map[*subscriptionProvider]bool),
+		positions:                    make(map[string]payload.TopicProgress),
+		committed:                    make(map[string]payload.TopicProgress),
+		uncommitted:                  make(map[subscriptionCommitKey]subscriptionPendingCommit),
+		uncommittedDeadlines:         make(subscriptionCommitDeadlineHeap, 0),
+		redirectAcks:                 make(map[subscriptionCommitKey]payload.CommitContext),
+		pendingTerminations:          make(map[string]struct{}),
+		pendingUnsubscribes:          make(map[string]struct{}),
+		terminatedDataNodeIDsByTopic: make(map[string]map[int32]struct{}),
 		identity: SubscriptionConsumerInfo{
 			ConsumerID: resolved.Consumer.ConsumerID,
-			GroupID: resolved.Consumer.GroupID,
-			OwnerID: resolved.Consumer.OwnerID,
+			GroupID:    resolved.Consumer.GroupID,
+			OwnerID:    resolved.Consumer.OwnerID,
 			OwnerEpoch: resolved.Consumer.OwnerEpoch,
 		},
 	}
@@ -99,44 +108,46 @@ func newSubscriptionPullConsumer(resolved SubscriptionPullConsumerConfig) (*subs
 }
 
 type subscriptionPullConsumer struct {
-	config SubscriptionPullConsumerConfig
-	instanceID string
-	mu sync.RWMutex
-	flow chan struct{}
-	progressOperations chan struct{}
-	syncGate chan struct{}
-	recovery chan struct{}
-	workers sync.WaitGroup
-	providers map[int32]*subscriptionProvider
-	endpoints map[int32]string
-	topics map[string]map[string]string
-	identity SubscriptionConsumerInfo
-	opened bool
-	released bool
-	closing bool
-	fenced error
-	generation uint64
-	topicRevision uint64
-	lifeCtx context.Context
-	lifeCancel context.CancelFunc
-	openingCancel context.CancelFunc
-	flowCancel context.CancelFunc
-	heartbeatBusy map[*subscriptionProvider]bool
-	processors []messageprocessor.SubscriptionMessageProcessor
-	drained []payload.SubscriptionMessage
-	bufferedContexts []payload.CommitContext
-	positions map[string]payload.TopicProgress
-	committed map[string]payload.TopicProgress
-	uncommitted map[subscriptionCommitKey]subscriptionPendingCommit
-	uncommittedDeadlines subscriptionCommitDeadlineHeap
-	redirectAcks map[subscriptionCommitKey]payload.CommitContext
-	pendingTerminations map[string]struct{}
-	pendingUnsubscribes map[string]struct{}
-	lastAutoCommitError error
-	watermark int64
-	hasWatermark bool
-	pendingCritical error
-	pollCursor uint64
+	config                       SubscriptionPullConsumerConfig
+	instanceID                   string
+	mu                           sync.RWMutex
+	flow                         chan struct{}
+	progressOperations           chan struct{}
+	syncGate                     chan struct{}
+	recovery                     chan struct{}
+	workers                      sync.WaitGroup
+	providers                    map[int32]*subscriptionProvider
+	endpoints                    map[int32]string
+	topics                       map[string]map[string]string
+	identity                     SubscriptionConsumerInfo
+	opened                       bool
+	released                     bool
+	closing                      bool
+	fenced                       error
+	generation                   uint64
+	topicRevision                uint64
+	lifeCtx                      context.Context
+	lifeCancel                   context.CancelFunc
+	openingCancel                context.CancelFunc
+	flowCancel                   context.CancelFunc
+	heartbeatBusy                map[*subscriptionProvider]bool
+	processors                   []messageprocessor.SubscriptionMessageProcessor
+	drained                      []payload.SubscriptionMessage
+	bufferedContexts             []payload.CommitContext
+	positions                    map[string]payload.TopicProgress
+	committed                    map[string]payload.TopicProgress
+	uncommitted                  map[subscriptionCommitKey]subscriptionPendingCommit
+	uncommittedDeadlines         subscriptionCommitDeadlineHeap
+	redirectAcks                 map[subscriptionCommitKey]payload.CommitContext
+	pendingTerminations          map[string]struct{}
+	pendingUnsubscribes          map[string]struct{}
+	terminatedDataNodeIDsByTopic map[string]map[int32]struct{}
+	topologyGeneration           uint64
+	lastAutoCommitError          error
+	watermark                    int64
+	hasWatermark                 bool
+	pendingCritical              error
+	pollCursor                   uint64
 }
 
 func (c *subscriptionPullConsumer) acquireFlow(ctx context.Context) error {
@@ -418,15 +429,173 @@ func (c *subscriptionPullConsumer) LastAutoCommitError() error {
 	return c.lastAutoCommitError
 }
 
-func (c *subscriptionPullConsumer) stagePendingTerminations(topics []string) {
+type subscriptionTermination struct {
+	topic      string
+	dataNodeID int32
+}
+
+func (c *subscriptionPullConsumer) stagePendingTerminations(
+	terminations []subscriptionTermination,
+) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	for _, topic := range topics {
-		if topic != "" {
-			c.pendingTerminations[topic] = struct{}{}
-			c.pendingUnsubscribes[topic] = struct{}{}
+	c.stagePendingTerminationsLocked(terminations)
+}
+
+func (c *subscriptionPullConsumer) stagePendingTerminationsLocked(
+	terminations []subscriptionTermination,
+) {
+	for _, termination := range terminations {
+		topic := termination.topic
+		if topic == "" {
+			continue
+		}
+		if _, subscribed := c.topics[topic]; !subscribed {
+			delete(c.terminatedDataNodeIDsByTopic, topic)
+			continue
+		}
+		if c.isRetainedSnapshotTopicLocked(topic) {
+			if termination.dataNodeID >= 0 {
+				terminated := c.terminatedDataNodeIDsByTopic[topic]
+				if terminated == nil {
+					terminated = make(map[int32]struct{})
+					c.terminatedDataNodeIDsByTopic[topic] = terminated
+				}
+				terminated[termination.dataNodeID] = struct{}{}
+			}
+			if !c.hasAllExpectedDataNodeIDsLocked(topic) {
+				continue
+			}
+		}
+		c.pendingTerminations[topic] = struct{}{}
+		c.pendingUnsubscribes[topic] = struct{}{}
+	}
+}
+
+func (c *subscriptionPullConsumer) isRetainedSnapshotTopicLocked(topic string) bool {
+	attributes, exists := c.topics[topic]
+	if !exists || attributes == nil {
+		return false
+	}
+	return strings.EqualFold(attributes[subscriptionTopicModeKey], subscriptionTopicModeSnapshot) &&
+		strings.EqualFold(
+			attributes[subscriptionTopicRetainProgressKey],
+			subscriptionTopicRetainProgressValue,
+		)
+}
+
+func (c *subscriptionPullConsumer) expectedDataNodeIDsLocked() []int32 {
+	expected := make(map[int32]struct{}, len(c.endpoints)+len(c.providers))
+	for dataNodeID := range c.endpoints {
+		expected[dataNodeID] = struct{}{}
+	}
+	for dataNodeID := range c.providers {
+		expected[dataNodeID] = struct{}{}
+	}
+	ids := make([]int32, 0, len(expected))
+	for dataNodeID := range expected {
+		ids = append(ids, dataNodeID)
+	}
+	sort.Slice(ids, func(left, right int) bool { return ids[left] < ids[right] })
+	return ids
+}
+
+func (c *subscriptionPullConsumer) hasAllExpectedDataNodeIDsLocked(topic string) bool {
+	terminated := c.terminatedDataNodeIDsByTopic[topic]
+	if len(terminated) == 0 {
+		return false
+	}
+	expected := c.expectedDataNodeIDsLocked()
+	if len(expected) == 0 {
+		return false
+	}
+	for _, dataNodeID := range expected {
+		if _, exists := terminated[dataNodeID]; !exists {
+			return false
 		}
 	}
+	return true
+}
+
+// invalidateProviderTopicCompletionsLocked revokes completion observations from
+// one DataNode for every topic that its latest heartbeat no longer reports as
+// complete. A completion notice is current state, not a permanent property of
+// the DataNode.
+func (c *subscriptionPullConsumer) invalidateProviderTopicCompletionsLocked(
+	dataNodeID int32,
+	completedTopics []string,
+) {
+	completed := make(map[string]struct{}, len(completedTopics))
+	for _, topic := range completedTopics {
+		completed[topic] = struct{}{}
+	}
+	for topic, terminated := range c.terminatedDataNodeIDsByTopic {
+		if _, subscribed := c.topics[topic]; !subscribed {
+			delete(c.terminatedDataNodeIDsByTopic, topic)
+			delete(c.pendingTerminations, topic)
+			delete(c.pendingUnsubscribes, topic)
+			continue
+		}
+		if _, stillCompleted := completed[topic]; stillCompleted {
+			continue
+		}
+		delete(terminated, dataNodeID)
+		if len(terminated) == 0 {
+			delete(c.terminatedDataNodeIDsByTopic, topic)
+		}
+		if !c.hasAllExpectedDataNodeIDsLocked(topic) {
+			delete(c.pendingTerminations, topic)
+			delete(c.pendingUnsubscribes, topic)
+		}
+	}
+}
+
+func (c *subscriptionPullConsumer) clearTerminatedProviderStatesLocked() {
+	clear(c.terminatedDataNodeIDsByTopic)
+	for topic := range c.pendingTerminations {
+		if c.isRetainedSnapshotTopicLocked(topic) {
+			delete(c.pendingTerminations, topic)
+			delete(c.pendingUnsubscribes, topic)
+		}
+	}
+}
+
+func (c *subscriptionPullConsumer) observeEndpointLocked(dataNodeID int32, endpoint string) bool {
+	if previous, exists := c.endpoints[dataNodeID]; exists && previous == endpoint {
+		return false
+	}
+	if c.endpoints == nil {
+		c.endpoints = make(map[int32]string)
+	}
+	c.endpoints[dataNodeID] = endpoint
+	c.topologyGeneration++
+	c.clearTerminatedProviderStatesLocked()
+	return true
+}
+
+func (c *subscriptionPullConsumer) replaceEndpointsLocked(endpoints map[int32]string) bool {
+	if sameSubscriptionEndpoints(c.endpoints, endpoints) {
+		return false
+	}
+	c.endpoints = make(map[int32]string, len(endpoints))
+	for dataNodeID, endpoint := range endpoints {
+		c.endpoints[dataNodeID] = endpoint
+	}
+	c.topologyGeneration++
+	c.clearTerminatedProviderStatesLocked()
+	return true
+}
+
+func sameSubscriptionEndpoints(left, right map[int32]string) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for dataNodeID, endpoint := range left {
+		if rightEndpoint, exists := right[dataNodeID]; !exists || rightEndpoint != endpoint {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *subscriptionPullConsumer) pendingTerminationTopics() []string {
@@ -449,6 +618,11 @@ func (c *subscriptionPullConsumer) reconcileTopicStateLocked() {
 	for topic := range c.pendingUnsubscribes {
 		if _, exists := c.topics[topic]; !exists {
 			delete(c.pendingUnsubscribes, topic)
+		}
+	}
+	for topic := range c.terminatedDataNodeIDsByTopic {
+		if _, exists := c.topics[topic]; !exists {
+			delete(c.terminatedDataNodeIDsByTopic, topic)
 		}
 	}
 }
@@ -539,11 +713,10 @@ func (c *subscriptionPullConsumer) changeSubscriptions(ctx context.Context, topi
 		if err == nil {
 			c.mu.Lock()
 			c.topics = current
-			if !unsubscribe {
-				for _, topic := range topics {
-					delete(c.pendingTerminations, topic)
-					delete(c.pendingUnsubscribes, topic)
-				}
+			for _, topic := range topics {
+				delete(c.pendingTerminations, topic)
+				delete(c.pendingUnsubscribes, topic)
+				delete(c.terminatedDataNodeIDsByTopic, topic)
 			}
 			c.reconcileTopicStateLocked()
 			c.mu.Unlock()
