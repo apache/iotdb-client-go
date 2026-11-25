@@ -56,4 +56,3 @@ type Positioner interface {
 	// snapshot, reset, and multi-provider failure semantics as Seek.
 	SeekAfter(ctx context.Context, topic string, progress payload.TopicProgress) error
 }
-

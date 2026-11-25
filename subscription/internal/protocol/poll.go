@@ -24,22 +24,22 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
 	internalwire "github.com/apache/iotdb-client-go/v2/subscription/internal/wire"
 	"github.com/apache/iotdb-client-go/v2/subscription/payload"
-	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // Poll response tags retain their Java protocol numbers.
 const (
-	ResponseError int16 = 0
-	ResponseTablets int16 = 1
-	ResponseFileInit int16 = 2
-	ResponseFilePiece int16 = 3
-	ResponseFileSeal int16 = 4
+	ResponseError       int16 = 0
+	ResponseTablets     int16 = 1
+	ResponseFileInit    int16 = 2
+	ResponseFilePiece   int16 = 3
+	ResponseFileSeal    int16 = 4
 	ResponseTermination int16 = 5
-	ResponseWatermark int16 = 7
+	ResponseWatermark   int16 = 7
 )
 
 // PollBatch associates one decoded Tablet with its source database.
@@ -64,16 +64,16 @@ func decodeSubscriptionTablet(reader *subscriptionWireReader) (*client.Tablet, e
 // messages. In particular, termination and empty record deliveries still need
 // consumer-level unsubscribe or confirmation; decoding does neither.
 type PollResponse struct {
-	Type int16
-	CommitContext payload.CommitContext
-	Records []PollBatch
-	NextOffset int32
-	TimeSelected bool
+	Type                int16
+	CommitContext       payload.CommitContext
+	Records             []PollBatch
+	NextOffset          int32
+	TimeSelected        bool
 	TimeSelectedByTable map[string]map[string]bool
-	Watermark int64
-	DataNodeID int32
-	ErrorMessage string
-	Critical bool
+	Watermark           int64
+	DataNodeID          int32
+	ErrorMessage        string
+	Critical            bool
 }
 
 // DecodePollResponses parses every nonempty body entry. No partially
@@ -284,11 +284,10 @@ func sameSubscriptionCommitContext(left, right payload.CommitContext) bool {
 // PollError preserves the server payload's critical flag separately
 // from transport status errors so the consumer can apply the right retry policy.
 type PollError struct {
-	Message string
+	Message  string
 	Critical bool
 }
 
 func (failure *PollError) Error() string {
 	return "subscription: poll payload: " + failure.Message
 }
-

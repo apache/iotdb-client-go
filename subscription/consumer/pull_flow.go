@@ -21,11 +21,11 @@ package consumer
 
 import (
 	"github.com/apache/iotdb-client-go/v2/subscription"
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
-	messageprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
-	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	messageprocessor "github.com/apache/iotdb-client-go/v2/subscription/processor"
 
 	"context"
 	"errors"
@@ -37,12 +37,12 @@ import (
 )
 
 type flowPollResult struct {
-	messages []payload.SubscriptionMessage
-	emptyContexts []payload.CommitContext
-	nackContexts []payload.CommitContext
+	messages         []payload.SubscriptionMessage
+	emptyContexts    []payload.CommitContext
+	nackContexts     []payload.CommitContext
 	rollbackContexts []payload.CommitContext
-	terminated []string
-	err error
+	terminated       []subscriptionTermination
+	err              error
 }
 
 func (c *subscriptionPullConsumer) Poll(ctx context.Context, timeout time.Duration, topics ...string) ([]payload.SubscriptionMessage, error) {
@@ -384,6 +384,7 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 		}
 		c.mu.RUnlock()
 		healthy := false
+		skippedCompleted := false
 		attempted := 0
 		for attempt := 0; attempt < providers.Len(); attempt++ {
 			provider := providers.Provider((int(cursor%uint64(providers.Len())) + attempt) % providers.Len())
@@ -391,8 +392,34 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 				refreshProviders = true
 				continue
 			}
+			c.mu.RLock()
+			providerEpoch := provider.epoch
+			topoGen := c.topologyGeneration
+			compGen := c.completionGeneration
+			var effectiveTopics []string
+			if len(c.terminatedDataNodeIDsByTopic) == 0 {
+				effectiveTopics = topics
+			} else {
+				for _, topic := range topics {
+					terminated := c.terminatedDataNodeIDsByTopic[topic]
+					if terminated != nil {
+						if _, subscribed := c.topics[topic]; !subscribed {
+							continue
+						}
+						if _, done := terminated[provider.dataNodeID]; done {
+							continue
+						}
+					}
+					effectiveTopics = append(effectiveTopics, topic)
+				}
+			}
+			c.mu.RUnlock()
+			if len(effectiveTopics) == 0 {
+				skippedCompleted = true
+				continue
+			}
 			attempted++
-			responses, err := provider.poll(ctx, topics, flowRemainingMilliseconds(ctx, providers.Len()-attempt, immediate), int64(provider.bodyLimit), progress)
+			responses, err := provider.poll(ctx, effectiveTopics, flowRemainingMilliseconds(ctx, providers.Len()-attempt, immediate), int64(provider.bodyLimit), progress)
 			if err != nil {
 				err = c.handleProviderError(provider, err)
 				if flowFatalPollError(err) || flowCriticalPollError(err) || ctx.Err() != nil {
@@ -436,7 +463,17 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 					}
 					result.messages = append(result.messages, message)
 				case protocol.ResponseTermination:
-					result.terminated = append(result.terminated, response.CommitContext.Topic)
+					result.terminated = append(
+						result.terminated,
+						subscriptionTermination{
+							topic:                response.CommitContext.Topic,
+							dataNodeID:           response.CommitContext.DataNodeID,
+							provider:             provider,
+							providerEpoch:        providerEpoch,
+							topologyGeneration:   topoGen,
+							completionGeneration: compGen,
+						},
+					)
 				case protocol.ResponseError:
 					if isOutdatedFlowResponse(response) {
 						continue
@@ -460,14 +497,15 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 			}
 		}
 		if attempted == 0 {
-			c.requestRecovery()
-			if lastFailure == nil {
-				lastFailure = errors.New("subscription: no available provider for poll")
+			if !skippedCompleted {
+				c.requestRecovery()
+				if lastFailure == nil {
+					lastFailure = errors.New("subscription: no available provider for poll")
+				}
+				result.err = lastFailure
+				return result
 			}
-			result.err = lastFailure
-			return result
-		}
-		if !healthy && lastFailure != nil {
+		} else if !healthy && lastFailure != nil {
 			result.err = lastFailure
 			return result
 		}
@@ -476,7 +514,7 @@ func (c *subscriptionPullConsumer) pollFlowPartition(ctx context.Context, topics
 		}
 		// Back off only after visiting all available providers. A slow or idle
 		// provider must not insert a pause before a ready sibling is checked.
-		timer := time.NewTimer(time.Duration(50+rand.IntN(100))*time.Millisecond)
+		timer := time.NewTimer(time.Duration(50+rand.IntN(100)) * time.Millisecond)
 		select {
 		case <-ctx.Done():
 			timer.Stop()

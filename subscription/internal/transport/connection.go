@@ -42,17 +42,17 @@ var ErrClosed = errors.New("subscription transport: connection is closed")
 // Callers resolve defaults and validate these values before dialing.
 type Config struct {
 	ConnectTimeout time.Duration
-	MaxFrameSize int32
+	MaxFrameSize   int32
 }
 
 // Connection has one serialized RPC caller. Abort may run concurrently with
 // that caller so cancellation and close can interrupt a blocked socket.
 type Connection struct {
-	network net.Conn
-	client *rpc.IClientRPCServiceClient
-	closed atomic.Bool
+	network   net.Conn
+	client    *rpc.IClientRPCServiceClient
+	closed    atomic.Bool
 	closeOnce sync.Once
-	closeErr error
+	closeErr  error
 }
 
 // Dial establishes a plain TCP connection and constructs its framed binary
@@ -65,7 +65,7 @@ func Dial(ctx context.Context, endpoint string, config Config) (*Connection, err
 	}
 	thriftConfig := &thrift.TConfiguration{
 		ConnectTimeout: config.ConnectTimeout,
-		MaxFrameSize: config.MaxFrameSize,
+		MaxFrameSize:   config.MaxFrameSize,
 		MaxMessageSize: config.MaxFrameSize,
 	}
 	socket := thrift.NewTSocketFromConnConf(network, thriftConfig)

@@ -32,11 +32,11 @@ import (
 // DefaultConnection returns independently owned connection settings.
 func DefaultConnection() subscription.ConnectionConfig {
 	return subscription.ConnectionConfig{
-		NodeURLs: []string{"localhost:6667"},
-		Username: "root",
-		Password: "root",
+		NodeURLs:       []string{"localhost:6667"},
+		Username:       "root",
+		Password:       "root",
 		ConnectTimeout: 10 * time.Second,
-		MaxFrameSize: 64 * 1024 * 1024,
+		MaxFrameSize:   64 * 1024 * 1024,
 	}
 }
 

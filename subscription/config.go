@@ -59,4 +59,3 @@ type ConnectionConfig struct {
 	// and reject negative values.
 	MaxFrameSize int32
 }
-

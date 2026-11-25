@@ -121,9 +121,9 @@ func TestWatermarkResetTopicDropsOnlyItsRecordsAndOrderingSource(t *testing.T) {
 
 func TestWatermarkForceFlushDoesNotWaitForRegionProgress(t *testing.T) {
 	for _, test := range []struct {
-		name string
+		name    string
 		timeout time.Duration
-		limit int64
+		limit   int64
 	}{
 		{name: "capacity", timeout: time.Hour, limit: 1},
 		{name: "zero_timeout", timeout: 0},
@@ -155,7 +155,7 @@ func TestWatermarkTimestampSubtractionCannotWrapAndDeliverEarly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	record := processorRecord("topic", "region", 1, processorTreeBatch([]int64{math.MinInt64+1}))
+	record := processorRecord("topic", "region", 1, processorTreeBatch([]int64{math.MinInt64 + 1}))
 	messages, err := processor.Process([]payload.SubscriptionMessage{record})
 	if err != nil || len(messages) != 0 {
 		t.Fatalf("underflow delivered an unready message: messages=%v error=%v", messages, err)

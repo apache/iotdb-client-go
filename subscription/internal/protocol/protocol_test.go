@@ -28,9 +28,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
 	"github.com/apache/iotdb-client-go/v2/subscription/payload"
-	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // This fixture is transcribed independently from Java SubscriptionPollResponse,
@@ -42,19 +42,19 @@ func javaSubscriptionTabletFrame(t *testing.T) []byte {
 	t.Helper()
 	body, err := hex.DecodeString(
 		"0001" + // TABLETS response.
-		"00000001" + "000000026462" + "00000001" + // One database db, one Tablet.
-		"000000066576656e7473" + "00000003" + // Target events, three rows.
-		"01" + "00000001" + "01" + // Schemas present, one non-null schema.
-		"000000027331" + "020000" + "00000000" + "01" + // s1, INT64/PLAIN/UNCOMPRESSED, no properties, FIELD.
-		"01" + "0000000000000014" + "000000000000000a" + "000000000000000a" +
-		"00" + "01" + "01" + // No bitmaps, values and column present.
-		"00000000000000c8" + "0000000000000065" + "0000000000000066" +
-		"ffffffff" + // Final offset: one Tablet, rather than three rows.
-		"02" + "00000007" + "00000002" + // Context version, node, restart count.
-		"00000005746f706963" + "0000000567726f7570" + // topic, group.
-		"000000000000002a" + "0000000000000003" + // Commit ID 42, seek generation 3.
-		"0000000172" + "0000000000000064" + "00" + // Region r, physical time 100, no writer.
-		"01" + "00000000") // Time selected, no per-table overrides.
+			"00000001" + "000000026462" + "00000001" + // One database db, one Tablet.
+			"000000066576656e7473" + "00000003" + // Target events, three rows.
+			"01" + "00000001" + "01" + // Schemas present, one non-null schema.
+			"000000027331" + "020000" + "00000000" + "01" + // s1, INT64/PLAIN/UNCOMPRESSED, no properties, FIELD.
+			"01" + "0000000000000014" + "000000000000000a" + "000000000000000a" +
+			"00" + "01" + "01" + // No bitmaps, values and column present.
+			"00000000000000c8" + "0000000000000065" + "0000000000000066" +
+			"ffffffff" + // Final offset: one Tablet, rather than three rows.
+			"02" + "00000007" + "00000002" + // Context version, node, restart count.
+			"00000005746f706963" + "0000000567726f7570" + // topic, group.
+			"000000000000002a" + "0000000000000003" + // Commit ID 42, seek generation 3.
+			"0000000172" + "0000000000000064" + "00" + // Region r, physical time 100, no writer.
+			"01" + "00000000") // Time selected, no per-table overrides.
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,9 +122,9 @@ func TestSubscriptionPollRejectsMalformedJavaFramesWithoutPartialResults(t *test
 		cases[fmt.Sprintf("truncated-%d", length)] = valid[:length]
 	}
 	for _, field := range []struct {
-		name string
+		name   string
 		offset int
-		value uint32
+		value  uint32
 	}{
 		{"negative-database-count", 2, 0xffffffff},
 		{"invalid-database-name-length", 6, 0xfffffffe},

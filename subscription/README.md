@@ -478,6 +478,7 @@ Connection errors redact plaintext and encrypted passwords.
 - Pull requests execute serially. `MaxPollParallelism` is accepted but does not create parallel network polls.
 - `AllConsumed()` is true only after the server confirms that no subscribed topics remain.
 - A pending or failed automatic unsubscribe keeps `AllConsumed()` false.
+- A retained snapshot topic waits for a termination from every expected DataNode before automatic unsubscribe; a topology change revokes earlier completion observations until the new membership completes.
 - `AllConsumed()` does not imply that processor buffers are empty. Manual-commit callers should call `DrainBufferedMessages`, process and commit every returned message, and drain again until no messages remain.
 - `LastAutoCommitError()` exposes the latest automatic commit failure.
 - `Close()` stops new work and cancels active contexts.

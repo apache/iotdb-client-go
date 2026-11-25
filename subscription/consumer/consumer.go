@@ -62,9 +62,11 @@ type SubscriptionConsumer interface {
 	// AllConsumed reports whether the server has removed every subscription owned
 	// by this consumer. A completion termination alone is not sufficient: an
 	// automatic unsubscribe that is pending, timed out, or failed keeps this false
-	// until reconciliation confirms that the topic is no longer subscribed. No
-	// subscriptions means true. This does not assert that delivered messages were
-	// committed or that client-side processor buffers were drained.
+	// until reconciliation confirms that the topic is no longer subscribed. A
+	// retained snapshot topic waits for a termination from every expected DataNode
+	// before automatic unsubscribe. No subscriptions means true. This does not
+	// assert that delivered messages were committed or that client-side processor
+	// buffers were drained.
 	AllConsumed() bool
 }
 

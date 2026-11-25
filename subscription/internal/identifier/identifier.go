@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	subscriptionIdentifierPattern = regexp.MustCompile(`^[a-zA-Z0-9_\x{2E80}-\x{9FFF}]+$`)
+	subscriptionIdentifierPattern        = regexp.MustCompile(`^[a-zA-Z0-9_\x{2E80}-\x{9FFF}]+$`)
 	subscriptionNumericIdentifierPattern = regexp.MustCompile(`^[0-9]+([eE][0-9]+)?[fFdD]?$|^[0-9]+[lL]$`)
 )
 

@@ -21,10 +21,10 @@ package consumer
 
 import (
 	"github.com/apache/iotdb-client-go/v2/subscription"
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
+	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/protocol"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
-	"github.com/apache/iotdb-client-go/v2/subscription/internal/identifier"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 
 	"context"
 	"errors"
@@ -45,40 +45,40 @@ func NewSubscriptionPushConsumer(config SubscriptionPushConsumerConfig) (Subscri
 	}
 	autoCommit := false
 	consumer, err := newSubscriptionPullConsumer(SubscriptionPullConsumerConfig{
-		Consumer: resolved.Consumer,
-		AutoCommit: &autoCommit,
+		Consumer:           resolved.Consumer,
+		AutoCommit:         &autoCommit,
 		AutoCommitInterval: DefaultSubscriptionPullConsumerConfig().AutoCommitInterval,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &subscriptionPushConsumer{
-		config: resolved,
-		consumer: consumer,
-		operations: make(chan struct{}, 1),
+		config:      resolved,
+		consumer:    consumer,
+		operations:  make(chan struct{}, 1),
 		generations: make(map[string]uint64),
-		errors: make(chan error, 1),
+		errors:      make(chan error, 1),
 	}, nil
 }
 
 type subscriptionPushConsumer struct {
-	config SubscriptionPushConsumerConfig
-	consumer *subscriptionPullConsumer
-	operations chan struct{}
-	mu sync.Mutex
-	generations map[string]uint64
-	started bool
-	closed bool
-	terminal error
+	config         SubscriptionPushConsumerConfig
+	consumer       *subscriptionPullConsumer
+	operations     chan struct{}
+	mu             sync.Mutex
+	generations    map[string]uint64
+	started        bool
+	closed         bool
+	terminal       error
 	deliveryCancel context.CancelFunc
-	callbackTopic string
+	callbackTopic  string
 	callbackCancel context.CancelFunc
-	errors chan error
-	errorsClosed sync.Once
+	errors         chan error
+	errorsClosed   sync.Once
 }
 
 type subscriptionPushDelivery struct {
-	message payload.SubscriptionMessage
+	message    payload.SubscriptionMessage
 	generation uint64
 }
 
@@ -275,7 +275,7 @@ func (c *subscriptionPushConsumer) pollDeliveries(ctx context.Context) ([]subscr
 	deliveries := make([]subscriptionPushDelivery, 0, len(messages))
 	for _, message := range messages {
 		deliveries = append(deliveries, subscriptionPushDelivery{
-			message: message,
+			message:    message,
 			generation: c.generations[record.ReadCommitContext(message).Topic],
 		})
 	}

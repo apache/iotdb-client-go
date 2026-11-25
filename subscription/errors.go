@@ -44,11 +44,11 @@ const (
 // SubscriptionError preserves a server status and its Java-compatible error
 // category. Code is zero for transport or locally classified errors.
 type SubscriptionError struct {
-	Kind ErrorKind
-	Code int32
-	Message string
+	Kind     ErrorKind
+	Code     int32
+	Message  string
 	Critical bool
-	Cause error
+	Cause    error
 }
 
 func (e *SubscriptionError) Error() string {

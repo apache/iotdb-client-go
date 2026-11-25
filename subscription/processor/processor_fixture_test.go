@@ -27,17 +27,17 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/apache/iotdb-client-go/v2/subscription"
 	"github.com/apache/iotdb-client-go/v2/client"
+	"github.com/apache/iotdb-client-go/v2/subscription"
 )
 
 // processorInputMessage is a caller-owned implementation of the public message
 // contract. Release reclaims its borrowed buffers to exercise ownership transfer.
 type processorInputMessage struct {
-	context payload.CommitContext
-	batches []*processorInputBatch
+	context   payload.CommitContext
+	batches   []*processorInputBatch
 	watermark *int64
-	released bool
+	released  bool
 }
 
 func processorRecord(topic, region string, commitID int64, batches ...*processorInputBatch) *processorInputMessage {
@@ -115,17 +115,17 @@ func (m *processorInputMessage) Release() {
 // processorInputBatch stores rows, independently of the processor's column
 // storage. Optional read errors represent failures in a caller-provided reader.
 type processorInputBatch struct {
-	dialect subscription.Dialect
-	database string
-	target string
-	columnNames []string
-	columnTypes []client.TSDataType
+	dialect          subscription.Dialect
+	database         string
+	target           string
+	columnNames      []string
+	columnTypes      []client.TSDataType
 	columnCategories []client.ColumnCategory
-	timestamps []int64
-	values [][]any
-	timestampErr error
-	valueErr error
-	released bool
+	timestamps       []int64
+	values           [][]any
+	timestampErr     error
+	valueErr         error
+	released         bool
 }
 
 func processorTreeBatch(timestamps []int64, values ...any) *processorInputBatch {
@@ -138,13 +138,13 @@ func processorTreeBatch(timestamps []int64, values ...any) *processorInputBatch 
 		rows[row] = []any{value}
 	}
 	return &processorInputBatch{
-		dialect: subscription.TreeDialect,
-		target: "root.db.device",
-		columnNames: []string{"value"},
-		columnTypes: []client.TSDataType{client.INT64},
+		dialect:          subscription.TreeDialect,
+		target:           "root.db.device",
+		columnNames:      []string{"value"},
+		columnTypes:      []client.TSDataType{client.INT64},
 		columnCategories: []client.ColumnCategory{client.FIELD},
-		timestamps: timestamps,
-		values: rows,
+		timestamps:       timestamps,
+		values:           rows,
 	}
 }
 
@@ -163,21 +163,21 @@ func processorTableRecord(topic, database, table string, tags []any, timestamp i
 	row := append([]any(nil), tags...)
 	row = append(row, value)
 	return processorRecord(topic, "region", timestamp, &processorInputBatch{
-		dialect: subscription.TableDialect,
-		database: database,
-		target: table,
-		columnNames: columnNames,
-		columnTypes: columnTypes,
+		dialect:          subscription.TableDialect,
+		database:         database,
+		target:           table,
+		columnNames:      columnNames,
+		columnTypes:      columnTypes,
 		columnCategories: columnCategories,
-		timestamps: []int64{timestamp},
-		values: [][]any{row},
+		timestamps:       []int64{timestamp},
+		values:           [][]any{row},
 	})
 }
 
 func (b *processorInputBatch) Dialect() subscription.Dialect { return b.dialect }
-func (b *processorInputBatch) Database() string { return b.database }
-func (b *processorInputBatch) Target() string { return b.target }
-func (b *processorInputBatch) ColumnCount() int { return len(b.columnNames) }
+func (b *processorInputBatch) Database() string              { return b.database }
+func (b *processorInputBatch) Target() string                { return b.target }
+func (b *processorInputBatch) ColumnCount() int              { return len(b.columnNames) }
 func (b *processorInputBatch) ColumnName(column int) (string, error) {
 	if b.released {
 		return "", subscription.ErrDataReleased
@@ -206,7 +206,7 @@ func (b *processorInputBatch) ColumnCategory(column int) (client.ColumnCategory,
 	return b.columnCategories[column], nil
 }
 func (b *processorInputBatch) TimeSelected() bool { return true }
-func (b *processorInputBatch) Len() int { return len(b.timestamps) }
+func (b *processorInputBatch) Len() int           { return len(b.timestamps) }
 
 func (b *processorInputBatch) Timestamp(row int) (int64, error) {
 	if b.released {

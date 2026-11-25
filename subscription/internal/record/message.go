@@ -25,9 +25,9 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/apache/iotdb-client-go/v2/client"
 	"github.com/apache/iotdb-client-go/v2/subscription"
 	"github.com/apache/iotdb-client-go/v2/subscription/payload"
-	"github.com/apache/iotdb-client-go/v2/client"
 )
 
 // subscriptionMessage keeps immutable delivery metadata separate from releasable

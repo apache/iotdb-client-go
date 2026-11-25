@@ -20,8 +20,8 @@
 package processor
 
 import (
-	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 	"github.com/apache/iotdb-client-go/v2/subscription/internal/record"
+	"github.com/apache/iotdb-client-go/v2/subscription/payload"
 
 	"container/heap"
 	"errors"
@@ -56,38 +56,38 @@ type WatermarkProcessorConfig struct {
 // This is a reference processor; large out-of-order streams may require a
 // downstream stream processing framework. Use one instance per consumer.
 type WatermarkProcessor struct {
-	mu sync.Mutex
-	config WatermarkProcessorConfig
-	buffer watermarkMessageHeap
-	regions map[watermarkRegion]watermarkRegionProgress
+	mu            sync.Mutex
+	config        WatermarkProcessorConfig
+	buffer        watermarkMessageHeap
+	regions       map[watermarkRegion]watermarkRegionProgress
 	bufferedBytes int64
-	lastEmit time.Time
-	watermark int64
-	hasWatermark bool
+	lastEmit      time.Time
+	watermark     int64
+	hasWatermark  bool
 }
 
 type watermarkRegion struct {
-	topic string
-	node int32
+	topic  string
+	node   int32
 	region string
 }
 
 type watermarkRegionProgress struct {
 	timestamp int64
-	advanced time.Time
+	advanced  time.Time
 }
 
 type watermarkBufferedMessage struct {
 	message payload.SubscriptionMessage
 	maximum int64
-	size int64
+	size    int64
 }
 
 type watermarkMessageHeap []watermarkBufferedMessage
 
-func (h watermarkMessageHeap) Len() int { return len(h) }
+func (h watermarkMessageHeap) Len() int           { return len(h) }
 func (h watermarkMessageHeap) Less(i, j int) bool { return h[i].maximum < h[j].maximum }
-func (h watermarkMessageHeap) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
+func (h watermarkMessageHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
 func (h *watermarkMessageHeap) Push(value any) {
 	*h = append(*h, value.(watermarkBufferedMessage))
 }
@@ -114,8 +114,8 @@ func NewWatermarkProcessor(config WatermarkProcessorConfig) (*WatermarkProcessor
 		config.MaxBufferBytes = 64 * 1024 * 1024
 	}
 	return &WatermarkProcessor{
-		config: config,
-		regions: make(map[watermarkRegion]watermarkRegionProgress),
+		config:   config,
+		regions:  make(map[watermarkRegion]watermarkRegionProgress),
 		lastEmit: time.Now(),
 	}, nil
 }
@@ -307,7 +307,7 @@ func (p *WatermarkProcessor) updateWatermark(now time.Time) {
 	if found {
 		// Saturate subtraction to preserve ordering at the timestamp boundary.
 		p.watermark = math.MinInt64
-		if minimum >= math.MinInt64 + p.config.MaxOutOfOrderness {
+		if minimum >= math.MinInt64+p.config.MaxOutOfOrderness {
 			p.watermark = minimum - p.config.MaxOutOfOrderness
 		}
 		p.hasWatermark = true
