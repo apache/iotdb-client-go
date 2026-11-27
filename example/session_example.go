@@ -20,6 +20,7 @@
 package main
 
 import (
+	cryptorand "crypto/rand"
 	"flag"
 	"fmt"
 	"log"
@@ -38,6 +39,15 @@ var (
 	password string
 )
 var session client.Session
+var exampleDatabase string
+
+func newExampleDatabase() (string, error) {
+	var suffix [16]byte
+	if _, err := cryptorand.Read(suffix[:]); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("root.go_example_%x", suffix), nil
+}
 
 func main() {
 	flag.StringVar(&host, "host", "127.0.0.1", "--host=192.168.1.100")
@@ -57,48 +67,55 @@ func main() {
 	}
 	defer session.Close()
 
+	var err error
+	exampleDatabase, err = newExampleDatabase()
+	checkError(err)
+	fmt.Printf("Example database prefix: %s\n", exampleDatabase)
+	// Only delete this database if its creation succeeds.
+	setStorageGroup(exampleDatabase)
+
 	//connectCluster()
 
-	setStorageGroup("root.ln1")
-	deleteStorageGroup("root.ln1")
+	setStorageGroup(exampleDatabase + "_ln1")
+	deleteStorageGroup(exampleDatabase + "_ln1")
 
-	setStorageGroup("root.ln1")
-	setStorageGroup("root.ln2")
-	deleteStorageGroups("root.ln1", "root.ln2")
+	setStorageGroup(exampleDatabase + "_ln1")
+	setStorageGroup(exampleDatabase + "_ln2")
+	deleteStorageGroups(exampleDatabase+"_ln1", exampleDatabase+"_ln2")
 
-	createTimeseries("root.sg1.dev1.status")
-	deleteTimeseries("root.sg1.dev1.status")
+	createTimeseries(exampleDatabase + ".sg1.dev1.status")
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.status")
 
-	createTimeseriesByNonQueryStatement("create timeseries root.sg1.dev1.status with datatype = int32")
-	deleteTimeseries("root.sg1.dev1.status")
+	createTimeseriesByNonQueryStatement("create timeseries " + exampleDatabase + ".sg1.dev1.status with datatype = int32")
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.status")
 
 	createMultiTimeseries()
-	deleteTimeseries("root.sg1.dev1.temperature")
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.temperature")
 
-	createAlignedTimeseries("root.sg1.dev1", []string{"status", "temperature"}, []string{"sts", "temp"})
-	deleteTimeseries("root.sg1.dev1.status")
-	deleteTimeseries("root.sg1.dev1.temperature")
+	createAlignedTimeseries(exampleDatabase+".sg1.dev1", []string{"status", "temperature"}, []string{"sts", "temp"})
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.status")
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.temperature")
 
 	insertStringRecord()
-	deleteTimeseries("root.ln.wf02.wt02.hardware")
+	deleteTimeseries(exampleDatabase + ".ln.wf02.wt02.hardware")
 
 	insertRecord()
-	deleteTimeseries("root.sg1.dev1.status")
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.status")
 
 	insertRecords()
-	deleteTimeseries("root.sg1.dev1.status")
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.status")
 
 	insertTablet()
 	var timeout int64 = 1000
-	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1", &timeout); err == nil {
+	if ds, err := session.ExecuteQueryStatement("select * from "+exampleDatabase+".ln.device1", &timeout); err == nil {
 		printDevice1(ds)
 		ds.Close()
 	} else {
 		log.Fatal(err)
 	}
-	deleteTimeseries("root.ln.device1.restart_count", "root.ln.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
+	deleteTimeseries(exampleDatabase+".ln.device1.restart_count", exampleDatabase+".ln.device1.price", exampleDatabase+".ln.device1.tick_count", exampleDatabase+".ln.device1.temperature", exampleDatabase+".ln.device1.description", exampleDatabase+".ln.device1.status")
 	insertTablets()
-	deleteTimeseries("root.ln.device1.restart_count", "root.ln.device1.price", "root.ln.device1.tick_count", "root.ln.device1.temperature", "root.ln.device1.description", "root.ln.device1.status")
+	deleteTimeseries(exampleDatabase+".ln.device1.restart_count", exampleDatabase+".ln.device1.price", exampleDatabase+".ln.device1.tick_count", exampleDatabase+".ln.device1.temperature", exampleDatabase+".ln.device1.description", exampleDatabase+".ln.device1.status")
 
 	insertRecord()
 	deleteData()
@@ -111,38 +128,38 @@ func main() {
 	}
 
 	executeStatement()
-	executeQueryStatement("select count(s3) from root.sg1.dev1")
+	executeQueryStatement("select count(s3) from " + exampleDatabase + ".sg1.dev1")
 	executeRawDataQuery()
 	executeBatchStatement()
 
 	var startTime int64 = 1
 	var endTime int64 = 10
 	var interval int64 = 2
-	executeAggregationQueryStatementWithLegalNodes([]string{"root.ln.wf02.wt02.s5"}, []common.TAggregationType{common.TAggregationType_COUNT}, &startTime, &endTime, &interval)
+	executeAggregationQueryStatementWithLegalNodes([]string{exampleDatabase + ".ln.wf02.wt02.s5"}, []common.TAggregationType{common.TAggregationType_COUNT}, &startTime, &endTime, &interval)
 
-	deleteTimeseries("root.sg1.dev1.status")
-	deleteTimeseries("root.ln.wf02.wt02.s5")
+	deleteTimeseries(exampleDatabase + ".sg1.dev1.status")
+	deleteTimeseries(exampleDatabase + ".ln.wf02.wt02.s5")
 
 	//0.12.x and newer
 	insertRecordsOfOneDevice()
-	deleteTimeseries("root.sg1.dev0.*")
+	deleteTimeseries(exampleDatabase + ".sg1.dev0.*")
 
 	insertAlignedRecord()
-	deleteTimeseries("root.al1.dev1.*")
+	deleteTimeseries(exampleDatabase + ".al1.dev1.*")
 
 	insertAlignedRecords()
-	deleteTimeseries("root.al1.**")
+	deleteTimeseries(exampleDatabase + ".al1.**")
 
 	insertAlignedRecordsOfOneDevice()
-	deleteTimeseries("root.al1.dev4.*")
+	deleteTimeseries(exampleDatabase + ".al1.dev4.*")
 
-	deleteStorageGroup("root.ln")
 	insertAlignedTablet()
-	deleteTimeseries("root.ln.device1.*")
+	deleteTimeseries(exampleDatabase + ".ln.alignedDevice1.*")
 
-	deleteStorageGroup("root.ln")
 	insertAlignedTablets()
-	deleteTimeseries("root.ln.device1.*")
+	deleteTimeseries(exampleDatabase + ".ln.alignedDevice1.*")
+
+	deleteStorageGroup(exampleDatabase)
 }
 
 // If your IotDB is a cluster version, you can use the following code for multi node connection
@@ -272,14 +289,17 @@ func printDataSet2(sds *client.SessionDataSet) {
 
 func setStorageGroup(sg string) {
 	checkError(session.SetStorageGroup(sg))
+	fmt.Printf("Created database: %s\n", sg)
 }
 
 func deleteStorageGroup(sg string) {
 	checkError(session.DeleteStorageGroup(sg))
+	fmt.Printf("Deleted database: %s\n", sg)
 }
 
 func deleteStorageGroups(sgs ...string) {
 	checkError(session.DeleteStorageGroups(sgs...))
+	fmt.Printf("Deleted databases: %s\n", strings.Join(sgs, ", "))
 }
 
 func createTimeseries(path string) {
@@ -315,7 +335,7 @@ func createAlignedTimeseries(prefixPath string, measurements, measurementAlias [
 
 func createMultiTimeseries() {
 	var (
-		paths       = []string{"root.sg1.dev1.temperature"}
+		paths       = []string{exampleDatabase + ".sg1.dev1.temperature"}
 		dataTypes   = []client.TSDataType{client.TEXT}
 		encodings   = []client.TSEncoding{client.PLAIN}
 		compressors = []client.TSCompressionType{client.SNAPPY}
@@ -329,7 +349,7 @@ func deleteTimeseries(paths ...string) {
 
 func insertStringRecord() {
 	var (
-		deviceId           = "root.ln.wf02.wt02"
+		deviceId           = exampleDatabase + ".ln.wf02.wt02"
 		measurements       = []string{"hardware"}
 		values             = []string{"123"}
 		timestamp    int64 = 12
@@ -339,7 +359,7 @@ func insertStringRecord() {
 
 func insertRecord() {
 	var (
-		deviceId           = "root.sg1.dev1"
+		deviceId           = exampleDatabase + ".sg1.dev1"
 		measurements       = []string{"status"}
 		values             = []interface{}{"123"}
 		dataTypes          = []client.TSDataType{client.TEXT}
@@ -350,14 +370,14 @@ func insertRecord() {
 
 func insertAlignedRecord() {
 	var (
-		deviceId           = "root.al1.dev1"
+		deviceId           = exampleDatabase + ".al1.dev1"
 		measurements       = []string{"status"}
 		values             = []interface{}{"123"}
 		dataTypes          = []client.TSDataType{client.TEXT}
 		timestamp    int64 = 12
 	)
 	checkError(session.InsertAlignedRecord(deviceId, measurements, dataTypes, values, timestamp))
-	sessionDataSet, err := session.ExecuteStatement("show devices")
+	sessionDataSet, err := session.ExecuteStatement("show devices " + exampleDatabase + ".**")
 	if err == nil {
 		printDataSet0(sessionDataSet)
 		sessionDataSet.Close()
@@ -369,7 +389,7 @@ func insertAlignedRecord() {
 
 func insertRecords() {
 	var (
-		deviceId     = []string{"root.sg1.dev1"}
+		deviceId     = []string{exampleDatabase + ".sg1.dev1"}
 		measurements = [][]string{{"status"}}
 		dataTypes    = [][]client.TSDataType{{client.TEXT}}
 		values       = [][]interface{}{{"123"}}
@@ -380,14 +400,14 @@ func insertRecords() {
 
 func insertAlignedRecords() {
 	var (
-		deviceIds    = []string{"root.al1.dev2", "root.al1.dev3"}
+		deviceIds    = []string{exampleDatabase + ".al1.dev2", exampleDatabase + ".al1.dev3"}
 		measurements = [][]string{{"status"}, {"temperature"}}
 		dataTypes    = [][]client.TSDataType{{client.TEXT}, {client.TEXT}}
 		values       = [][]interface{}{{"33"}, {"44"}}
 		timestamps   = []int64{12, 13}
 	)
 	checkError(session.InsertAlignedRecords(deviceIds, measurements, dataTypes, values, timestamps))
-	sessionDataSet, err := session.ExecuteStatement("show devices")
+	sessionDataSet, err := session.ExecuteStatement("show devices " + exampleDatabase + ".**")
 	if err == nil {
 		printDataSet0(sessionDataSet)
 		sessionDataSet.Close()
@@ -400,7 +420,7 @@ func insertAlignedRecords() {
 func insertRecordsOfOneDevice() {
 	ts := time.Now().UTC().UnixNano() / 1000000
 	var (
-		deviceId          = "root.sg1.dev0"
+		deviceId          = exampleDatabase + ".sg1.dev0"
 		measurementsSlice = [][]string{
 			{"restart_count", "tick_count", "price"},
 			{"temperature", "description", "status"},
@@ -421,7 +441,7 @@ func insertRecordsOfOneDevice() {
 func insertAlignedRecordsOfOneDevice() {
 	ts := time.Now().UTC().UnixNano() / 1000000
 	var (
-		deviceId          = "root.al1.dev4"
+		deviceId          = exampleDatabase + ".al1.dev4"
 		measurementsSlice = [][]string{
 			{"restart_count", "tick_count", "price"},
 			{"temperature", "description", "status"},
@@ -437,14 +457,14 @@ func insertAlignedRecordsOfOneDevice() {
 		timestamps = []int64{ts, ts - 1}
 	)
 	checkError(session.InsertAlignedRecordsOfOneDevice(deviceId, timestamps, measurementsSlice, dataTypes, values, false))
-	sessionDataSet, err := session.ExecuteStatement("show devices")
+	sessionDataSet, err := session.ExecuteStatement("show devices " + exampleDatabase + ".**")
 	if err == nil {
 		printDataSet0(sessionDataSet)
 		sessionDataSet.Close()
 	} else {
 		log.Println(err)
 	}
-	sessionDataSetNew, err := session.ExecuteStatement("select restart_count,tick_count,price,temperature,description,status from  root.al1.dev4")
+	sessionDataSetNew, err := session.ExecuteStatement("select restart_count,tick_count,price,temperature,description,status from  " + exampleDatabase + ".al1.dev4")
 	if err == nil {
 		printDataSet0(sessionDataSetNew)
 		sessionDataSetNew.Close()
@@ -456,7 +476,7 @@ func insertAlignedRecordsOfOneDevice() {
 
 func deleteData() {
 	var (
-		paths           = []string{"root.sg1.dev1.status"}
+		paths           = []string{exampleDatabase + ".sg1.dev1.status"}
 		startTime int64 = 0
 		endTime   int64 = 12
 	)
@@ -464,7 +484,7 @@ func deleteData() {
 }
 
 func insertTablet() {
-	if tablet, err := createTablet(12); err == nil {
+	if tablet, err := createTablet(exampleDatabase+".ln.device1", 12); err == nil {
 		err = session.InsertTablet(tablet, false)
 		tablet.Reset()
 		checkError(err)
@@ -474,7 +494,7 @@ func insertTablet() {
 }
 
 func insertAlignedTablet() {
-	if tablet, err := createTablet(12); err == nil {
+	if tablet, err := createTablet(exampleDatabase+".ln.alignedDevice1", 12); err == nil {
 		err = session.InsertAlignedTablet(tablet, false)
 		tablet.Reset()
 		checkError(err)
@@ -482,7 +502,7 @@ func insertAlignedTablet() {
 		log.Fatal(err)
 	}
 	var timeout int64 = 1000
-	if ds, err := session.ExecuteQueryStatement("select * from root.ln.device1", &timeout); err == nil {
+	if ds, err := session.ExecuteQueryStatement("select * from "+exampleDatabase+".ln.alignedDevice1", &timeout); err == nil {
 		printDevice1(ds)
 		ds.Close()
 	} else {
@@ -490,8 +510,8 @@ func insertAlignedTablet() {
 	}
 }
 
-func createTablet(rowCount int) (*client.Tablet, error) {
-	tablet, err := client.NewTablet("root.ln.device1", []*client.MeasurementSchema{
+func createTablet(deviceID string, rowCount int) (*client.Tablet, error) {
+	tablet, err := client.NewTablet(deviceID, []*client.MeasurementSchema{
 		{
 			Measurement: "restart_count",
 			DataType:    client.INT32,
@@ -537,11 +557,11 @@ func createTablet(rowCount int) (*client.Tablet, error) {
 }
 
 func insertTablets() {
-	tablet1, err := createTablet(8)
+	tablet1, err := createTablet(exampleDatabase+".ln.device1", 8)
 	if err != nil {
 		log.Fatal(err)
 	}
-	tablet2, err := createTablet(4)
+	tablet2, err := createTablet(exampleDatabase+".ln.device1", 4)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -551,11 +571,11 @@ func insertTablets() {
 }
 
 func insertAlignedTablets() {
-	tablet1, err := createTablet(8)
+	tablet1, err := createTablet(exampleDatabase+".ln.alignedDevice1", 8)
 	if err != nil {
 		log.Fatal(err)
 	}
-	tablet2, err := createTablet(4)
+	tablet2, err := createTablet(exampleDatabase+".ln.alignedDevice1", 4)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -574,7 +594,7 @@ func getTimeZone() (string, error) {
 }
 
 func executeStatement() {
-	var sql = "show storage group"
+	var sql = "show storage group " + exampleDatabase
 	sessionDataSet, err := session.ExecuteStatement(sql)
 	if err == nil {
 		printDataSet0(sessionDataSet)
@@ -609,9 +629,9 @@ func executeAggregationQueryStatementWithLegalNodes(paths []string, aggregations
 }
 
 func executeRawDataQuery() {
-	session.ExecuteNonQueryStatement("insert into root.ln.wf02.wt02(time,s5) values(1,true)")
+	session.ExecuteNonQueryStatement("insert into " + exampleDatabase + ".ln.wf02.wt02(time,s5) values(1,true)")
 	var (
-		paths           = []string{"root.ln.wf02.wt02.s5"}
+		paths           = []string{exampleDatabase + ".ln.wf02.wt02.s5"}
 		startTime int64 = 1
 		endTime   int64 = 200
 	)
@@ -625,11 +645,11 @@ func executeRawDataQuery() {
 }
 
 func executeBatchStatement() {
-	var sqls = []string{"insert into root.ln.wf02.wt02(time,s5) values(1,true)",
-		"insert into root.ln.wf02.wt02(time,s5) values(2,true)"}
+	var sqls = []string{"insert into " + exampleDatabase + ".ln.wf02.wt02(time,s5) values(1,true)",
+		"insert into " + exampleDatabase + ".ln.wf02.wt02(time,s5) values(2,true)"}
 	checkError(session.ExecuteBatchStatement(sqls))
 	var (
-		paths     []string = []string{"root.ln.wf02.wt02.s5"}
+		paths     []string = []string{exampleDatabase + ".ln.wf02.wt02.s5"}
 		startTime int64    = 1
 		endTime   int64    = 200
 	)

@@ -35,6 +35,8 @@ The main module contains the Session client, database/sql driver, and subscripti
 | [Tree incremental subscriptions](subscription/tree/incremental/main.go) | `go run ./subscription/tree/incremental` |
 | [Table incremental subscriptions](subscription/table/incremental/main.go) | `go run ./subscription/table/incremental` |
 
+The Tree Session example creates databases with a unique prefix for each run and deletes them when it finishes successfully. It prints database creation and deletion results; if it stops early, inspect the printed names and results before manually cleaning up any remaining databases.
+
 These programs connect to IoTDB and create or modify sample data. Connection settings for the existing Session, pool, and database/sql examples are defined in their source files. The subscription programs accept connection flags and a password environment variable; their [instructions](subscription/README.md) describe server requirements, Pull/Push selection, ACK strategies, progress, and optional processors.
 
 From the repository root, a subscription example can be selected as follows:
