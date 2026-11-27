@@ -21,6 +21,7 @@ package e2e
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -93,7 +94,15 @@ func (s *e2eTestSuite) latestDeleteTimeseriesProcedureID() int64 {
 
 func (s *e2eTestSuite) deleteTimeseriesAndWait(paths []string) {
 	previousID := s.latestDeleteTimeseriesProcedureID()
-	s.checkError(s.session.DeleteTimeseries(paths))
+	err := s.session.DeleteTimeseries(paths)
+	if err != nil {
+		var executionError *client.ExecutionError
+		if errors.As(err, &executionError) && executionError.Code == client.PathNotExist {
+			// The server may reject deletion of an absent path before creating a procedure.
+			return
+		}
+		s.checkError(err)
+	}
 
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
